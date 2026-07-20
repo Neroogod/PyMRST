@@ -1,0 +1,101 @@
+"""Phase 82: compositional boundary-condition schedule vs MATLAB MRST."""
+
+from pathlib import Path
+
+import numpy as np
+import scipy.io
+
+from pymrst.gridprocessing import cart_grid, compute_geometry
+from pymrst.modules.compositional.eos import Mixture
+from pymrst.modules.compositional.model import OverallCompositionModel
+from pymrst.params.rock import make_rock, pore_volume
+from pymrst.params.wells_and_bc import fluxside, pside
+from pymrst.utils.units import BARSA, DARCY, DAY, MILLI, YEAR
+
+HERE = Path(__file__).parent
+REF = HERE / "ref_p82_compositional_bc.mat"
+
+
+def build_mixture(ref) -> Mixture:
+    return Mixture(
+        names=("Methane", "CarbonDioxide", "n-Decane"),
+        Tcrit=np.atleast_1d(ref["Tcrit"]).astype(float),
+        Pcrit=np.atleast_1d(ref["Pcrit"]).astype(float),
+        Vcrit=np.atleast_1d(ref["Vcrit"]).astype(float),
+        acentric=np.atleast_1d(ref["acf"]).astype(float),
+        molarMass=np.atleast_1d(ref["mw"]).astype(float),
+    )
+
+
+def compare(name, py, ml, atol, scale=1.0, unit="") -> int:
+    py = np.asarray(py, float).ravel()
+    ml = np.asarray(ml, float).ravel()
+    diff = float(np.abs(py - ml).max())
+    ok = diff <= atol
+    tag = "ok  " if ok else "FAIL"
+    print(f"  {tag} {name}: max abs diff = {diff / scale:.3e} {unit} "
+          f"(atol {atol / scale:.1e} {unit})")
+    return 0 if ok else 1
+
+
+def main() -> int:
+    if not REF.exists():
+        print("ref_p82_compositional_bc.mat missing (run dump_phase82_reference.m)")
+        return 1
+    ref = scipy.io.loadmat(REF, squeeze_me=True)
+    mix = build_mixture(ref)
+    nx = int(ref["nx"])
+    ny = int(ref["ny"])
+    T0 = float(ref["T0"])
+    p0 = float(ref["p0"])
+    z0 = np.atleast_1d(ref["z0"]).astype(float)
+    dt = np.atleast_1d(ref["dt"]).astype(float)
+
+    g = compute_geometry(cart_grid([nx, ny, 1], [1000.0, 1000.0, 10.0]))
+    rock = make_rock(g, 100.0 * MILLI * DARCY, 0.2)
+    pv = pore_volume(g, rock)
+    bc = fluxside(None, g, "xmin", pv.sum() / (20.0 * YEAR), sat=np.array([1.0, 0.0]))
+    bc = pside(bc, g, "xmax", 75.0 * BARSA, sat=np.array([1.0, 0.0]))
+    bc.components = np.tile(np.array([0.1, 0.9, 0.0]), (bc.face.size, 1))
+
+    model = OverallCompositionModel(g, rock, mix, temperature=T0, bc=bc, rho_s=(500.0, 500.0))
+    st = model.initial_state(p0, z0)
+    states = []
+    iterations = []
+    for step in dt:
+        st, ok, it = model.step(st, float(step), bc=bc)
+        assert ok, "PyMRST compositional BC step did not converge"
+        states.append(st.copy())
+        iterations.append(it)
+
+    p_py = np.column_stack([s.pressure for s in states])
+    z_py = np.stack([s.z for s in states], axis=2)
+    s_o_py = []
+    s_g_py = []
+    from pymrst.modules.compositional.flow_props import two_phase_flow_props
+
+    for s in states:
+        fp = two_phase_flow_props(mix, s.pressure, model.T, s.z)
+        s_o_py.append(fp.sL)
+        s_g_py.append(fp.sV)
+    s_o_py = np.column_stack(s_o_py)
+    s_g_py = np.column_stack(s_g_py)
+
+    print(f"\n{nx * ny} cells, {dt.size} compositional BC steps ({dt.sum() / DAY:.2f} days):")
+    failed = 0
+    failed += compare("bc face values", bc.value, ref["bcValues"], 1e-12)
+    failed += compare("bc components", bc.components, ref["bcComponents"], 1e-12)
+    failed += compare("pressure", p_py, ref["p"], 2e-2 * BARSA, BARSA, "bar")
+    failed += compare("composition z", z_py, ref["z"], 2e-5)
+    failed += compare("oil saturation sO", s_o_py, ref["sO"], 5e-5)
+    failed += compare("gas saturation sG", s_g_py, ref["sG"], 5e-5)
+    print(f"  ok   Newton iterations diagnostic "
+          f"(PyMRST {iterations}, MRST relaxed solver {np.asarray(ref['iterations'], int).tolist()})")
+
+    print("\nCompositional boundary-condition schedule matches MATLAB!" if failed == 0
+          else f"\n{failed} comparisons FAILED")
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
