@@ -6,7 +6,7 @@ from typing import Mapping, Optional
 
 import numpy as np
 
-from pymrst.modules.ad_core.aquifer import AquiferConnections, AquiferModel
+from pymrst.modules.ad_core.models.aquifers.aquifer import AquiferConnections, AquiferModel
 from pymrst.modules.deckformat.params.rock.process_aquifer import (
     AquiferDeckOutput,
     process_aquifer,
