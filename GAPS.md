@@ -1091,9 +1091,13 @@ The rest of `utils/` is MATLAB session plumbing (`mrstModule`, `merge_options`,
   evaluator sets, `PhysicalModel`/`ReservoirModel`, the facility, and a real
   `NonLinearSolver`), carrying black-oil end to end.
 
-  It is still **14 modules and 22 state functions against MRST's 345 files**,
-  and the earlier wording here ("still thin") was too vague to be useful.
-  What is actually missing, by consequence:
+  It is **60 files and ~23 state functions against MRST's 345 files** (the
+  earlier "14 modules / 22 state functions" undercounted; ad-core has grown
+  since). The files are now organised on MRST's own layout - nothing sits at
+  the `ad_core` root but `__init__.py` and re-export shims (see item 12 under
+  "Layout differences"). Breadth, not shape, is what is left: the ~53
+  statefunctions MRST has that PyMRST does not, and the flowprops/flux/facility
+  split inside `statefunctions/`. What is actually missing, by consequence:
 
   *Physics you cannot currently model*
   - ~~**Boundary conditions and sources for AD models**~~ - done (Phase 41).
@@ -1333,6 +1337,21 @@ PyMRST/
 | 9 | `vemmech/utils`, `grid_utils`, `plotting`, `ad_version`, `models` | matching underscore packages and landing files | Done for the implemented VEM/TEDFM/AD/calibration/plotting surface |
 | 10 | examples scattered per module + a root `examples/` | one central `examples/` + `examples/validation/` | Partly - some module examples exist, but validation examples remain central |
 | 11 | `Contents.m` index per directory | none | Cosmetic - Python package docstrings cover the important landing packages |
+| 12 | `ad-core` has **no files at its root** - everything lives in `utils/`, `solvers/`, `initialization/`, `timesteps/`, `models/`, `statefunctions/`, `simulators/`, `backends/` | Done for the implemented surface - the implementation modules that used to sit at the `ad_core` root now live in those subdirectories; each old import path is a thin re-export shim, and the full code plus its self-tests moved with it |
+
+Item 12 was the largest single divergence in `ad-core` and is now closed for
+the code that exists: `operators.py`, `boundary_conditions.py` -> `utils/`;
+`linear_solvers.py` -> `solvers/`; `initialization.py` -> `initialization/`
+(module became a package); `timesteps.py` -> `timesteps/` (likewise);
+`schedule.py` -> `simulators/`; `aquifer.py`, `carter_tracy_aquifer.py` ->
+`models/aquifers/`; `components.py` -> `statefunctions/components/`. Three
+duplicate implementations were collapsed in the same pass (the root file was
+canonical; the MRST-shaped copy had been a shorter, unused stub - the
+`operators` copy was silently missing the whole diagonal-backend dispatch).
+What remains is *depth*, not root-level shape: the flowprops/flux/facility
+split inside `statefunctions/`, and the ~53 statefunctions MRST has that
+PyMRST does not (see the module table at the top and the `ad_core` depth
+note above).
 
 Items 1 and 2 are hard Python constraints and cannot be removed; the honest
 target is "mirror MRST directory-for-directory *under* `pymrst/`, with hyphens
@@ -1345,8 +1364,11 @@ The remaining layout work is mostly breadth, not the core shape:
 
 1. Add per-module `examples/` landing folders for modules that still rely only
    on the central `examples/validation/` tree.
-2. Add more MRST subdirectory wrappers as additional APIs are ported
-   (`ad-core/backends`, `linearsolvers`, `msrsb`, etc.).
+2. Add more MRST subdirectory wrappers as additional APIs are ported. The
+   `ad-core` root reshaping is done (item 12); the next `ad-core` layout step
+   is the intra-`statefunctions/` split (`flowprops/`, `flux/`, `flux/upwind/`,
+   `facility/`), which is coupled to porting the missing statefunctions rather
+   than a pure move. Beyond `ad-core`: `linearsolvers`, `msrsb`, etc.
 3. Keep `MRST_LAYOUT_MAP.md` as the source of truth: a wrapper can exist only
    when it delegates to an implemented PyMRST symbol or explicitly documents a
    blocked/unported surface.
