@@ -5,7 +5,7 @@ from pymrst.modules.ad_core.simulators.nonlinear_solver import (
     SimulationReport,
     StepReport,
 )
-from pymrst.modules.ad_core.schedule import simulate_schedule_ad
+from pymrst.modules.ad_core.simulators.simulate_schedule_ad import simulate_schedule_ad
 
 __all__ = [
     "NonLinearSolver",
