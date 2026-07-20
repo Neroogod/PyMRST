@@ -1,0 +1,566 @@
+# ad-core: implementation roadmap to full MRST parity
+
+`README.md` records what is built. `GAPS.md` records what is missing across the
+whole port. This file is narrower and deeper: it is the plan for finishing
+**one module - `ad-core`** - to the point where MRST's `ad-core/` and PyMRST's
+`ad_core/` are the same library, function for function, in the same directory
+layout.
+
+It is written after the layout refactor that emptied the `ad_core` package
+root: every implementation now lives in the MRST-shaped subdirectory, and the
+root holds only `__init__.py`. That refactor closed the *shape* gap. This file
+plans the *depth* gap.
+
+## The layout contract
+
+MRST's `ad-core/` has **no files at its root**; every symbol lives in a
+subdirectory. PyMRST mirrors this directory-for-directory, with two mechanical
+transforms that are forced by Python and applied everywhere:
+
+- hyphens become underscores (`ad-core` -> `ad_core`);
+- MATLAB's one-function-per-file convention collapses into grouped modules
+  where that reads better, but **never across a subdirectory boundary**. A
+  symbol MRST files under `statefunctions/flux/` lands under
+  `ad_core/statefunctions/flux/`, not anywhere else.
+
+Every phase below names its MRST source files and its exact PyMRST destination
+path. A phase is not done until the code sits at that path.
+
+## The validation contract (inherited, non-negotiable)
+
+Every phase is proved the way the existing 336 were (see `ROADMAP.md`):
+
+1. **A MATLAB reference.** `dump_phaseN_reference.m` runs in the MRST tree next
+   door and saves `.mat` arrays; `validate_phaseN.py` rebuilds the same case
+   and compares field by field. Tolerances have run 1e-13 to 1e-16.
+2. **Fix the inputs, compare the algorithm** where an upstream difference
+   (triangulator, RNG, solver tolerance) would otherwise pollute the check.
+3. **Physics where MATLAB cannot be the judge** - an invariant that breaks if
+   the code is wrong (a finite-difference gradient, a conservation law, an
+   analytic solution). State which, and why.
+4. **Self-tests in the file**, run by `python ad_core/.../module.py` and
+   collected by `tests/test_all.py`.
+5. **Report what the reference gets wrong.** Seven MRST defects have surfaced
+   this way; "matches MATLAB" and "correct" are not the same claim.
+
+Sizes are `S` (a session), `M` (a few), `L` (substantial), `XL` (a project).
+
+---
+
+## Where ad-core stands
+
+Counting library symbols only (excluding `examples/`, `book-ii/`, the MEX
+operator layer, `sim_runner/` packed-problem infra, and the MATLAB `plotting/`
+GUI - all classified "out of scope" below):
+
+| Subdirectory | present / MRST | what is missing |
+|---|---|---|
+| `backends` | 5 / 7 | two diagonal Jacobian variants + operator helpers |
+| `initialization` | 2 / 14 | equilibration regions, deck/ECLIPSE init |
+| `models` | 2 / 4 | `GenericReservoirModel`, `WrapperModel` |
+| `models/aquifers` | 2 / 2 | - |
+| `models/composite` | 0 / 1 | `CompositeModel` |
+| `models/facilities` | 6 / 15 | MS wells, perforation packing, control eqns |
+| `models/facilities/separators` | 3 / 3 | - |
+| `models/facilities/vfp` | 1 / 1 | - |
+| `models/wells` | 0 / 6 | `WellModel`, control switching, connection DP |
+| `simulators` | 1 / 4 | the three adjoint drivers (folded in `optimization`) |
+| `solvers` | 1 / 14 | the solver class hierarchy + base classes |
+| `statefunctions` | 5 / 7 | `FacilityFlowDiscretization`, `StateFunctionDependent` |
+| `statefunctions/components` | 2 / 3 | `GenericComponent` |
+| `statefunctions/composite` | 0 / 2 | `CouplingTerm`, `SourceCouplingTerm` |
+| `statefunctions/facility` | 0 / 11 | every well/perforation statefunction |
+| `statefunctions/flowprops` | 8 / 23 | the whole `BlackOil*` family + reduction factors |
+| `statefunctions/flowprops/hysteresis` | 0 / 2 | `HystereticRelativePermeability` |
+| `statefunctions/flowprops/virtual` | 0 / 1 | `SaturationProperty` |
+| `statefunctions/flux` | 9 / 14 | TPFA-as-statefunction, thresholded potential |
+| `statefunctions/flux/flow_state` | 0 / 4 | explicit / implicit / AIM builders |
+| `statefunctions/flux/upwind` | 0 / 5 | the upwind + WENO hierarchy |
+| `statefunctions/utils` | 0 / 4 | graph introspection + plotting |
+| `timesteps` | 5 / 5 | - |
+| `upscale` | 0 / 3 | model/schedule/state upscaling |
+| `utils` | ~1 / 80 | see the honest note below |
+
+**The `utils` row overstates the gap.** MRST files 80 loose functions there;
+of those, roughly a third are MATLAB session plumbing with no Python analogue,
+another third are already implemented as *methods* on PyMRST classes rather
+than standalone functions (convergence checks live on the models, `faceUpstr`
+lives in the operators), and the genuine-capability remainder is what Tier 7
+below ports. File-count parity is the wrong metric here; capability parity is
+the target.
+
+**The one structural fact that orders everything:** MRST's physics modules
+(`ad-blackoil`, `ad-eor`, `solvent`, `compositional`) are *written as
+statefunctions plugged into a grouping*. PyMRST has the grouping machinery (the
+spine) and the generic evaluators, but almost none of the **specializations** -
+the `BlackOil*` family, the upwind hierarchy, the well statefunctions. Today
+black-oil PVT works, but through `ad_blackoil`'s own backend code, not through
+graph-resident statefunctions. Until the specialization layer exists, each new
+physics module is a bespoke residual; once it exists, each is a close port.
+That is why Tier 1 is first, and why it is most of the value.
+
+---
+
+## Tier 1 - the statefunction specialization layer
+
+This tier is the reason the graph was built. It is largely independent of the
+other tiers and should land first.
+
+### AC1 - Flux discretization statefunctions
+- **What:** `TwoPointFluxApproximation`, `PermeabilityPotentialGradient`,
+  `PermeabilityGradientDiscretization`, `PhasePotentialDifferenceThresholded`,
+  `FaceComponentMobility`.
+- **Path:** `ad_core/statefunctions/flux/`.
+- **Why here:** the flux group is the root of the flow half of the graph;
+  every model's conservation equation reads through it. `TwoPointFluxApproximation`
+  in particular is the statefunction wrapper over the operators PyMRST already
+  has - a thin, high-certainty first port that pins the pattern.
+- **Depends on:** nothing new (the operators and `PhaseFlux` exist).
+- **Validation:** reproduce an existing oil-water flux assembly (Phase 5/24)
+  through the new statefunctions; bit-for-bit against the current path.
+- **Size/risk:** M. Low risk - the physics is already validated, this re-homes
+  it in the graph.
+
+### AC2 - The upwind hierarchy
+- **What:** `UpwindDiscretization` (base), `UpwindProperty`,
+  `UpwindFunctionWrapperDiscretization`, `WENOUpwindDiscretization`,
+  `getBoundaryFacesMerged`.
+- **Path:** `ad_core/statefunctions/flux/upwind/`.
+- **Why here:** `PhaseFlux` currently hardcodes single-point upwind; the
+  hierarchy makes upwinding a pluggable statefunction, which WENO and the
+  higher-order schemes need. `getBoundaryFacesMerged` is a shared helper.
+- **Depends on:** AC1.
+- **Validation:** single-point upwind reproduces the current result exactly;
+  WENO against MRST's `wenoExampleAD` dump on a 1D Buckley-Leverett front.
+- **Size/risk:** M. WENO reconstruction is the fiddly part.
+
+### AC3 - Flow-state builders
+- **What:** `FlowStateBuilder` (base), `ExplicitFlowStateBuilder`,
+  `ImplicitFlowStateBuilder`, `AdaptiveImplicitFlowStateBuilder`.
+- **Path:** `ad_core/statefunctions/flux/flow_state/`.
+- **Why here:** these decide which quantities are evaluated at the old vs new
+  time level - the switch that makes a model IMPES, fully-implicit, or AIM.
+  The sequential module and explicit transport need them.
+- **Depends on:** AC1, AC2.
+- **Validation:** implicit builder reproduces the fully-implicit result;
+  explicit builder against an IMPES transport step; AIM against MRST on a case
+  with a mixed implicit/explicit cell partition.
+- **Size/risk:** M.
+
+### AC4 - The BlackOil PVT flowprops
+- **What:** `BlackOilDensity`, `BlackOilViscosity`, `BlackOilShrinkageFactors`,
+  `BlackOilPoreVolume`, `BlackOilCapillaryPressure`, `RsMax`, `RvMax`,
+  `SurfaceDensity`, `BaseRelativePermeability`, `DensityDerivedShrinkageFactors`.
+- **Path:** `ad_core/statefunctions/flowprops/`.
+- **Why here:** this is the headline gap. It moves black-oil PVT out of
+  `ad_blackoil`'s private backend and into graph statefunctions, so
+  `GenericBlackOilModel` composes exactly as MRST's does - and so `ad-eor` and
+  `solvent`, which subclass these, have a base to stand on.
+- **Depends on:** AC1 (density feeds the potential gradient).
+- **Validation:** SPE1 and SPE9 PVT terms against the existing black-oil dumps,
+  field by field; the assembled residual must match the current `ad_blackoil`
+  residual to machine precision before the old backend path is retired.
+- **Size/risk:** L. The `Rs`/`Rv` saturation switches are where MRST's own
+  edge cases live.
+
+### AC5 - Pressure-reduction factors
+- **What:** `PressureReductionFactors`, `BlackOilPressureReductionFactors`,
+  `NumericalPressureReductionFactors`.
+- **Path:** `ad_core/statefunctions/flowprops/`.
+- **Why here:** these are the weights that collapse the component system to a
+  pressure equation - what CPR and the sequential module use. PyMRST's CPR
+  currently derives them internally; this exposes them as MRST does.
+- **Depends on:** AC4.
+- **Validation:** the weights against MRST on SPE1; the CPR iteration count
+  must be unchanged.
+- **Size/risk:** M.
+
+### AC6 - Component flowprops and the generic component
+- **What:** `ComponentMobility`, `ComponentPhaseDensity`, `ComponentProperty`,
+  `GenericComponent`.
+- **Path:** `ad_core/statefunctions/flowprops/` and
+  `ad_core/statefunctions/components/`.
+- **Why here:** completes the component abstraction so a component can carry its
+  own mobility and density - required by compositional-native and by any tracer
+  or reactive species.
+- **Depends on:** AC4.
+- **Validation:** against the compositional component dumps already in the tree.
+- **Size/risk:** M.
+
+### AC7 - Facility statefunctions (wells in the graph)
+- **What:** `FacilityWellMapping`, `WellIndex`, `WellPhaseFlux`,
+  `PerforationMobility`, `PerforationPressureGradient`,
+  `PerforationComponentPhaseDensity`, `WellComponentPhaseFlux`,
+  `WellComponentTotalFlux`, `WellComponentTotalFluxDensityMix`,
+  `WellComponentTotalVolumeBalanceCrossflow`, `InjectionSurfaceDensity`, and the
+  `FacilityFlowDiscretization` grouping.
+- **Path:** `ad_core/statefunctions/facility/` (grouping in
+  `ad_core/statefunctions/`).
+- **Why here:** the well equations are currently assembled procedurally inside
+  the 2,868-line `facility_model.py`. MRST expresses them as statefunctions in
+  a facility grouping. This is the single largest coherent gap in the module,
+  and it is what makes crossflow, component wells, and multisegment wells
+  compose instead of branch. `WellIndex` exists today only as the params
+  function `compute_well_index`; this is its statefunction form.
+- **Depends on:** AC4, AC6.
+- **Validation:** the multi-perforation well column (Phase 49) and the
+  compositional wells (Phases 54-57) reproduced through the facility grouping,
+  field by field, before the procedural path is retired.
+- **Size/risk:** L. Crossflow (`WellComponentTotalVolumeBalanceCrossflow`) is
+  the subtle one.
+
+### AC8 - Hysteresis and virtual saturation
+- **What:** `HystereticRelativePermeability`, `evaluateFunctionCellSubsetReg`,
+  `SaturationProperty`.
+- **Path:** `ad_core/statefunctions/flowprops/hysteresis/` and
+  `.../flowprops/virtual/`.
+- **Why here:** PyMRST has `KilloughGasHysteresis` as a standalone; this folds
+  it into the MRST relperm-statefunction hierarchy and adds the region-subset
+  evaluator that CO2 and WAG cases need. `SaturationProperty` is the virtual
+  base several relperm variants inherit.
+- **Depends on:** AC4 (`BaseRelativePermeability`).
+- **Validation:** a drainage-imbibition loop against MRST; the existing Killough
+  self-test must still pass.
+- **Size/risk:** M.
+
+### AC9 - Composite coupling terms
+- **What:** `CouplingTerm`, `SourceCouplingTerm`, `StateFunctionDependent`.
+- **Path:** `ad_core/statefunctions/composite/` (and
+  `StateFunctionDependent` in `ad_core/statefunctions/`).
+- **Why here:** the mechanism by which two physics groupings (flow +
+  geomechanics, flow + thermal) share a term. PyMRST's `ad_mechanics` couples
+  by hand today; this is the general machinery, and it is what `CompositeModel`
+  (AC12) is built on.
+- **Depends on:** AC1-AC7 (needs real statefunctions to couple).
+- **Validation:** reproduce the fixed-stress poroelastic coupling (Phase 27)
+  through a `CouplingTerm`; the surface-uplift invariants must hold.
+- **Size/risk:** M.
+
+### AC10 - Graph introspection and plotting
+- **What:** `buildStateFunctionDigraph`, `getStateFunctionGroupingDependencyGraph`,
+  `plotStateFunctionGroupings`, `printStateFunctionGroupingTikz`.
+- **Path:** `ad_core/statefunctions/utils/`.
+- **Why here:** not physics - tooling. It walks the dependency graph to draw or
+  print it, which is how MRST documents and debugs a grouping. Cheap once the
+  groupings above exist.
+- **Depends on:** AC1-AC9 (there must be a graph to walk).
+- **Validation:** the extracted dependency edges against a hand-checked
+  grouping; the plot is a rendering test, not a numeric one.
+- **Size/risk:** S.
+
+---
+
+## Tier 2 - models
+
+### AC11 - Generic and wrapper reservoir models
+- **What:** `GenericReservoirModel`, `WrapperModel`.
+- **Path:** `ad_core/models/`.
+- **Why here:** `GenericReservoirModel` is the model that assembles purely from
+  a statefunction grouping (no hand-written equations) - the payoff of Tier 1.
+  `WrapperModel` adapts one model to another's interface, used by sequential and
+  multiscale.
+- **Depends on:** Tier 1.
+- **Validation:** `GenericReservoirModel` reproduces `GenericBlackOilModel` on
+  SPE1 with no bespoke residual code.
+- **Size/risk:** M.
+
+### AC12 - CompositeModel
+- **What:** `CompositeModel`.
+- **Path:** `ad_core/models/composite/`.
+- **Why here:** the model that runs two coupled groupings, the general form of
+  what `ad_mechanics` does by hand. Depends on the coupling terms.
+- **Depends on:** AC9, AC11.
+- **Validation:** the coupled poromechanics case rebuilt as a `CompositeModel`;
+  match Phase 27/33.
+- **Size/risk:** L.
+
+---
+
+## Tier 3 - wells and facility completion
+
+### AC13 - The well model and control switching
+- **What:** `WellModel`, `setupWellControlEquations`,
+  `setupWellControlEquationsSingleWell`, `updateSwitchedControls`,
+  `updateSwitchedWellControls`, `updateConnectionDP`.
+- **Path:** `ad_core/models/wells/`.
+- **Why here:** PyMRST has control switching inside `facility_model.py`
+  (Phase 39) but not as MRST's separable `WellModel` with standalone control
+  equations. This factors it out to the MRST layout so a well type is a class,
+  not a branch. `setupWellControlEquationsSingleWell` already has a MATLAB
+  regression (Phase 120) to extend.
+- **Depends on:** AC7.
+- **Validation:** the Phase 39/120 control-switch regressions, re-driven through
+  `WellModel`.
+- **Size/risk:** M.
+
+### AC14 - Multisegment wells and perforation packing
+- **What:** `MultisegmentWell` (class), `setupMSWellEquationSingleWell`,
+  `combineMSwithRegularWells`, `convert2MSWell`, `nozzleValve`,
+  `packPerforationProperties`, `unpackPerforationProperties`,
+  `reorderWellPerforationsByDepth`, `computeWellContributionsSingleWell`,
+  `computeWellContributionsNew`.
+- **Path:** `ad_core/models/facilities/`, `ad_core/models/wells/`.
+- **Why here:** PyMRST has `assemble_multisegment_equations` (a function) and a
+  params-level `multisegment.py`, but not the MRST `MultisegmentWell` class with
+  the nozzle/valve pressure-loss models and the perforation pack/unpack
+  round-trip. Completes multisegment to MRST's surface.
+- **Depends on:** AC13.
+- **Validation:** the Phase 109 MS-well packed-variable check, extended to a
+  segmented producer against an MRST dump.
+- **Size/risk:** L.
+
+---
+
+## Tier 4 - solvers
+
+### AC15 - The linear-solver class hierarchy
+- **What:** `LinearSolverAD` (base), `LinearizedProblem`, `BackslashSolverAD`,
+  `NoOpSolverAD`, `HandleLinearSolverAD`, `GMRES_ILUSolverAD`,
+  `getNonLinearSolver`, `selectLinearSolverAD`.
+- **Path:** `ad_core/solvers/`.
+- **Why here:** PyMRST has `CPRSolver` and `DirectSolver` as concrete classes
+  but not MRST's base `LinearSolverAD` / `LinearizedProblem` contract the models
+  program against, nor the plain Backslash/NoOp/GMRES-ILU siblings and the
+  `getNonLinearSolver` factory. This makes the solver layer swappable the way
+  MRST's is.
+- **Depends on:** nothing new.
+- **Validation:** each concrete solver reproduces the current CPR/direct result;
+  `LinearizedProblem` assembly matches MRST's block layout.
+- **Size/risk:** M. **Out of scope:** `AGMGSolverAD`, `AMGCLSolverAD` and the
+  `AMGCL_CPR*` variants - external C bindings, constant-factor wins, tracked as
+  not-portable in `GAPS.md`.
+
+---
+
+## Tier 5 - initialization
+
+### AC16 - Equilibration regions
+- **What:** `getInitializationRegionsBase`, `getInitializationRegionsBlackOil`,
+  `getInitializationRegionsCompositional`, `getInitializationRegionsDeck`,
+  `getMinMaxPhaseSaturations`, `getMinMaxPhaseSaturationsFromRelPerm`,
+  `getMinimumPhaseSaturations`.
+- **Path:** `ad_core/initialization/`.
+- **Why here:** PyMRST has `initializeEquilibriumPressures/Saturations` and
+  `init_state_equil` (Phase 42) but not the *region* layer that lets a field
+  have several equilibration regions with different contacts - which every real
+  deck has.
+- **Depends on:** AC4 (needs the PVT statefunctions for region densities).
+- **Validation:** a two-region equilibration against an MRST dump; contact
+  depths and the transition-zone saturation profile field by field.
+- **Size/risk:** M.
+
+### AC17 - Deck and ECLIPSE initialization
+- **What:** `initStateBlackOilAD`, `initStateDeck`, `initEclipseProblemAD`,
+  `getDeckOPMData`, `plotRegionContacts`.
+- **Path:** `ad_core/initialization/`.
+- **Why here:** the end-to-end path from a parsed deck to an initial AD state,
+  which is how MRST starts SPE1/SPE9 from their `.DATA` files rather than
+  hand-built states.
+- **Depends on:** AC16, and `deckformat` (already present).
+- **Validation:** SPE1 initial state from the deck vs the hand-built state used
+  today; identical to machine precision.
+- **Size/risk:** M.
+
+---
+
+## Tier 6 - adjoint simulators (MRST-layout homing)
+
+### AC18 - Home the adjoint drivers under ad_core/simulators
+- **What:** `computeGradientAdjointAD`, `computeGradientPerturbationAD`,
+  `computeSensitivitiesAdjointAD`.
+- **Path:** `ad_core/simulators/`.
+- **Why here:** these exist in PyMRST - folded into the `optimization` module
+  (`optimization/utils/compute_gradient_adjoint_ad.py`, `optimization/adjoint.py`).
+  MRST files them under `ad-core/simulators/`. This phase gives them their MRST
+  home (as re-exports or a move) and broadens the adjoint from the current
+  flow-rate objective to the general parameter-sensitivity form MRST's
+  `computeSensitivitiesAdjointAD` supports.
+- **Depends on:** Tier 1 (a graph-assembled model makes the adjoint general).
+- **Validation:** the existing Phase 18 gradient check (adjoint vs
+  finite-difference) re-run through the `ad_core/simulators` entry point;
+  add a perturbation-vs-adjoint cross-check.
+- **Size/risk:** M. Mostly relocation + generalization, not new math.
+
+---
+
+## Tier 7 - utils (the genuine capability, not the plumbing)
+
+### AC19 - Convergence
+- **What:** `CNV_MBConvergence`, `checkWellConvergence`,
+  `getConvergenceValuesCNV`, `getConvergenceValuesWells`,
+  `printConvergenceReport`.
+- **Path:** `ad_core/utils/`.
+- **Why here:** PyMRST checks CNV/material-balance convergence *inside* the
+  model classes. MRST factors it into standalone functions the `NonLinearSolver`
+  calls, so any model gets the same report. Factoring it out matches the layout
+  and removes duplicated logic across the black-oil models.
+- **Depends on:** nothing new.
+- **Validation:** the CNV/MB values on an SPE1 step against MRST's printed
+  report, number for number.
+- **Size/risk:** M.
+
+### AC20 - Schedule tooling
+- **What:** `makeScheduleConsistent`, `convertDeckScheduleToMRST`,
+  `compressSchedule`, `refineSchedule`, `filterSchedule`, `combineSchedules`,
+  `simpleSchedule`, `convertReportToSchedule`.
+- **Path:** `ad_core/utils/`.
+- **Why here:** the tools that build and reshape a schedule. `simpleSchedule`
+  and `convertDeckScheduleToMRST` are the common entry points; the rest are
+  editing operations real multi-year field schedules need.
+- **Depends on:** `deckformat`.
+- **Validation:** SPE9's schedule from its deck vs the hand-built schedule;
+  `compressSchedule`/`refineSchedule` round-trip invariants.
+- **Size/risk:** M.
+
+### AC21 - CFL estimates and discretization setters
+- **What:** `estimateSaturationCFL`, `estimateCompositionCFL`,
+  `setTimeDiscretization`, `setWENODiscretization`, `setMPFADiscretization`.
+- **Path:** `ad_core/utils/`.
+- **Why here:** the CFL estimates drive explicit/AIM timestep and cell
+  selection (they pair with AC3); the setters are the one-call switches that
+  reconfigure a model's flux discretization. `setMPFADiscretization` is a stub
+  until MPFA lands (tracked in `GAPS.md`), but the hook belongs here.
+- **Depends on:** AC3.
+- **Validation:** the saturation CFL against MRST on a Buckley-Leverett case;
+  the setters against the assembled discretization they produce.
+- **Size/risk:** M.
+
+### AC22 - Numeric utility functions
+- **What:** `getMultiDimInterpolator`, `interpolateIDW`, `fastInterpTable`,
+  `getMultipliers`, `faceUpstr`, `phaseDensitiesTobfactor`, `splitFaceCellValue`,
+  `expandMatrixToCell`, `expandIfUniform`, `mergeOrderedArrays`,
+  `calculatePhaseRate`, `convertReservoirFluxesToSurface`, and the remaining
+  genuinely-numeric helpers.
+- **Path:** `ad_core/utils/`.
+- **Why here:** shared numeric primitives several of the phases above reach for.
+  Port them as they are needed by a consuming phase rather than in a block, and
+  give each a self-test.
+- **Depends on:** consumed by AC1-AC21 as needed.
+- **Validation:** per-function self-tests; MATLAB cross-check where a consuming
+  phase already dumps the surrounding case.
+- **Size/risk:** M, spread across the tiers.
+
+### AC23 - I/O, result handling, standalone solve, model selection
+- **What:** `ResultHandler`, `HandleStruct`, `getReportOutput`,
+  `getWellOutput`, `standaloneSolveAD`, `selectModelFromDeck`,
+  `getReservoirModel`/`setReservoirModel`.
+- **Path:** `ad_core/utils/`.
+- **Why here:** `selectModelFromDeck` is the factory that turns a parsed deck
+  into the right model class - the top of the deck-to-simulation path.
+  `standaloneSolveAD` is the one-call solve. `ResultHandler` is MRST's on-disk
+  state store.
+- **Depends on:** AC17, the model tiers.
+- **Validation:** `selectModelFromDeck` picks the black-oil model for SPE1 and
+  the compositional model for a compositional deck; `standaloneSolveAD`
+  reproduces a scripted solve.
+- **Size/risk:** M.
+
+---
+
+## Tier 8 - backend performance internals
+
+### AC24 - Diagonal Jacobian variants and operator helpers
+- **What:** `ConservationLawJacobian`, `FixedWidthJacobian`,
+  `getSparseBlocksFixedWidth`, `blockCSRtoSparse`,
+  `discreteDivergenceDiagonalJac`, and the `backends/diagonal/utils` helpers
+  (`diagMult`, `diagProductMult`, `double2GenericAD`, `getSparseArguments`,
+  `getSparseBlocks`, `incrementSubset`, `initVariablesAD_diagonal*`,
+  `matrixDims`).
+- **Path:** `ad_core/backends/diagonal/`, `.../diagonal/operators/`,
+  `.../diagonal/utils/`.
+- **Why here:** performance, not capability. PyMRST's diagonal backend already
+  works with a row-major Jacobian and Numba kernels; these are the remaining
+  MRST Jacobian layouts (fixed-width, conservation-law) and the block-assembly
+  helpers that make large-model assembly cheaper. Port when assembly cost, not
+  correctness, is the ceiling.
+- **Depends on:** nothing functionally; benchmarked against the current backend.
+- **Validation:** identical assembled Jacobian to the current backend on a
+  mid-size model; a wall-clock benchmark to justify each variant.
+- **Size/risk:** L. **Out of scope:** the MEX operator layer
+  (`backends/diagonal/operators/mex/`, 17 files + 12 `.cpp`) - MATLAB C
+  acceleration with no place in a NumPy/Numba backend.
+
+---
+
+## Tier 9 - upscaling
+
+### AC25 - Model, schedule, and state upscaling
+- **What:** `upscaleModelTPFA`, `upscaleSchedule`, `upscaleState`.
+- **Path:** `ad_core/upscale/`.
+- **Why here:** coarsening an AD model + its schedule + its state onto a coarse
+  grid, the AD-side companion to the flow-based upscaling PyMRST already has in
+  the `upscaling` module. Independent of the rest.
+- **Depends on:** `upscaling` (present), Tier 1.
+- **Validation:** an upscaled SPE10 slab against MRST's coarse model response.
+- **Size/risk:** M.
+
+---
+
+## Explicitly out of scope (not a port target)
+
+These are counted out of the parity numbers above, on the same grounds
+`GAPS.md` uses:
+
+- **The MEX operator layer** - `backends/diagonal/operators/mex/` (17 `.m`
+  wrappers + 12 `.cpp`). MATLAB C acceleration; the PyMRST diagonal backend is
+  already vectorized NumPy with Numba kernels.
+- **External linear-solver bindings** - `AGMGSolverAD`, `AMGCLSolverAD`,
+  `AMGCLSolverBlockAD`, `AMGCL_CPRSolverAD`, `AMGCL_CPRSolverBlockAD`. C library
+  bindings; constant-factor wins, not new capability. CPR already scales.
+- **Packed-problem infrastructure** - `simulators/sim_runner/` (12 files):
+  `PackedProblemManager`, background simulation, on-disk problem packing. Batch
+  orchestration, not simulation physics.
+- **The MATLAB plotting GUI** - `plotting/` (`plotWellSols`, `simpleUIbar`,
+  `simulationRuntimePanel`, ...). PyMRST's interactive surface is the PyVista
+  `plot_toolbar`; these are MATLAB `uicontrol` panels.
+- **Examples and the book-ii tutorials** - `examples/` (12) and
+  `examples/book-ii/` (13). Not library code. Port *individually* when one makes
+  a good validation case (as several already have).
+- **MATLAB session plumbing in `utils/`** - `obj2hash`, `numelData`,
+  `getGridSYMRCMOrdering`, `readSummaryLocal`, and the like: helpers for
+  MATLAB's runtime with no Python analogue.
+
+---
+
+## Ordering in one picture
+
+```
+  Tier 1  statefunction specialization layer  ─────────────┐  (the keystone)
+    AC1 flux ─ AC2 upwind ─ AC3 flow-state                 │
+    AC4 BlackOil PVT ─ AC5 reduction ─ AC6 components       │
+    AC7 facility SFs ─ AC8 hysteresis ─ AC9 coupling        │
+    AC10 graph utils                                        │
+                                                            ├─→ Tier 2 models
+                                                            │     AC11 generic/wrapper
+                                                            │     AC12 composite
+                                                            ├─→ Tier 3 wells (AC13-14)
+                                                            ├─→ Tier 6 adjoint (AC18)
+                                                            └─→ Tier 9 upscale (AC25)
+  Tier 4 solvers (AC15) ── independent
+  Tier 5 initialization (AC16-17) ── needs AC4
+  Tier 7 utils (AC19-23) ── mostly independent, feed the tiers above
+  Tier 8 backend perf (AC24) ── independent, performance only
+```
+
+**Tier 1 gates the module.** It is also where most of the value is: it is the
+layer `ad-eor`, `solvent`, and compositional-native are waiting on, and the
+layer that turns "PyMRST computes this" into "MRST code reads across
+unchanged." The recommended first phase is **AC1** - the smallest, most certain
+piece, and the one that pins the pattern for the fourteen statefunction phases
+behind it.
+
+## Sequencing against the global phase counter
+
+The project numbers phases globally (the tree is at Phase 336). These `AC`
+labels are local to this document for dependency clarity; each becomes the next
+global `Phase N` when it is taken up, with its `dump_phaseN_reference.m` /
+`validate_phaseN.py` pair, exactly as the contract requires.
+
+## A note on the pre-existing test failures
+
+Independent of this roadmap, five validation cases currently fail in files this
+plan does not start from: `phase19` (co2lab atlas - imports a missing
+`co2lab.atlas._atlas_dir`), `phase89` (vemmech calibration), and
+`phase312`/`313`/`317` (facility model). They predate the ad-core layout
+refactor and should be triaged before Tier 3 (which builds on the facility
+model) begins.
