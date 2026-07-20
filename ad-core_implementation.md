@@ -131,7 +131,7 @@ other tiers and should land first.
   (`ComponentMobility`), which it depends on - it is filed here in MRST but
   cannot stand until those land.
 
-### AC2 - The upwind hierarchy
+### AC2 - The upwind hierarchy ~~[core DONE - Phase 338; WENO deferred]~~
 - **What:** `UpwindDiscretization` (base), `UpwindProperty`,
   `UpwindFunctionWrapperDiscretization`, `WENOUpwindDiscretization`,
   `getBoundaryFacesMerged`.
@@ -143,6 +143,17 @@ other tiers and should land first.
 - **Validation:** single-point upwind reproduces the current result exactly;
   WENO against MRST's `wenoExampleAD` dump on a 1D Buckley-Leverett front.
 - **Size/risk:** M. WENO reconstruction is the fiddly part.
+- **Status:** the core landed in `ad_core/statefunctions/flux/upwind/`
+  (`upwind_discretization.py` - base + `UpwindFunctionWrapperDiscretization`;
+  `upwind_property.py` - the mixin; `boundary_faces.py` -
+  `get_boundary_faces_merged`). `validate_phase338.py` proves the wrapper
+  reproduces the validated `FaceMobility` upwinding exactly (val 0.0, jac 0.0)
+  through the `UpwindProperty` mixin. **`WENOUpwindDiscretization` is deferred:**
+  it needs the MATLAB `wenoExampleAD` dump to validate against, which this
+  environment cannot produce; the mirror-cell geometry it depends on
+  (`get_boundary_faces_merged`) is ported and invariant-tested. With the mixin
+  in place, AC1's `FaceComponentMobility` is now unblocked on the upwind side
+  (it still waits on AC6's `ComponentMobility`).
 
 ### AC3 - Flow-state builders
 - **What:** `FlowStateBuilder` (base), `ExplicitFlowStateBuilder`,

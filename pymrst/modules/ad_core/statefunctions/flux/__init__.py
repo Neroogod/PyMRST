@@ -26,10 +26,20 @@ from pymrst.modules.ad_core.statefunctions.flux.permeability_potential_gradient 
 from pymrst.modules.ad_core.statefunctions.flux.phase_potential_difference_thresholded import (  # noqa: E501
     PhasePotentialDifferenceThresholded,
 )
+from pymrst.modules.ad_core.statefunctions.flux.upwind import (
+    UpwindDiscretization,
+    UpwindFunctionWrapperDiscretization,
+    UpwindProperty,
+    get_boundary_faces_merged,
+)
 
 __all__ = [
     "PermeabilityGradientDiscretization",
     "PermeabilityPotentialGradient",
     "PhasePotentialDifferenceThresholded",
     "TwoPointFluxApproximation",
+    "UpwindDiscretization",
+    "UpwindFunctionWrapperDiscretization",
+    "UpwindProperty",
+    "get_boundary_faces_merged",
 ]

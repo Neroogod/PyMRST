@@ -42,6 +42,10 @@ from pymrst.modules.ad_core.statefunctions.flux import (
     PermeabilityPotentialGradient,
     PhasePotentialDifferenceThresholded,
     TwoPointFluxApproximation,
+    UpwindDiscretization,
+    UpwindFunctionWrapperDiscretization,
+    UpwindProperty,
+    get_boundary_faces_merged,
 )
 from pymrst.modules.ad_core.statefunctions.state_function import (
     SELF,
@@ -87,8 +91,12 @@ __all__ = [
     "StateFunction",
     "StateFunctionGrouping",
     "Transmissibility",
+    "UpwindDiscretization",
+    "UpwindFunctionWrapperDiscretization",
+    "UpwindProperty",
     "Viscosity",
     "blackoil_phase_fluid",
+    "get_boundary_faces_merged",
     "simple_phase_fluid",
     "water_phase_fluid",
     "update_saturation_maximum",
