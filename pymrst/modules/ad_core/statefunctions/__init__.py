@@ -37,6 +37,12 @@ from pymrst.modules.ad_core.statefunctions.hysteresis import (
     KilloughGasHysteresis,
     update_saturation_maximum,
 )
+from pymrst.modules.ad_core.statefunctions.flux import (
+    PermeabilityGradientDiscretization,
+    PermeabilityPotentialGradient,
+    PhasePotentialDifferenceThresholded,
+    TwoPointFluxApproximation,
+)
 from pymrst.modules.ad_core.statefunctions.state_function import (
     SELF,
     STATE,
@@ -61,13 +67,17 @@ __all__ = [
     "KilloughGasHysteresis",
     "Mobility",
     "PVTPropertyFunctions",
+    "PermeabilityGradientDiscretization",
+    "PermeabilityPotentialGradient",
     "PhaseFlux",
     "PhaseFluid",
     "PhasePotentialDifference",
+    "PhasePotentialDifferenceThresholded",
     "PhasePressures",
     "PhaseUpwindFlag",
     "PoreVolume",
     "PressureGradient",
+    "TwoPointFluxApproximation",
     "RelativePermeability",
     "SELF",
     "STATE",

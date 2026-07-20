@@ -106,7 +106,7 @@ That is why Tier 1 is first, and why it is most of the value.
 This tier is the reason the graph was built. It is largely independent of the
 other tiers and should land first.
 
-### AC1 - Flux discretization statefunctions
+### AC1 - Flux discretization statefunctions ~~[DONE - Phase 337]~~
 - **What:** `TwoPointFluxApproximation`, `PermeabilityPotentialGradient`,
   `PermeabilityGradientDiscretization`, `PhasePotentialDifferenceThresholded`,
   `FaceComponentMobility`.
@@ -120,6 +120,16 @@ other tiers and should land first.
   through the new statefunctions; bit-for-bit against the current path.
 - **Size/risk:** M. Low risk - the physics is already validated, this re-homes
   it in the graph.
+- **Status:** landed in `ad_core/statefunctions/flux/`
+  (`permeability_gradient_discretization.py`, `permeability_potential_gradient.py`,
+  `phase_potential_difference_thresholded.py`). `validate_phase337.py` proves
+  the new discretization-agnostic path reproduces the validated `PhaseFlux`
+  exactly (`-FaceMobility * (K grad Phi)`, val 1.7e-18 on a 1.5e-2 flux scale)
+  and that the thresholded potential reduces to the parent at zero `THPRES` and
+  blocks sub-threshold flow. **`FaceComponentMobility` is deferred** to after
+  AC2 (`UpwindProperty`/`UpwindFunctionWrapperDiscretization`) and AC6
+  (`ComponentMobility`), which it depends on - it is filed here in MRST but
+  cannot stand until those land.
 
 ### AC2 - The upwind hierarchy
 - **What:** `UpwindDiscretization` (base), `UpwindProperty`,
