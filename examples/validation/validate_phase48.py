@@ -33,7 +33,7 @@ from pathlib import Path
 import numpy as np
 import scipy.io
 
-from pymrst.modules.ad_core.aquifer import (
+from pymrst.modules.ad_core.models.aquifers.aquifer import (
     AquiferConnections,
     compute_aquifer_fluxes,
     fetkovich_coefficient,

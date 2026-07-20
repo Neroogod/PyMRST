@@ -31,7 +31,7 @@ from pathlib import Path
 import numpy as np
 import scipy.io
 
-from pymrst.modules.ad_core.nonlinear_solver import NonLinearSolver
+from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
 from pymrst.utils.units import BARSA, DAY
 
 HERE = Path(__file__).parent

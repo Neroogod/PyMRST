@@ -21,7 +21,7 @@ from pymrst.gridprocessing.grid import Grid
 from pymrst.modules.ad_props.simple_adi_fluid import ADFluid
 from pymrst.params.rock import Rock, pore_volume
 from pymrst.params.wells_and_bc import Well
-from pymrst.modules.ad_core.operators import setup_operators_tpfa
+from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
 from pymrst.utils.adi import (
     ADI,
     ad_sum,

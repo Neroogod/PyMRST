@@ -2,7 +2,7 @@
 
 MRST 2024a in this repository only instantiates Fetkovich aquifers from decks.
 This module supplies the missing Carter-Tracy style convolution model in the
-same interface shape as :mod:`pymrst.modules.ad_core.aquifer`.
+same interface shape as :mod:`pymrst.modules.ad_core.models.aquifers.aquifer`.
 """
 
 from __future__ import annotations

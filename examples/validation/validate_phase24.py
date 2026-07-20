@@ -35,8 +35,8 @@ from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
     initial_state_from_deck,
 )
 from pymrst.modules.ad_blackoil.models.two_phase_oil_water_model import TwoPhaseOilWaterModelAD
-from pymrst.modules.ad_core.nonlinear_solver import NonLinearSolver
-from pymrst.modules.ad_core.state_functions import State
+from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
+from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.modules.ad_props import init_simple_adi_fluid
 from pymrst.modules.ad_props.blackoil_fluid import init_deck_blackoil_fluid
 from pymrst.modules.deckformat import read_spe1_deck

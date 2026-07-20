@@ -41,7 +41,7 @@ from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
     GenericBlackOilModel,
     initial_state_from_deck,
 )
-from pymrst.modules.ad_core.linear_solvers import (
+from pymrst.modules.ad_core.solvers.linear_solvers import (
     CPR_CROSSOVER_BLOCK_JACOBI,
     CPR_CROSSOVER_ILU,
     HAVE_AMG,
@@ -49,7 +49,7 @@ from pymrst.modules.ad_core.linear_solvers import (
     DirectSolver,
     select_linear_solver,
 )
-from pymrst.modules.ad_core.nonlinear_solver import NonLinearSolver
+from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
 from pymrst.params import NORM_GRAVITY
 from pymrst.utils.units import DAY
 

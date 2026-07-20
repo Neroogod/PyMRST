@@ -41,7 +41,7 @@ from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
 )
 from pymrst.modules.ad_core.models.facilities.facility_model import FacilityModel
 from pymrst.modules.ad_core.models.reservoir_model import ReservoirModel
-from pymrst.modules.ad_core.operators import setup_operators_tpfa
+from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
 from pymrst.modules.ad_core.statefunctions.pvt_property_functions import (
     simple_phase_fluid,
     water_phase_fluid,

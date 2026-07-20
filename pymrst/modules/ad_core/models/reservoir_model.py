@@ -6,7 +6,7 @@ from typing import List, Optional
 
 import numpy as np
 
-from pymrst.modules.ad_core.components import Component, blackoil_components
+from pymrst.modules.ad_core.statefunctions.components.components import Component, blackoil_components
 from pymrst.modules.ad_core.models.physical_model import PhysicalModel
 from pymrst.modules.ad_core.statefunctions.flow_discretization import (
     FlowDiscretization,

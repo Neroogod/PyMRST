@@ -23,7 +23,7 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
 from pymrst.gridprocessing.grid import Grid
-from pymrst.modules.ad_core.operators import setup_operators_tpfa
+from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
 from pymrst.modules.ad_core.backends.diagonal import (
     DiagonalAutoDiffBackend,
     DiagonalJacobian,

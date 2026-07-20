@@ -31,8 +31,8 @@ import scipy.io
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil import GenericBlackOilModel
-from pymrst.modules.ad_core.nonlinear_solver import NonLinearSolver
-from pymrst.modules.ad_core.state_functions import State
+from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
+from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.modules.ad_props import init_simple_adi_fluid
 from pymrst.params import add_well, make_rock
 from pymrst.utils.units import BARSA, CENTI, DARCY, DAY, MILLI, POISE

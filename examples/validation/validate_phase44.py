@@ -33,13 +33,13 @@ from pathlib import Path
 import numpy as np
 import scipy.io
 
-from pymrst.modules.ad_core.nonlinear_solver import StepReport
+from pymrst.modules.ad_core.simulators.nonlinear_solver import StepReport
 from pymrst.modules.ad_core.timesteps import (
     IterationCountTimeStepSelector,
     StateChangeTimeStepSelector,
     rampup_timesteps,
 )
-from pymrst.modules.ad_core.state_functions import State
+from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.utils.units import BARSA, DAY
 
 HERE = Path(__file__).parent

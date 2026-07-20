@@ -11,7 +11,7 @@ import scipy.sparse as sp
 from pymrst.backends import NewtonReport, get_backend, torch_jvp_newton_step
 from pymrst.gridprocessing.grid import Grid
 from pymrst.modules.ad_blackoil.backend_blackoil_fluid import BackendBlackOilFluid
-from pymrst.modules.ad_core.operators import setup_operators_tpfa
+from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
 from pymrst.params.rock import Rock, pore_volume
 from pymrst.params.wells_and_bc import Well
 

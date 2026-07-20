@@ -10,7 +10,7 @@ Concrete models live in pymrst.modules.ad_blackoil; fluids in
 pymrst.modules.ad_props.
 """
 
-from pymrst.modules.ad_core.components import (
+from pymrst.modules.ad_core.statefunctions.components.components import (
     Component,
     ConcentrationComponent,
     GasComponent,
@@ -18,7 +18,7 @@ from pymrst.modules.ad_core.components import (
     OilComponent,
     blackoil_components,
 )
-from pymrst.modules.ad_core.boundary_conditions import (
+from pymrst.modules.ad_core.utils.boundary_conditions import (
     add_bc_and_sources,
     boundary_reservoir_fluxes,
     source_reservoir_fluxes,
@@ -39,7 +39,7 @@ from pymrst.modules.ad_core.initialization import (
     initialize_equilibrium_pressures,
     initialize_equilibrium_saturations,
 )
-from pymrst.modules.ad_core.linear_solvers import (
+from pymrst.modules.ad_core.solvers.linear_solvers import (
     CPR_CROSSOVER_BLOCK_JACOBI,
     CPR_CROSSOVER_ILU,
     CPRSolver,
@@ -63,7 +63,7 @@ from pymrst.modules.ad_core.simulators.nonlinear_solver import (
     SimulationReport,
     StepReport,
 )
-from pymrst.modules.ad_core.operators import Operators, setup_operators_tpfa
+from pymrst.modules.ad_core.utils.operators import Operators, setup_operators_tpfa
 from pymrst.modules.ad_core.timesteps import (
     FactorTimeStepSelector,
     IterationCountTimeStepSelector,
@@ -83,7 +83,7 @@ from pymrst.modules.ad_core.statefunctions.pvt_property_functions import (
     blackoil_phase_fluid,
     simple_phase_fluid,
 )
-from pymrst.modules.ad_core.schedule import simulate_schedule_ad
+from pymrst.modules.ad_core.simulators.simulate_schedule_ad import simulate_schedule_ad
 from pymrst.modules.ad_core.statefunctions.state_function import (
     Dependency,
     State,

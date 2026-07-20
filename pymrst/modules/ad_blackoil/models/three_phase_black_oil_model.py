@@ -21,7 +21,7 @@ from pymrst.modules.ad_props.blackoil_fluid import BlackOilFluid
 from pymrst.params.gravity_const import NORM_GRAVITY
 from pymrst.params.rock import Rock, pore_volume
 from pymrst.params.wells_and_bc import Well
-from pymrst.modules.ad_core.operators import setup_operators_tpfa
+from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
 from pymrst.utils.adi import (
     ad_sum,
     combine_equations,

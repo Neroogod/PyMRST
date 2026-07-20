@@ -89,7 +89,7 @@ def setup_diagonal_operator_closures(operators, ncells: int):
 
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
-    from pymrst.modules.ad_core.operators import setup_operators_tpfa
+    from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
     from pymrst.modules.ad_core.backends.diagonal.generic_ad import init_variables_diagonal
     from pymrst.params.rock import make_rock
     from pymrst.utils.adi.init_variables_adi import init_variables_adi

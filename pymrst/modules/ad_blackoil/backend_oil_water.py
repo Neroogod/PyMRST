@@ -16,7 +16,7 @@ import scipy.sparse as sp
 
 from pymrst.backends import get_backend, torch_newton
 from pymrst.gridprocessing.grid import Grid
-from pymrst.modules.ad_core.operators import setup_operators_tpfa
+from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
 from pymrst.params.rock import Rock, pore_volume
 from pymrst.params.wells_and_bc import Source
 

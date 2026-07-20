@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from pymrst.modules.ad_core.components import ImmiscibleComponent
+from pymrst.modules.ad_core.statefunctions.components.components import ImmiscibleComponent
 from pymrst.modules.compositional.model import OverallCompositionModel
 from pymrst.modules.compositional.properties.components import EquationOfStateComponent
 from pymrst.utils.units import ATM

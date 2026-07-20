@@ -27,7 +27,7 @@ from pymrst.gridprocessing.grid import Grid
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
     GenericBlackOilModel,
 )
-from pymrst.modules.ad_core.components import (
+from pymrst.modules.ad_core.statefunctions.components.components import (
     ConcentrationComponent,
     blackoil_components,
 )

@@ -2571,7 +2571,7 @@ __all__ = ["FacilityLinearizedProblem", "FacilityModel"]
 
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
-    from pymrst.modules.ad_core.operators import setup_operators_tpfa
+    from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
     from pymrst.modules.ad_core.statefunctions.pvt_property_functions import simple_phase_fluid
     from pymrst.modules.ad_props.simple_adi_fluid import init_simple_adi_fluid
     from pymrst.params.rock import make_rock, pore_volume

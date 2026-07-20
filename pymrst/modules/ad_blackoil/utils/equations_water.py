@@ -2,7 +2,7 @@
 
 from typing import List
 
-from pymrst.modules.ad_core.boundary_conditions import add_bc_and_sources
+from pymrst.modules.ad_core.utils.boundary_conditions import add_bc_and_sources
 from pymrst.modules.ad_core.statefunctions.state_function import State
 
 

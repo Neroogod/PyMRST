@@ -2,7 +2,7 @@
 
 from typing import Any, List, Optional
 
-from pymrst.modules.ad_core.components import Component
+from pymrst.modules.ad_core.statefunctions.components.components import Component
 
 
 class GasComponent(Component):

@@ -8,7 +8,7 @@ from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.models import GenericBlackOilModel
 from pymrst.modules.ad_blackoil.examples.utils.schedule import ExampleResult, run_schedule
 from pymrst.modules.ad_core import State
-from pymrst.modules.ad_core.aquifer import AquiferConnections, AquiferModel
+from pymrst.modules.ad_core.models.aquifers.aquifer import AquiferConnections, AquiferModel
 from pymrst.modules.ad_props import init_simple_adi_fluid
 from pymrst.params import add_well, make_rock
 from pymrst.utils.units import BARSA, CENTI, DARCY, DAY, MILLI, POISE

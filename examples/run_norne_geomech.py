@@ -48,8 +48,8 @@ from typing import Tuple
 import numpy as np
 
 from pymrst.gridprocessing import compute_geometry, process_grdecl
-from pymrst.modules.ad_core.nonlinear_solver import NonLinearSolver
-from pymrst.modules.ad_core.state_functions import State
+from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
+from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.modules.ad_mechanics import (
     MechanicModel,
     MechBlackOilModel,

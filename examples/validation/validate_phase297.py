@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from pymrst.modules.ad_core.components import ImmiscibleComponent  # noqa: E402
+from pymrst.modules.ad_core.statefunctions.components.components import ImmiscibleComponent  # noqa: E402
 from pymrst.modules.compositional.examples.utils import setup_simple_compositional_example  # noqa: E402
 from pymrst.modules.compositional.models import GenericOverallCompositionModel  # noqa: E402
 from pymrst.modules.compositional.models.contents import list_models  # noqa: E402

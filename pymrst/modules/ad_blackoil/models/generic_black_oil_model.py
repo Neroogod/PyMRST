@@ -23,13 +23,13 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import numpy as np
 
 from pymrst.gridprocessing.grid import Grid
-from pymrst.modules.ad_core.boundary_conditions import add_bc_and_sources
+from pymrst.modules.ad_core.utils.boundary_conditions import add_bc_and_sources
 from pymrst.modules.ad_core.models.facilities.facility_model import FacilityModel
 from pymrst.modules.ad_core.models.facilities.multisegment import (
     assemble_multisegment_equations,
 )
 from pymrst.modules.ad_core.models.reservoir_model import ReservoirModel
-from pymrst.modules.ad_core.operators import setup_operators_tpfa
+from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
 from pymrst.modules.ad_core.statefunctions.pvt_property_functions import (
     blackoil_phase_fluid,
     simple_phase_fluid,
@@ -1074,7 +1074,7 @@ if __name__ == "__main__":
         weighed before it can enter a mass equation, and each is a separate
         place to forget.
         """
-        from pymrst.modules.ad_core.aquifer import (
+        from pymrst.modules.ad_core.models.aquifers.aquifer import (
             AquiferConnections,
             AquiferModel,
         )

@@ -19,7 +19,7 @@ import numpy as np
 import scipy.sparse.linalg as spla
 
 from pymrst.gridprocessing.grid import Grid
-from pymrst.modules.ad_core.operators import setup_operators_tpfa
+from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
 from pymrst.modules.co2lab_common.co2props import CO2Props, co2_props
 from pymrst.params.gravity_const import NORM_GRAVITY
 from pymrst.params.rock import Rock, pore_volume

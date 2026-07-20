@@ -17,7 +17,7 @@ import scipy.sparse.linalg as spla
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.params import NORM_GRAVITY, add_well, gravity_vector, make_rock, pore_volume
-from pymrst.modules.ad_core.operators import setup_operators_tpfa
+from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
 from pymrst.utils.adi import (
     ad_exp,
     ad_sum,
