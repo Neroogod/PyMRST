@@ -422,7 +422,7 @@ other tiers and should land first.
   subclass keeps the rest delegated. The inheritance change is regression-clean
   (85 targeted self-tests pass; black-oil validators 24/47/49 unchanged).
 
-### AC12 - CompositeModel ~~[core DONE - Phase 347; coupled solve deferred]~~
+### AC12 - CompositeModel ~~[DONE - Phase 347 core + Phase 349 coupled solve]~~
 - **What:** `CompositeModel`.
 - **Path:** `ad_core/models/composite/`.
 - **Why here:** the model that runs two coupled groupings, the general form of
@@ -437,15 +437,21 @@ other tiers and should land first.
   and applies every registered `CouplingTerm` (AC9). `validate_phase347.py`
   proves the composition is faithful (a one-submodel composite yields the
   submodel's own equations to 0.0; a two-submodel composite yields both
-  concatenated) and the coupling is exactly conservative. **Deferred - the
-  coupled solve:** MRST's full `CompositeModel` (784 lines) also packs all
-  submodel primary variables into one Newton system, splits the linearized
-  problem, and runs the coupled solve; and its headline validation (flow +
-  geomechanics matching Phase 27/33) needs **geomechanics expressed as a
-  state-function grouping**, which PyMRST's hand-coupled `ad_mechanics` is not.
-  Re-expressing mechanics as a grouping is a large piece beyond ad-core; until
-  it exists, the coupled *solve* against `ad_mechanics` cannot be validated to
-  this project's bar, so the composition + conservation core is what lands here.
+  concatenated) and the coupling is exactly conservative. **The coupled solve
+  now DONE (Phase 349):** `assemble_coupled_system` builds the global Newton
+  system - each submodel's residual and Jacobian (via `combine_equations`) as a
+  diagonal block, plus the coupling off-diagonal blocks - and
+  `LinearPressureCoupling` is a concrete conservative inter-model transfer that
+  couples two reservoir submodels through pressure. `validate_phase349.py`
+  proves it with two oil-water submodels: the system is square, the cross-block
+  A->B is exactly the analytic ``+coeff`` (zero when uncoupled), the coupling
+  Jacobian is finite-difference-correct (``dR_A/dp_B`` matches to 1.2e-21), the
+  coupling conserves total mass, and one coupled Newton step reduces ``||R||``
+  (5.7e-3 -> 1.8e-3). This is the general coupled-solve machinery, validated
+  without geomechanics. **Residual follow-on:** the *specific* flow-geomechanics
+  validation (matching Phase 27/33) still needs geomechanics re-expressed as a
+  state-function grouping - a large piece beyond ad-core - so that headline case
+  is the one deferred, not the coupled-solve capability itself.
 
 ---
 

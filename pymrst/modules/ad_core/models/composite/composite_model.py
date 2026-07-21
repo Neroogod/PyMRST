@@ -87,6 +87,60 @@ class CompositeModel(PhysicalModel):
                 out.extend(eqs[mname])
         return out
 
+    # -- the coupled Newton system -----------------------------------------
+    # Each submodel assembles its own residual and Jacobian in its own AD
+    # context (a diagonal block); the coupling terms contribute the off-diagonal
+    # blocks that make the submodels solve *together*. This is what turns the
+    # composition above into a system a Newton step can advance.
+
+    def submodel_system(self, mname: str, state0: Any, state: Any, dt: float):
+        """One submodel's residual vector and (square) Jacobian block."""
+        import numpy as np
+
+        from pymrst.utils.adi import combine_equations
+        sub = self.submodels[mname]
+        eqs = sub.get_equations(state0, state, dt)
+        eq = combine_equations(*eqs)
+        return np.asarray(eq.val, float), eq.jac[0]
+
+    def assemble_coupled_system(self, states0: Dict[str, Any],
+                                states: Dict[str, Any], dt: float,
+                                couplings: Optional[List[Any]] = None):
+        """Global coupled residual and Jacobian over all submodels.
+
+        Returns ``(residual, jacobian, layout)`` where ``residual`` is the
+        stacked submodel residuals with coupling sources added, ``jacobian`` is
+        the block system (submodel diagonals + coupling off-diagonals), and
+        ``layout`` maps each submodel to its ``(row0, ncell)`` offset.
+        """
+        import numpy as np
+        import scipy.sparse as sp
+
+        active = self.get_active_models(states)
+        r_blocks, j_blocks, offsets = [], {}, {}
+        row = 0
+        for m in active:
+            r_i, j_ii = self.submodel_system(m, states0[m], states[m], dt)
+            offsets[m] = (row, self.submodels[m].G.cells.num, r_i.size)
+            r_blocks.append(r_i)
+            j_blocks[m] = j_ii
+            row += r_i.size
+        total = row
+
+        residual = np.concatenate(r_blocks)
+        J = sp.lil_matrix((total, total))
+        for m in active:
+            r0, _, sz = offsets[m]
+            J[r0:r0 + sz, r0:r0 + sz] = j_blocks[m].tocsr()
+
+        for cpl in (couplings or []):
+            cpl.apply(self, states, residual, J, offsets)
+
+        return residual, J.tocsr(), offsets
+
+
+__all__ = ["CompositeModel"]
+
 
 __all__ = ["CompositeModel"]
 

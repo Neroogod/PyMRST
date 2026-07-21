@@ -24,6 +24,8 @@ from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 
+from pymrst.utils.adi import value as _value
+
 
 class StateFunctionDependent:
     """Marker mixin (MRST `StateFunctionDependent`): a state function whose
@@ -97,6 +99,58 @@ class SourceCouplingTerm(CouplingTerm):
         super().__init__(couplings, label="q_{A\\rightarrow B}")
 
 
+class LinearPressureCoupling:
+    """A conservative inter-model transfer ``q = coeff * (p_A - p_B)`` per cell.
+
+    Physically a leaky connection between two co-located reservoir submodels
+    (a fault, a shared aquifer): each shared component flows from the higher-
+    pressure model to the lower at a rate linear in the pressure difference.
+    The transfer is added as a sink on ``model_a`` and an equal source on
+    ``model_b`` - conservative - and it couples the two Newton blocks through
+    pressure, with the analytic derivative ``+/- coeff``.
+
+    This is a concrete `CouplingTerm` used to drive and validate the composite
+    coupled solve; the derivative is exact, so no reference is needed.
+    """
+
+    def __init__(self, model_a: str, model_b: str, coeff: Any,
+                 components: Optional[Sequence[str]] = None):
+        self.model_a = model_a
+        self.model_b = model_b
+        self.coeff = coeff
+
+    def apply(self, model: Any, states: Dict[str, Any], residual: np.ndarray,
+              jac: Any, offsets: Dict[str, Any]) -> None:
+        import scipy.sparse as sp
+
+        a, b = self.model_a, self.model_b
+        r0a, nc, _ = offsets[a]
+        r0b, _, _ = offsets[b]
+        subA = model.submodels[a]
+        pa = np.asarray(_value(states[a]["pressure"]), float)
+        pb = np.asarray(_value(states[b]["pressure"]), float)
+        coeff = np.broadcast_to(np.asarray(self.coeff, float), (nc,))
+        q = coeff * (pa - pb)                          # per-cell transfer
+
+        ncomp = subA.n_phases                          # one conservation eq/comp
+        d = sp.diags(coeff, shape=(nc, nc))
+        neg_d = sp.diags(-coeff, shape=(nc, nc))
+        for c in range(ncomp):
+            ra = r0a + c * nc
+            rb = r0b + c * nc
+            # residual: sink from A, source into B
+            residual[ra:ra + nc] -= q
+            residual[rb:rb + nc] += q
+            # pressure columns: first nc columns of each submodel block
+            ca, cb = r0a, r0b
+            # d(-q)/dpA = -coeff ; d(-q)/dpB = +coeff  (rows of A)
+            jac[ra:ra + nc, ca:ca + nc] += neg_d
+            jac[ra:ra + nc, cb:cb + nc] += d
+            # d(+q)/dpA = +coeff ; d(+q)/dpB = -coeff  (rows of B)
+            jac[rb:rb + nc, ca:ca + nc] += d
+            jac[rb:rb + nc, cb:cb + nc] += neg_d
+
+
 def _add_source(eq: Any, q: Any, subset: Any) -> Any:
     """``eq + q`` on ``subset`` cells (all cells if ``subset`` is None)."""
     if subset is None:
@@ -124,7 +178,8 @@ def _scatter_add(eq: Any, q: Any, idx: np.ndarray, n: int) -> Any:
     return eq + ad_matmul(scatter, q)
 
 
-__all__ = ["CouplingTerm", "SourceCouplingTerm", "StateFunctionDependent"]
+__all__ = ["CouplingTerm", "LinearPressureCoupling", "SourceCouplingTerm",
+           "StateFunctionDependent"]
 
 
 if __name__ == "__main__":
