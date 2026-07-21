@@ -302,7 +302,7 @@ other tiers and should land first.
   into a producer / production from an injector). These build on the phase flux
   landed here and are the intricate part; they are a focused follow-on.
 
-### AC8 - Hysteresis and virtual saturation
+### AC8 - Hysteresis and virtual saturation ~~[BLOCKED on the relperm hierarchy]~~
 - **What:** `HystereticRelativePermeability`, `evaluateFunctionCellSubsetReg`,
   `SaturationProperty`.
 - **Path:** `ad_core/statefunctions/flowprops/hysteresis/` and
@@ -315,8 +315,15 @@ other tiers and should land first.
 - **Validation:** a drainage-imbibition loop against MRST; the existing Killough
   self-test must still pass.
 - **Size/risk:** M.
+- **Status: blocked.** `HystereticRelativePermeability` **extends**
+  `BaseRelativePermeability`, and `SaturationProperty` is its virtual base -
+  both part of the relative-permeability hierarchy explicitly deferred in AC4.
+  AC8 therefore cannot land until that hierarchy (the AC4 follow-on:
+  `BaseRelativePermeability` + WOG/OG/WO/WG variants + endpoint scaling) is
+  built. This is the recommended next unit; once it exists, AC8 is a short port
+  on top (PyMRST's `KilloughGasHysteresis` already carries the physics).
 
-### AC9 - Composite coupling terms
+### AC9 - Composite coupling terms ~~[BLOCKED on CompositeModel]~~
 - **What:** `CouplingTerm`, `SourceCouplingTerm`, `StateFunctionDependent`.
 - **Path:** `ad_core/statefunctions/composite/` (and
   `StateFunctionDependent` in `ad_core/statefunctions/`).
@@ -328,8 +335,14 @@ other tiers and should land first.
 - **Validation:** reproduce the fixed-stress poroelastic coupling (Phase 27)
   through a `CouplingTerm`; the surface-uplift invariants must hold.
 - **Size/risk:** M.
+- **Status: blocked.** MRST's `CouplingTerm.insertCoupling` is built on the
+  multi-model / `submodels` infrastructure of `CompositeModel` (AC12) -
+  `model.submodels`, cross-submodel equation insertion, `getModelNames`. PyMRST
+  has no composite-model host (its `ad_mechanics` couples flow and geomechanics
+  by hand), so `CouplingTerm` is scaffolding until `CompositeModel` (AC12,
+  Tier 2) lands. Best done *with* AC12.
 
-### AC10 - Graph introspection and plotting
+### AC10 - Graph introspection and plotting ~~[DONE - Phase 344]~~
 - **What:** `buildStateFunctionDigraph`, `getStateFunctionGroupingDependencyGraph`,
   `plotStateFunctionGroupings`, `printStateFunctionGroupingTikz`.
 - **Path:** `ad_core/statefunctions/utils/`.
@@ -340,6 +353,18 @@ other tiers and should land first.
 - **Validation:** the extracted dependency edges against a hand-checked
   grouping; the plot is a rendering test, not a numeric one.
 - **Size/risk:** S.
+- **Status:** landed in `statefunctions/utils/dependency_graph.py`:
+  `get_state_function_grouping_dependency_graph` (the whole-model cross-grouping
+  graph, nodes ``"struct.name"``, edges ``dep -> dependent``, primary variables
+  as ``state.<var>`` inputs), `build_state_function_digraph` (adds a global
+  topological order + cycle check), `ancestors_of` (a node's evaluation
+  subtree), and `to_dot` / `format_grouping_text` (Graphviz DOT + text, no
+  plotting backend needed). `validate_phase344.py` proves the structural
+  invariants: completeness (every grouping node present), acyclicity with an
+  order respecting every cross-grouping edge, and - the tie to real behaviour -
+  the nodes the solver actually evaluates for a target are a subset of that
+  target's graph ancestors (14 evaluated within 16 ancestors for
+  `ComponentTotalFlux`).
 
 ---
 

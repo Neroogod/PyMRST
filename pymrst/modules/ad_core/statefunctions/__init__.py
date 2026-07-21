@@ -53,6 +53,12 @@ from pymrst.modules.ad_core.statefunctions.flowprops import (
     SurfaceDensity,
 )
 from pymrst.modules.ad_core.statefunctions.components import GenericComponent
+from pymrst.modules.ad_core.statefunctions.utils import (
+    ancestors_of,
+    build_state_function_digraph,
+    get_state_function_grouping_dependency_graph,
+    to_dot,
+)
 from pymrst.modules.ad_core.statefunctions.facility import (
     FacilityContext,
     FacilityFlowDiscretization,
@@ -114,6 +120,10 @@ __all__ = [
     "PerforationPressureGradient",
     "WellIndex",
     "WellPhaseFlux",
+    "ancestors_of",
+    "build_state_function_digraph",
+    "get_state_function_grouping_dependency_graph",
+    "to_dot",
     "FlowDiscretization",
     "FlowPropertyFunctions",
     "FlowStateBuilder",
