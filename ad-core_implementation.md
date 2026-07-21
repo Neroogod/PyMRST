@@ -155,7 +155,7 @@ other tiers and should land first.
   in place, AC1's `FaceComponentMobility` is now unblocked on the upwind side
   (it still waits on AC6's `ComponentMobility`).
 
-### AC3 - Flow-state builders
+### AC3 - Flow-state builders ~~[DONE - Phase 339]~~
 - **What:** `FlowStateBuilder` (base), `ExplicitFlowStateBuilder`,
   `ImplicitFlowStateBuilder`, `AdaptiveImplicitFlowStateBuilder`.
 - **Path:** `ad_core/statefunctions/flux/flow_state/`.
@@ -167,6 +167,18 @@ other tiers and should land first.
   explicit builder against an IMPES transport step; AIM against MRST on a case
   with a mixed implicit/explicit cell partition.
 - **Size/risk:** M.
+- **Status:** landed in `ad_core/statefunctions/flux/flow_state/`
+  (`flow_state_builder.py` - base + implicit + the `seed_property`/
+  `owning_grouping` mechanism; `explicit_flow_state_builder.py`;
+  `adaptive_implicit_flow_state_builder.py`). All three hybridize by
+  pre-seeding the graph's property cache, which maps exactly onto MRST's
+  container seeding. `validate_phase339.py`: the implicit builder reproduces
+  the fully-implicit `PhaseFlux` to 0.0; the explicit builder reproduces the
+  IMPES split ``-T*FaceMobility(state0)*PhasePotentialDifference(state)`` to
+  0.0 (val and jac); AIM blends cell mobilities per-cell to 0.0. **The
+  CFL-driven step limit / cell mask is AC21** (`estimateSaturationCFL` /
+  `estimateCompositionCFL`) and is injected or supplied directly for now; the
+  hybridization mechanism itself is complete.
 
 ### AC4 - The BlackOil PVT flowprops
 - **What:** `BlackOilDensity`, `BlackOilViscosity`, `BlackOilShrinkageFactors`,

@@ -32,8 +32,18 @@ from pymrst.modules.ad_core.statefunctions.flux.upwind import (
     UpwindProperty,
     get_boundary_faces_merged,
 )
+from pymrst.modules.ad_core.statefunctions.flux.flow_state import (
+    AdaptiveImplicitFlowStateBuilder,
+    ExplicitFlowStateBuilder,
+    FlowStateBuilder,
+    ImplicitFlowStateBuilder,
+)
 
 __all__ = [
+    "AdaptiveImplicitFlowStateBuilder",
+    "ExplicitFlowStateBuilder",
+    "FlowStateBuilder",
+    "ImplicitFlowStateBuilder",
     "PermeabilityGradientDiscretization",
     "PermeabilityPotentialGradient",
     "PhasePotentialDifferenceThresholded",
