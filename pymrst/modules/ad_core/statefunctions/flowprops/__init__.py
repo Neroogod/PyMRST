@@ -42,14 +42,20 @@ from pymrst.modules.ad_core.statefunctions.flowprops.saturation_limits import (
     RsMax,
     RvMax,
 )
+from pymrst.modules.ad_core.statefunctions.flowprops.pressure_reduction_factors import (  # noqa: E501
+    BlackOilPressureReductionFactors,
+    PressureReductionFactors,
+)
 
 __all__ = [
     "BlackOilDensity",
     "BlackOilPoreVolume",
+    "BlackOilPressureReductionFactors",
     "BlackOilShrinkageFactors",
     "BlackOilViscosity",
     "DensityDerivedShrinkageFactors",
     "PoreVolume",
+    "PressureReductionFactors",
     "RsMax",
     "RvMax",
     "ShrinkageFactors",

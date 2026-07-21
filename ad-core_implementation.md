@@ -211,7 +211,7 @@ other tiers and should land first.
   distinct sub-effort belonging to the `FlowPropertyFunctions` group, best done
   as its own phase.
 
-### AC5 - Pressure-reduction factors
+### AC5 - Pressure-reduction factors ~~[analytic DONE - Phase 341; numerical deferred]~~
 - **What:** `PressureReductionFactors`, `BlackOilPressureReductionFactors`,
   `NumericalPressureReductionFactors`.
 - **Path:** `ad_core/statefunctions/flowprops/`.
@@ -222,6 +222,20 @@ other tiers and should land first.
 - **Validation:** the weights against MRST on SPE1; the CPR iteration count
   must be unchanged.
 - **Size/risk:** M.
+- **Status:** the two analytic classes landed in
+  `flowprops/pressure_reduction_factors.py` (`PressureReductionFactors` -
+  ``pv/rho``; `BlackOilPressureReductionFactors` - the live-oil/wet-gas weights
+  with the ``1/b_o - rs/b_g`` coupling). `validate_phase341.py` proves the
+  defining true-IMPES invariant, which needs no external reference:
+  ``sum_i w_i M_i`` has (to round-off) no derivative w.r.t. the secondary
+  unknowns - immiscible ``d/dsW`` ~1e-16 relative, and on live-oil SPE 1
+  ``sum_i w_i M_i = 1.0000`` exactly with both the ``sW`` and ``rs`` Jacobian
+  blocks vanishing to <=4e-16 (the dissolved-gas cross terms cancel exactly
+  between the oil and gas components). **Deferred:**
+  `NumericalPressureReductionFactors` (weights differentiated numerically from
+  the mass Jacobian - tied to the diagonal-AD backend and the sequential
+  solver's `reductionFactorProps`) and the ``useUndersaturated`` diagonal-AD
+  refinement of the black-oil weights.
 
 ### AC6 - Component flowprops and the generic component
 - **What:** `ComponentMobility`, `ComponentPhaseDensity`, `ComponentProperty`,
