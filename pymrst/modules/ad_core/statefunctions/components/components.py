@@ -46,8 +46,47 @@ class Component:
         """
         raise NotImplementedError
 
+    # -- MRST GenericComponent method surface -------------------------------
+    # These mirror MRST's `getComponentDensity` / `getComponentMobility` /
+    # `getComponentMass`, fetching what `component_density` needs off the graph
+    # so a component can be asked for its properties by name (what
+    # `ComponentPhaseDensity` and `ComponentMobility` iterate over).
+
+    def get_component_density(self, model, state) -> List[Optional[Any]]:
+        """Per-phase component density, pulling `b`, `rs`, `rv` off the graph."""
+        b = model.get_props(state, "ShrinkageFactors")
+        rs = state["rs"] if model.fluid.disgas else None
+        rv = state["rv"] if model.fluid.vapoil else None
+        return self.component_density(model, state, b, rs, rv)
+
+    def get_component_mobility(self, model, state) -> List[Optional[Any]]:
+        """Mobile mass per phase: phase mobility times component density."""
+        mob = model.get_props(state, "Mobility")
+        dens = self.get_component_density(model, state)
+        return [None if dens[ph] is None else mob[ph] * dens[ph]
+                for ph in range(len(dens))]
+
+    def get_component_mass(self, model, state) -> List[Optional[Any]]:
+        """Mass of the component in each phase: s * pv * density."""
+        s = model.get_props(state, "Saturations")
+        pv = model.get_props(state, "PoreVolume")
+        dens = self.get_component_density(model, state)
+        return [None if dens[ph] is None else s[ph] * pv * dens[ph]
+                for ph in range(len(dens))]
+
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.name!r})"
+
+
+class GenericComponent(Component):
+    """MRST's `GenericComponent`: the base component with the default method
+    surface. In PyMRST every concrete component already inherits that surface
+    from `Component`; this name exists so MRST code and models that construct a
+    `GenericComponent` explicitly map straight across. A bare generic component
+    is absent from every phase until a subclass says otherwise."""
+
+    def component_density(self, model, state, b, rs=None, rv=None):
+        return [None] * len(b)
 
 
 class ImmiscibleComponent(Component):

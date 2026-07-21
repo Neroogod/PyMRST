@@ -46,11 +46,19 @@ from pymrst.modules.ad_core.statefunctions.flowprops.pressure_reduction_factors 
     BlackOilPressureReductionFactors,
     PressureReductionFactors,
 )
+from pymrst.modules.ad_core.statefunctions.flowprops.component_properties import (
+    ComponentMobility,
+    ComponentPhaseDensity,
+    ComponentProperty,
+)
 
 __all__ = [
     "BlackOilDensity",
     "BlackOilPoreVolume",
     "BlackOilPressureReductionFactors",
+    "ComponentMobility",
+    "ComponentPhaseDensity",
+    "ComponentProperty",
     "BlackOilShrinkageFactors",
     "BlackOilViscosity",
     "DensityDerivedShrinkageFactors",

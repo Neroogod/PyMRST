@@ -26,6 +26,9 @@ from pymrst.modules.ad_core.statefunctions.flux.permeability_potential_gradient 
 from pymrst.modules.ad_core.statefunctions.flux.phase_potential_difference_thresholded import (  # noqa: E501
     PhasePotentialDifferenceThresholded,
 )
+from pymrst.modules.ad_core.statefunctions.flux.face_component_mobility import (
+    FaceComponentMobility,
+)
 from pymrst.modules.ad_core.statefunctions.flux.upwind import (
     UpwindDiscretization,
     UpwindFunctionWrapperDiscretization,
@@ -42,6 +45,7 @@ from pymrst.modules.ad_core.statefunctions.flux.flow_state import (
 __all__ = [
     "AdaptiveImplicitFlowStateBuilder",
     "ExplicitFlowStateBuilder",
+    "FaceComponentMobility",
     "FlowStateBuilder",
     "ImplicitFlowStateBuilder",
     "PermeabilityGradientDiscretization",

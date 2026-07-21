@@ -237,7 +237,7 @@ other tiers and should land first.
   solver's `reductionFactorProps`) and the ``useUndersaturated`` diagonal-AD
   refinement of the black-oil weights.
 
-### AC6 - Component flowprops and the generic component
+### AC6 - Component flowprops and the generic component ~~[DONE - Phase 342]~~
 - **What:** `ComponentMobility`, `ComponentPhaseDensity`, `ComponentProperty`,
   `GenericComponent`.
 - **Path:** `ad_core/statefunctions/flowprops/` and
@@ -248,6 +248,19 @@ other tiers and should land first.
 - **Depends on:** AC4.
 - **Validation:** against the compositional component dumps already in the tree.
 - **Size/risk:** M.
+- **Status:** landed. The MRST `GenericComponent` method surface
+  (`get_component_density` / `get_component_mobility` / `get_component_mass`) is
+  now on PyMRST's `Component` base (`statefunctions/components/components.py`),
+  with `GenericComponent` added; `flowprops/component_properties.py` adds the
+  `ComponentProperty` mixin, `ComponentPhaseDensity` and `ComponentMobility`
+  (= phase mobility x component density). **This also closes AC1's deferred
+  `FaceComponentMobility`** (`flux/face_component_mobility.py`), which needed
+  both AC2's upwind mixin and AC6's `ComponentMobility`. `validate_phase342.py`
+  proves the loop: `ComponentMobility == Mobility * ComponentPhaseDensity` to
+  0.0, and `scale_c * FaceComponentMobility * (K grad Phi)` reproduces the
+  validated `ComponentPhaseFlux` to 3.5e-18 on a 2.3e-2 flux scale (single-point
+  upwind gives ``upw(a)*upw(b) = upw(a*b)``, so the component-mobility route and
+  the density-upwind route are the same number).
 
 ### AC7 - Facility statefunctions (wells in the graph)
 - **What:** `FacilityWellMapping`, `WellIndex`, `WellPhaseFlux`,
