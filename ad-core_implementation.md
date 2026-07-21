@@ -262,7 +262,7 @@ other tiers and should land first.
   upwind gives ``upw(a)*upw(b) = upw(a*b)``, so the component-mobility route and
   the density-upwind route are the same number).
 
-### AC7 - Facility statefunctions (wells in the graph)
+### AC7 - Facility statefunctions (wells in the graph) ~~[core DONE - Phase 343; component-well layer deferred]~~
 - **What:** `FacilityWellMapping`, `WellIndex`, `WellPhaseFlux`,
   `PerforationMobility`, `PerforationPressureGradient`,
   `PerforationComponentPhaseDensity`, `WellComponentPhaseFlux`,
@@ -283,6 +283,24 @@ other tiers and should land first.
   field by field, before the procedural path is retired.
 - **Size/risk:** L. Crossflow (`WellComponentTotalVolumeBalanceCrossflow`) is
   the subtle one.
+- **Status:** the **well-flux core** landed in
+  `ad_core/statefunctions/facility/` as a real state-function grouping
+  (`FacilityFlowDiscretization`) hosted on a light `FacilityContext` - the graph
+  counterpart of MRST's facility model, adapted to PyMRST's well structs:
+  `facility_well_mapping.py`, `well_index.py`,
+  `perforation_pressure_gradient.py`, `perforation_mobility.py`,
+  `well_phase_flux.py` (with `calculate_phase_rate`). `validate_phase343.py`
+  proves `WellPhaseFlux` reproduces the procedural `_single_well` reservoir flux
+  ``cq_vol`` on two five-perforation wells (one injector, one producer) to
+  4.3e-19 on a 3.4e-3 rate scale - both the producer branch (reservoir mobility)
+  and the injector branch (total mobility x injection composition). Phase 49
+  (the multi-perforation wellbore column) still passes. **Deferred - the
+  component-well / crossflow-mixture layer:** `WellComponentPhaseFlux`,
+  `WellComponentTotalFlux`, `WellComponentTotalFluxDensityMix`,
+  `WellComponentTotalVolumeBalanceCrossflow`, `PerforationComponentPhaseDensity`
+  and `InjectionSurfaceDensity`, plus the full `crossFlowMixture` (crossflow
+  into a producer / production from an injector). These build on the phase flux
+  landed here and are the intricate part; they are a focused follow-on.
 
 ### AC8 - Hysteresis and virtual saturation
 - **What:** `HystereticRelativePermeability`, `evaluateFunctionCellSubsetReg`,

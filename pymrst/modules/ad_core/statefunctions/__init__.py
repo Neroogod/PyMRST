@@ -53,6 +53,15 @@ from pymrst.modules.ad_core.statefunctions.flowprops import (
     SurfaceDensity,
 )
 from pymrst.modules.ad_core.statefunctions.components import GenericComponent
+from pymrst.modules.ad_core.statefunctions.facility import (
+    FacilityContext,
+    FacilityFlowDiscretization,
+    FacilityWellMapping,
+    PerforationMobility,
+    PerforationPressureGradient,
+    WellIndex,
+    WellPhaseFlux,
+)
 from pymrst.modules.ad_core.statefunctions.flux import (
     AdaptiveImplicitFlowStateBuilder,
     ExplicitFlowStateBuilder,
@@ -97,7 +106,14 @@ __all__ = [
     "ExplicitFlowStateBuilder",
     "FaceComponentMobility",
     "FaceMobility",
+    "FacilityContext",
+    "FacilityFlowDiscretization",
+    "FacilityWellMapping",
     "GenericComponent",
+    "PerforationMobility",
+    "PerforationPressureGradient",
+    "WellIndex",
+    "WellPhaseFlux",
     "FlowDiscretization",
     "FlowPropertyFunctions",
     "FlowStateBuilder",
