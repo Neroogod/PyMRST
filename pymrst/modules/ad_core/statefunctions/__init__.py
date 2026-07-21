@@ -38,6 +38,7 @@ from pymrst.modules.ad_core.statefunctions.hysteresis import (
     update_saturation_maximum,
 )
 from pymrst.modules.ad_core.statefunctions.flowprops import (
+    BaseRelativePermeability,
     BlackOilDensity,
     BlackOilPoreVolume,
     BlackOilPressureReductionFactors,
@@ -47,9 +48,11 @@ from pymrst.modules.ad_core.statefunctions.flowprops import (
     ComponentPhaseDensity,
     ComponentProperty,
     DensityDerivedShrinkageFactors,
+    HystereticRelativePermeability,
     PressureReductionFactors,
     RsMax,
     RvMax,
+    SaturationProperty,
     SurfaceDensity,
 )
 from pymrst.modules.ad_core.statefunctions.components import GenericComponent
@@ -100,6 +103,7 @@ __all__ = [
     "ComponentTotalMass",
     "Density",
     "AdaptiveImplicitFlowStateBuilder",
+    "BaseRelativePermeability",
     "BlackOilDensity",
     "BlackOilPoreVolume",
     "BlackOilShrinkageFactors",
@@ -116,6 +120,7 @@ __all__ = [
     "FacilityFlowDiscretization",
     "FacilityWellMapping",
     "GenericComponent",
+    "HystereticRelativePermeability",
     "PerforationMobility",
     "PerforationPressureGradient",
     "WellIndex",
@@ -150,6 +155,7 @@ __all__ = [
     "RvMax",
     "SELF",
     "STATE",
+    "SaturationProperty",
     "Saturations",
     "ShrinkageFactors",
     "SurfaceDensity",

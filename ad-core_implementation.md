@@ -209,7 +209,13 @@ other tiers and should land first.
   `BaseRelativePermeability` and `BlackOilCapillaryPressure` - the relative-
   permeability hierarchy (WOG/OG/WO/WG variants + endpoint scaling) is a
   distinct sub-effort belonging to the `FlowPropertyFunctions` group, best done
-  as its own phase.
+  as its own phase. **`BaseRelativePermeability` now DONE (Phase 345)** - the
+  WO / WOG phase-by-phase hierarchy with the connate-water three-phase oil
+  blend, in `flowprops/base_relative_permeability.py` on the
+  `flowprops/virtual/SaturationProperty` base, reproducing the validated
+  `RelativePermeability` to 0.0 on both oil-water and three-phase black-oil
+  (SPE 1). Residual follow-on: `BlackOilCapillaryPressure` and ECLIPSE endpoint
+  scaling (`rock.krscale`, which PyMRST's rock does not carry).
 
 ### AC5 - Pressure-reduction factors ~~[analytic DONE - Phase 341; numerical deferred]~~
 - **What:** `PressureReductionFactors`, `BlackOilPressureReductionFactors`,
@@ -302,7 +308,7 @@ other tiers and should land first.
   into a producer / production from an injector). These build on the phase flux
   landed here and are the intricate part; they are a focused follow-on.
 
-### AC8 - Hysteresis and virtual saturation ~~[BLOCKED on the relperm hierarchy]~~
+### AC8 - Hysteresis and virtual saturation ~~[DONE - Phase 345]~~
 - **What:** `HystereticRelativePermeability`, `evaluateFunctionCellSubsetReg`,
   `SaturationProperty`.
 - **Path:** `ad_core/statefunctions/flowprops/hysteresis/` and
@@ -315,13 +321,21 @@ other tiers and should land first.
 - **Validation:** a drainage-imbibition loop against MRST; the existing Killough
   self-test must still pass.
 - **Size/risk:** M.
-- **Status: blocked.** `HystereticRelativePermeability` **extends**
-  `BaseRelativePermeability`, and `SaturationProperty` is its virtual base -
-  both part of the relative-permeability hierarchy explicitly deferred in AC4.
-  AC8 therefore cannot land until that hierarchy (the AC4 follow-on:
-  `BaseRelativePermeability` + WOG/OG/WO/WG variants + endpoint scaling) is
-  built. This is the recommended next unit; once it exists, AC8 is a short port
-  on top (PyMRST's `KilloughGasHysteresis` already carries the physics).
+- **Status:** landed with the relperm hierarchy that unblocked it.
+  `SaturationProperty` in `flowprops/virtual/saturation_property.py` (connate
+  water; endpoint scaling flagged inactive, as PyMRST's rock has no
+  `krscale`); `HystereticRelativePermeability` in
+  `flowprops/hysteresis/hysteretic_relative_permeability.py`, extending
+  `BaseRelativePermeability` and overriding its gas hook (`evaluate_gas_rel_perm`)
+  with PyMRST's `KilloughGasHysteresis` against the state's `sGMax`.
+  `validate_phase345.py` proves the two invariants: on drainage (``sG == sGMax``)
+  the hysteretic gas relperm equals the base curve; on imbibition
+  (``sG < sGMax``) it is trapped strictly below the drainage curve (max
+  reduction 4.6e-2 on SPE 1). **Residual follow-on:**
+  `evaluateFunctionCellSubsetReg` (the multi-region saturation-function
+  evaluator) is not yet needed - PyMRST evaluates a single saturation region -
+  and lands with multi-region relperm; the AD Jacobian is dropped on the
+  imbibition cells, matching MRST's numeric scanning-curve evaluation.
 
 ### AC9 - Composite coupling terms ~~[BLOCKED on CompositeModel]~~
 - **What:** `CouplingTerm`, `SourceCouplingTerm`, `StateFunctionDependent`.

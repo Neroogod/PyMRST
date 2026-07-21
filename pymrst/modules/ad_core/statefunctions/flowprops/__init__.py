@@ -51,14 +51,26 @@ from pymrst.modules.ad_core.statefunctions.flowprops.component_properties import
     ComponentPhaseDensity,
     ComponentProperty,
 )
+from pymrst.modules.ad_core.statefunctions.flowprops.virtual import (
+    SaturationProperty,
+)
+from pymrst.modules.ad_core.statefunctions.flowprops.base_relative_permeability import (  # noqa: E501
+    BaseRelativePermeability,
+)
+from pymrst.modules.ad_core.statefunctions.flowprops.hysteresis import (
+    HystereticRelativePermeability,
+)
 
 __all__ = [
+    "BaseRelativePermeability",
     "BlackOilDensity",
     "BlackOilPoreVolume",
     "BlackOilPressureReductionFactors",
     "ComponentMobility",
     "ComponentPhaseDensity",
     "ComponentProperty",
+    "HystereticRelativePermeability",
+    "SaturationProperty",
     "BlackOilShrinkageFactors",
     "BlackOilViscosity",
     "DensityDerivedShrinkageFactors",
