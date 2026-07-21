@@ -29,6 +29,9 @@ from pymrst.modules.ad_core.models.facilities.multisegment import (
     assemble_multisegment_equations,
 )
 from pymrst.modules.ad_core.models.reservoir_model import ReservoirModel
+from pymrst.modules.ad_core.models.generic_reservoir_model import (
+    GenericReservoirModel,
+)
 from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
 from pymrst.modules.ad_core.statefunctions.pvt_property_functions import (
     blackoil_phase_fluid,
@@ -50,7 +53,7 @@ from pymrst.utils.adi import init_variables_adi, value, vertcat_adi
 ETOL: float = np.sqrt(np.finfo(float).eps)
 
 
-class GenericBlackOilModel(ReservoirModel):
+class GenericBlackOilModel(GenericReservoirModel):
     """Two- or three-phase black-oil, assembled from the state-function graph."""
 
     def __init__(

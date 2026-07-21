@@ -384,7 +384,7 @@ other tiers and should land first.
 
 ## Tier 2 - models
 
-### AC11 - Generic and wrapper reservoir models
+### AC11 - Generic and wrapper reservoir models ~~[DONE - Phase 346]~~
 - **What:** `GenericReservoirModel`, `WrapperModel`.
 - **Path:** `ad_core/models/`.
 - **Why here:** `GenericReservoirModel` is the model that assembles purely from
@@ -395,6 +395,19 @@ other tiers and should land first.
 - **Validation:** `GenericReservoirModel` reproduces `GenericBlackOilModel` on
   SPE1 with no bespoke residual code.
 - **Size/risk:** M.
+- **Status:** landed. `models/generic_reservoir_model.py` - the marker base
+  (MRST's `GenericReservoirModel` is an empty mix-in) with `get_model_equations`
+  as the generic graph-assembly entry point; `GenericBlackOilModel` is made an
+  instance of it (`class GenericBlackOilModel(GenericReservoirModel)`), the same
+  is-a relationship MRST declares. `models/wrapper_model.py` - `WrapperModel`,
+  a transparent delegator to a `parent_model` (explicit delegation of the
+  driver surface + a `__getattr__` catch-all), the base the sequential /
+  multiscale families subclass. `validate_phase346.py` proves the black-oil
+  model is-a `GenericReservoirModel` and its `get_model_equations` equals its
+  `conservation_equations` to 0.0 (value + Jacobian), and that a `WrapperModel`
+  reproduces the parent's properties and equations to 0.0 while a one-method
+  subclass keeps the rest delegated. The inheritance change is regression-clean
+  (85 targeted self-tests pass; black-oil validators 24/47/49 unchanged).
 
 ### AC12 - CompositeModel
 - **What:** `CompositeModel`.
