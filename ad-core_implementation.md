@@ -180,7 +180,7 @@ other tiers and should land first.
   `estimateCompositionCFL`) and is injected or supplied directly for now; the
   hybridization mechanism itself is complete.
 
-### AC4 - The BlackOil PVT flowprops
+### AC4 - The BlackOil PVT flowprops ~~[PVT core DONE - Phase 340; relperm/pc deferred]~~
 - **What:** `BlackOilDensity`, `BlackOilViscosity`, `BlackOilShrinkageFactors`,
   `BlackOilPoreVolume`, `BlackOilCapillaryPressure`, `RsMax`, `RvMax`,
   `SurfaceDensity`, `BaseRelativePermeability`, `DensityDerivedShrinkageFactors`.
@@ -195,6 +195,21 @@ other tiers and should land first.
   residual to machine precision before the old backend path is retired.
 - **Size/risk:** L. The `Rs`/`Rv` saturation switches are where MRST's own
   edge cases live.
+- **Status:** the **PVT core** landed in `ad_core/statefunctions/flowprops/`
+  on MRST's base/`BlackOil*` hierarchy: `shrinkage_factors.py`, `viscosity.py`,
+  `pore_volume.py`, `surface_density.py`, `density.py` (`BlackOilDensity` +
+  `DensityDerivedShrinkageFactors`), `saturation_limits.py` (`RsMax`/`RvMax`),
+  with `blackoil_pvt_utils.py` centralising the saturated-state read.
+  `validate_phase340.py` proves each against the pre-split, MATLAB-validated
+  PVT on the live-oil SPE 1 model at a mixed saturated/under-saturated state:
+  shrinkage/viscosity/pore-volume to 0.0, density to 1.1e-13, all Jacobians to
+  <=1.7e-16; and `DensityDerivedShrinkageFactors == Density/rhoS` to 1e-16
+  (recovering `b` exactly for the carry-free water phase). The black-oil
+  validators phase24/phase47 still pass. **Deferred within AC4:**
+  `BaseRelativePermeability` and `BlackOilCapillaryPressure` - the relative-
+  permeability hierarchy (WOG/OG/WO/WG variants + endpoint scaling) is a
+  distinct sub-effort belonging to the `FlowPropertyFunctions` group, best done
+  as its own phase.
 
 ### AC5 - Pressure-reduction factors
 - **What:** `PressureReductionFactors`, `BlackOilPressureReductionFactors`,
