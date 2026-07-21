@@ -131,7 +131,7 @@ other tiers and should land first.
   (`ComponentMobility`), which it depends on - it is filed here in MRST but
   cannot stand until those land.
 
-### AC2 - The upwind hierarchy ~~[core DONE - Phase 338; WENO deferred]~~
+### AC2 - The upwind hierarchy ~~[DONE - Phase 338 core + Phase 348 WENO]~~
 - **What:** `UpwindDiscretization` (base), `UpwindProperty`,
   `UpwindFunctionWrapperDiscretization`, `WENOUpwindDiscretization`,
   `getBoundaryFacesMerged`.
@@ -148,12 +148,20 @@ other tiers and should land first.
   `upwind_property.py` - the mixin; `boundary_faces.py` -
   `get_boundary_faces_merged`). `validate_phase338.py` proves the wrapper
   reproduces the validated `FaceMobility` upwinding exactly (val 0.0, jac 0.0)
-  through the `UpwindProperty` mixin. **`WENOUpwindDiscretization` is deferred:**
-  it needs the MATLAB `wenoExampleAD` dump to validate against, which this
-  environment cannot produce; the mirror-cell geometry it depends on
-  (`get_boundary_faces_merged`) is ported and invariant-tested. With the mixin
-  in place, AC1's `FaceComponentMobility` is now unblocked on the upwind side
-  (it still waits on AC6's `ComponentMobility`).
+  through the `UpwindProperty` mixin. With the mixin in place, AC1's
+  `FaceComponentMobility` is now unblocked on the upwind side (it still waits on
+  AC6's `ComponentMobility`). The mirror-cell geometry `get_boundary_faces_merged`
+  is ported and invariant-tested. **`WENOUpwindDiscretization` now DONE
+  (Phase 348):** the 1D WENO reconstruction (`flux/upwind/weno.py`) - two
+  smoothness-weighted linear stencils per face, ported from MRST's
+  `getFaceValue1D` / `interpolate1D`. Validated against a real MATLAB dump of
+  MRST's own `WENOUpwindDiscretization` (`dump_phase348_weno.m` ->
+  `ref_p348_weno.mat`, run in MRST 2024a via MATLAB R2021b): PyMRST reproduces
+  MRST's face reconstruction to 1.1e-16 on a smooth ramp and to 7.9e-31 on a
+  shock front, in both upwind directions. (A real bug surfaced doing this:
+  MRST's boundary marker is the index 0, a valid cell in PyMRST's 0-based
+  scheme; the port uses a -1 sentinel.) The 2D/3D triangulation-based WENO
+  (`getFaceValueTri`) is a separate, larger port.
 
 ### AC3 - Flow-state builders ~~[DONE - Phase 339]~~
 - **What:** `FlowStateBuilder` (base), `ExplicitFlowStateBuilder`,

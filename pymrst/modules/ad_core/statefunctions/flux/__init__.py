@@ -33,6 +33,7 @@ from pymrst.modules.ad_core.statefunctions.flux.upwind import (
     UpwindDiscretization,
     UpwindFunctionWrapperDiscretization,
     UpwindProperty,
+    WENOUpwindDiscretization,
     get_boundary_faces_merged,
 )
 from pymrst.modules.ad_core.statefunctions.flux.flow_state import (
@@ -55,5 +56,6 @@ __all__ = [
     "UpwindDiscretization",
     "UpwindFunctionWrapperDiscretization",
     "UpwindProperty",
+    "WENOUpwindDiscretization",
     "get_boundary_faces_merged",
 ]
