@@ -56,6 +56,11 @@ from pymrst.modules.ad_core.statefunctions.flowprops import (
     SurfaceDensity,
 )
 from pymrst.modules.ad_core.statefunctions.components import GenericComponent
+from pymrst.modules.ad_core.statefunctions.composite import (
+    CouplingTerm,
+    SourceCouplingTerm,
+    StateFunctionDependent,
+)
 from pymrst.modules.ad_core.statefunctions.utils import (
     ancestors_of,
     build_state_function_digraph,
@@ -111,6 +116,7 @@ __all__ = [
     "ComponentMobility",
     "ComponentPhaseDensity",
     "ComponentProperty",
+    "CouplingTerm",
     "Dependency",
     "DensityDerivedShrinkageFactors",
     "ExplicitFlowStateBuilder",
@@ -158,6 +164,8 @@ __all__ = [
     "SaturationProperty",
     "Saturations",
     "ShrinkageFactors",
+    "SourceCouplingTerm",
+    "StateFunctionDependent",
     "SurfaceDensity",
     "State",
     "StateFunction",

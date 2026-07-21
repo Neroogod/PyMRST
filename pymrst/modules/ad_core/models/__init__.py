@@ -14,9 +14,11 @@ from pymrst.modules.ad_core.models.generic_reservoir_model import (
     GenericReservoirModel,
 )
 from pymrst.modules.ad_core.models.wrapper_model import WrapperModel
+from pymrst.modules.ad_core.models.composite import CompositeModel
 
 __all__ = [
     "BasicSeparator",
+    "CompositeModel",
     "EOSSeparator",
     "FacilityModel",
     "GenericReservoirModel",

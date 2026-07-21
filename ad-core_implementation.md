@@ -337,7 +337,7 @@ other tiers and should land first.
   and lands with multi-region relperm; the AD Jacobian is dropped on the
   imbibition cells, matching MRST's numeric scanning-curve evaluation.
 
-### AC9 - Composite coupling terms ~~[BLOCKED on CompositeModel]~~
+### AC9 - Composite coupling terms ~~[core DONE - Phase 347, with AC12]~~
 - **What:** `CouplingTerm`, `SourceCouplingTerm`, `StateFunctionDependent`.
 - **Path:** `ad_core/statefunctions/composite/` (and
   `StateFunctionDependent` in `ad_core/statefunctions/`).
@@ -349,12 +349,17 @@ other tiers and should land first.
 - **Validation:** reproduce the fixed-stress poroelastic coupling (Phase 27)
   through a `CouplingTerm`; the surface-uplift invariants must hold.
 - **Size/risk:** M.
-- **Status: blocked.** MRST's `CouplingTerm.insertCoupling` is built on the
-  multi-model / `submodels` infrastructure of `CompositeModel` (AC12) -
-  `model.submodels`, cross-submodel equation insertion, `getModelNames`. PyMRST
-  has no composite-model host (its `ad_mechanics` couples flow and geomechanics
-  by hand), so `CouplingTerm` is scaffolding until `CompositeModel` (AC12,
-  Tier 2) lands. Best done *with* AC12.
+- **Status:** landed with AC12 (Phase 347), which provided the composite host.
+  `statefunctions/composite/coupling_term.py`: `CouplingTerm` (the base
+  source-insertion mechanism - `insert_coupling` adds ``sign * q`` into named
+  submodel equations), `SourceCouplingTerm` (a conservative transfer between
+  two submodels sharing component names: sign -1 out of A, +1 into B), and the
+  `StateFunctionDependent` marker. `validate_phase347.py` proves the defining
+  property - conservation: a `SourceCouplingTerm` A->B removes exactly ``q``
+  from A's residual and adds exactly ``q`` to B's, leaving ``eq_A + eq_B``
+  unchanged to 0.0. The full flow-geomechanics coupling *solve* against
+  `ad_mechanics` remains the follow-on (it needs geomechanics as a
+  state-function grouping - see AC12).
 
 ### AC10 - Graph introspection and plotting ~~[DONE - Phase 344]~~
 - **What:** `buildStateFunctionDigraph`, `getStateFunctionGroupingDependencyGraph`,
@@ -409,7 +414,7 @@ other tiers and should land first.
   subclass keeps the rest delegated. The inheritance change is regression-clean
   (85 targeted self-tests pass; black-oil validators 24/47/49 unchanged).
 
-### AC12 - CompositeModel
+### AC12 - CompositeModel ~~[core DONE - Phase 347; coupled solve deferred]~~
 - **What:** `CompositeModel`.
 - **Path:** `ad_core/models/composite/`.
 - **Why here:** the model that runs two coupled groupings, the general form of
@@ -418,6 +423,21 @@ other tiers and should land first.
 - **Validation:** the coupled poromechanics case rebuilt as a `CompositeModel`;
   match Phase 27/33.
 - **Size/risk:** L.
+- **Status: core landed.** `models/composite/composite_model.py` - a
+  `CompositeModel` built from named submodels, each keeping its own sub-state;
+  `get_model_equations` asks each submodel for its equations on its sub-state
+  and applies every registered `CouplingTerm` (AC9). `validate_phase347.py`
+  proves the composition is faithful (a one-submodel composite yields the
+  submodel's own equations to 0.0; a two-submodel composite yields both
+  concatenated) and the coupling is exactly conservative. **Deferred - the
+  coupled solve:** MRST's full `CompositeModel` (784 lines) also packs all
+  submodel primary variables into one Newton system, splits the linearized
+  problem, and runs the coupled solve; and its headline validation (flow +
+  geomechanics matching Phase 27/33) needs **geomechanics expressed as a
+  state-function grouping**, which PyMRST's hand-coupled `ad_mechanics` is not.
+  Re-expressing mechanics as a grouping is a large piece beyond ad-core; until
+  it exists, the coupled *solve* against `ad_mechanics` cannot be validated to
+  this project's bar, so the composition + conservation core is what lands here.
 
 ---
 
