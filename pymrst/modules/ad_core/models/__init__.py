@@ -15,6 +15,11 @@ from pymrst.modules.ad_core.models.generic_reservoir_model import (
 )
 from pymrst.modules.ad_core.models.wrapper_model import WrapperModel
 from pymrst.modules.ad_core.models.composite import CompositeModel
+from pymrst.modules.ad_core.models.wells import (
+    setup_well_control_equation_single_well,
+    update_switched_controls,
+    violated_limit,
+)
 
 __all__ = [
     "BasicSeparator",
@@ -28,4 +33,7 @@ __all__ = [
     "SeparatorFlashResult",
     "SeparatorGroup",
     "SeparatorSurfaceResult",
+    "setup_well_control_equation_single_well",
+    "update_switched_controls",
+    "violated_limit",
 ]

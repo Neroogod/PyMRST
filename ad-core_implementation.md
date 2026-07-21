@@ -457,7 +457,7 @@ other tiers and should land first.
 
 ## Tier 3 - wells and facility completion
 
-### AC13 - The well model and control switching
+### AC13 - The well model and control switching ~~[core DONE - Phase 350]~~
 - **What:** `WellModel`, `setupWellControlEquations`,
   `setupWellControlEquationsSingleWell`, `updateSwitchedControls`,
   `updateSwitchedWellControls`, `updateConnectionDP`.
@@ -471,6 +471,21 @@ other tiers and should land first.
 - **Validation:** the Phase 39/120 control-switch regressions, re-driven through
   `WellModel`.
 - **Size/risk:** M.
+- **Status:** the control layer landed in `ad_core/models/wells/`:
+  `well_control_equations.py` (`setup_well_control_equation_single_well` - the
+  bhp / rate / wrat / orat / grat / lrat control equation with MRST's
+  shut-well and singular-phase fallbacks) and `update_switched_controls.py`
+  (`update_switched_controls` / `violated_limit` - switch a well to the limit
+  it breaks). `validate_phase350.py` proves both against the MATLAB-validated
+  procedural facility path: the control equation reproduces
+  `FacilityModel._control_equation` to 0.0 (value + Jacobian) for every control
+  type, and `update_switched_controls` switches exactly the wells
+  `FacilityModel.update_switched_controls` does, to the same modes (a rate
+  injector -> bhp, a bhp producer -> orat). **Residual follow-on:**
+  `updateConnectionDP` (PyMRST has it as `connection_pressure_drop`) and a full
+  `WellModel` *class* wrapper are a thin further factoring; `computeWellContributionsNew`
+  is the legacy well-contribution path superseded by the facility statefunctions
+  (AC7).
 
 ### AC14 - Multisegment wells and perforation packing
 - **What:** `MultisegmentWell` (class), `setupMSWellEquationSingleWell`,
