@@ -525,7 +525,7 @@ other tiers and should land first.
 
 ## Tier 4 - solvers
 
-### AC15 - The linear-solver class hierarchy
+### AC15 - The linear-solver class hierarchy ~~[core DONE - Phase 352]~~
 - **What:** `LinearSolverAD` (base), `LinearizedProblem`, `BackslashSolverAD`,
   `NoOpSolverAD`, `HandleLinearSolverAD`, `GMRES_ILUSolverAD`,
   `getNonLinearSolver`, `selectLinearSolverAD`.
@@ -541,6 +541,21 @@ other tiers and should land first.
 - **Size/risk:** M. **Out of scope:** `AGMGSolverAD`, `AMGCLSolverAD` and the
   `AMGCL_CPR*` variants - external C bindings, constant-factor wins, tracked as
   not-portable in `GAPS.md`.
+- **Status:** landed. `solvers/linear_solver_ad.py` - the `LinearSolverAD` base
+  (the ``solve_linear_system(A,b)`` contract, a `solve(jac,rhs,model)` entry
+  compatible with PyMRST's existing solvers, optional Jacobi scaling, a solve
+  report) and `LinearizedProblem` (matrix + rhs + named primary-variable blocks,
+  with `store_increments` splitting a solved increment back into them).
+  `solvers/concrete_solvers.py` - `BackslashSolverAD` (direct `spsolve`),
+  `NoOpSolverAD` (zero increment), `GMRES_ILUSolverAD` (restarted GMRES + ILU).
+  `validate_phase352.py` proves them on a real 126-unknown black-oil Newton
+  Jacobian: `BackslashSolverAD` solves ``A dx = rhs`` to 1.3e-17 and returns the
+  *same* increment as the validated `DirectSolver` (0.0), `GMRES_ILUSolverAD`
+  converges to it (5e-7), `NoOpSolverAD` returns zero, and `LinearizedProblem`
+  splits the increment - and the CPR anchor (Phase 43) still passes.
+  **Residual follow-on:** `HandleLinearSolverAD` (a function-handle wrapper) and
+  the `getNonLinearSolver` / `selectLinearSolverAD` factories (PyMRST has
+  `select_linear_solver`) are thin surface items.
 
 ---
 

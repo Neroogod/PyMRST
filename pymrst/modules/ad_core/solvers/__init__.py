@@ -8,12 +8,26 @@ from pymrst.modules.ad_core.solvers.linear_solvers import (
     DirectSolver,
     select_linear_solver,
 )
+from pymrst.modules.ad_core.solvers.linear_solver_ad import (
+    LinearizedProblem,
+    LinearSolverAD,
+)
+from pymrst.modules.ad_core.solvers.concrete_solvers import (
+    BackslashSolverAD,
+    GMRES_ILUSolverAD,
+    NoOpSolverAD,
+)
 
 __all__ = [
+    "BackslashSolverAD",
     "CPR_CROSSOVER_BLOCK_JACOBI",
     "CPR_CROSSOVER_ILU",
     "CPRSolver",
     "DirectSolver",
+    "GMRES_ILUSolverAD",
     "HAVE_AMG",
+    "LinearSolverAD",
+    "LinearizedProblem",
+    "NoOpSolverAD",
     "select_linear_solver",
 ]
