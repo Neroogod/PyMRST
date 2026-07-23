@@ -561,7 +561,7 @@ other tiers and should land first.
 
 ## Tier 5 - initialization
 
-### AC16 - Equilibration regions
+### AC16 - Equilibration regions ~~[core DONE - Phase 353]~~
 - **What:** `getInitializationRegionsBase`, `getInitializationRegionsBlackOil`,
   `getInitializationRegionsCompositional`, `getInitializationRegionsDeck`,
   `getMinMaxPhaseSaturations`, `getMinMaxPhaseSaturationsFromRelPerm`,
@@ -575,6 +575,21 @@ other tiers and should land first.
 - **Validation:** a two-region equilibration against an MRST dump; contact
   depths and the transition-zone saturation profile field by field.
 - **Size/risk:** M.
+- **Status:** the region layer landed in `initialization/regions.py`:
+  `get_initialization_regions_base` (build an `EquilibriumRegion` with MRST's
+  defaults - datum, contacts, reference phase, pc, endpoints),
+  `get_min_max_phase_saturations` (`getMinMaxPhaseSaturations` - connate water
+  floor, mobile range), and `init_state_equil_regions` (equilibrate a
+  multi-region field, each region on its cell partition, scattered into the
+  field arrays). `validate_phase353.py` proves it against the validated
+  single-region path: the factory region equilibrates identically to a
+  hand-built one (0.0), two regions with the same contact reproduce the
+  single-region whole-field equilibrium (0.0), and two regions with different
+  contacts give independent columns (one all-oil, one all-water). Phase 42
+  still passes. **Residual follow-on:** the deck-driven `EQLNUM` region
+  assignment and the compositional/relperm-endpoint region variants
+  (`getInitializationRegionsDeck` / `...Compositional` /
+  `getMinMaxPhaseSaturationsFromRelPerm`) land with AC17's deck path.
 
 ### AC17 - Deck and ECLIPSE initialization
 - **What:** `initStateBlackOilAD`, `initStateDeck`, `initEclipseProblemAD`,
