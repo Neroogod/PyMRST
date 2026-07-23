@@ -487,7 +487,7 @@ other tiers and should land first.
   is the legacy well-contribution path superseded by the facility statefunctions
   (AC7).
 
-### AC14 - Multisegment wells and perforation packing
+### AC14 - Multisegment wells and perforation packing ~~[core DONE - Phase 351]~~
 - **What:** `MultisegmentWell` (class), `setupMSWellEquationSingleWell`,
   `combineMSwithRegularWells`, `convert2MSWell`, `nozzleValve`,
   `packPerforationProperties`, `unpackPerforationProperties`,
@@ -502,6 +502,24 @@ other tiers and should land first.
 - **Validation:** the Phase 109 MS-well packed-variable check, extended to a
   segmented producer against an MRST dump.
 - **Size/risk:** L.
+- **Status:** the multisegment-well machinery was already on the MRST layout and
+  MATLAB-validated - `MultisegmentWell` / `WellSegment`
+  (`params/wells_and_bc/multisegment.py`), `assemble_multisegment_equations` /
+  `MultisegmentEquationResult`
+  (`ad_core/models/facilities/multisegment/`), checked against MRST's converted
+  MS-well layout in Phase 109 (which still passes). This phase adds the missing
+  utility that MS wells rely on: `reorder_well_perforations_by_depth`
+  (`ad_core/models/facilities/reorder_well_perforations_by_depth.py`), a
+  faithful port of MRST's `reorderWellPerforationsByDepth`.
+  `validate_phase351.py` proves its invariants (a deterministic depth sort needs
+  no external reference): perforations end depth-ordered, every per-perforation
+  field (`cells`/`WI`/`dZ`/`cstatus`) is permuted by the same order, and the
+  reorder is idempotent. **Residual follow-on:** the MRST-internal
+  `packPerforationProperties` / `unpackPerforationProperties` (explicitly
+  "internal use in FacilityModel"), the nozzle/valve pressure-loss models, and
+  `convert2MSWell` / `combineMSwithRegularWells` - PyMRST's MS wells already
+  carry the segment friction law (Phase 109), so these are surface-completion
+  items, not new capability.
 
 ---
 

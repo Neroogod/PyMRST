@@ -14,6 +14,9 @@ from pymrst.modules.ad_core.models.facilities.select_facility_from_deck import (
     vfp_tables_from_deck,
 )
 from pymrst.modules.ad_core.models.facilities.simple_well import SimpleWell
+from pymrst.modules.ad_core.models.facilities.reorder_well_perforations_by_depth import (  # noqa: E501
+    reorder_well_perforations_by_depth,
+)
 from pymrst.modules.ad_core.models.facilities.multisegment import (
     MultisegmentEquationResult,
     assemble_multisegment_equations,
@@ -40,6 +43,7 @@ __all__ = [
     "FacilityModel",
     "GenericFacilityModel",
     "SimpleWell",
+    "reorder_well_perforations_by_depth",
     "UniformFacilityModel",
     "BasicSeparator",
     "EOSSeparator",
