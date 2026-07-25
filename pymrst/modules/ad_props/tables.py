@@ -110,13 +110,23 @@ def _pvt_values(tab: PVTTable, p: np.ndarray, rs: np.ndarray,
 
 def pvt_interp(tab: PVTTable, p: ArrayOrADI, rs: ArrayOrADI,
                sat_flag: np.ndarray) -> ArrayOrADI:
-    """Evaluate a PVTTable at (p, rs); sat_flag marks saturated cells."""
-    f, dfdp, dfdr = _pvt_values(tab, value(p).astype(float),
-                                value(rs).astype(float),
-                                np.asarray(sat_flag, bool))
+    """Evaluate a PVTTable at (p, rs); sat_flag marks saturated cells.
+
+    A scalar pressure is a valid input, not a mistake: the equilibration ODE
+    integrator evaluates the fluid one depth at a time, so `bO`/`muO` are called
+    with a 0-d pressure. `_pvt_values` indexes with a boolean mask and needs at
+    least one dimension to do so, so scalar inputs are lifted to shape `(1,)`
+    here and the plain (non-AD) result is handed back in the caller's own shape.
+    """
     p_ad, r_ad = isinstance(p, ADI), isinstance(rs, ADI)
+    pv = np.asarray(value(p), dtype=float)
+    rv = np.asarray(value(rs), dtype=float)
+    scalar_in = pv.ndim == 0 and rv.ndim == 0
+    f, dfdp, dfdr = _pvt_values(tab, np.atleast_1d(pv),
+                                np.atleast_1d(rv),
+                                np.atleast_1d(np.asarray(sat_flag, bool)))
     if not (p_ad or r_ad):
-        return f
+        return f[0] if scalar_in else f.reshape(pv.shape)
     jac = None
     if p_ad:
         jac = [_diag_mul(dfdp, j) for j in p.jac]

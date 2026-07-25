@@ -443,12 +443,49 @@ class FacilityModel:
     initStateAD = init_state_ad
 
     def update_state(self, state: Any, problem: Any = None, dx: Any = None, driving_forces: Any = None):
-        """MRST ``updateState`` compatibility wrapper for well primary variables."""
+        """MRST ``updateState`` compatibility wrapper for well primary variables.
+
+        Increments first, then - and *only* here - the values that follow
+        directly from the well controls.  MRST does this in exactly one place
+        (``FacilityModel.updateState``, guarded by ``setWellTargets``), and
+        pointedly *not* inside ``updateWellSol``: a caller asking for the raw
+        Newton update must get the raw Newton update.  Doing it inside
+        ``updateWellSol`` instead - as this used to - clobbered a bhp-controlled
+        well's incremented pressure with its schedule target on every call.
+
+        The targets come from the **driving forces**' wells, as in MRST, which
+        reads ``drivingForces.W``.  With no driving forces there are no controls
+        to impose, so nothing is assigned.
+        """
         well_sol = self._state_field(state, "wellSol", None)
         if well_sol is not None and problem is not None and dx is not None:
             updated, _ = self.update_well_sol(well_sol, problem, dx, driving_forces)
+            if self.setWellTargets:
+                wells = self._driving_force_wells(driving_forces)
+                if wells is not None:
+                    self._assign_well_values_from_control(list(updated), wells)
             self._set_state_field(state, "wellSol", updated)
         return state, []
+
+    @staticmethod
+    def _driving_force_wells(driving_forces: Any) -> Any:
+        """The wells carried by a driving-forces container, or None.
+
+        MRST reads ``drivingForces.W`` directly; this accepts the dict and
+        attribute spellings PyMRST uses and returns None when there is nothing
+        to read, which is what "no controls to impose" looks like.
+        """
+        if driving_forces is None:
+            return None
+        wells = None
+        if isinstance(driving_forces, dict):
+            wells = driving_forces.get("W", driving_forces.get("wells"))
+        else:
+            wells = getattr(driving_forces, "W", getattr(driving_forces, "wells", None))
+        if wells is None:
+            return None
+        wells = list(wells)
+        return wells or None
 
     updateState = update_state
 
@@ -1382,18 +1419,24 @@ class FacilityModel:
                     old = float(self._wellsol_field(item, name, 0.0))
                     self._set_wellsol_field(item, name, old + float(sub[0]))
             rest = self._strip_var_names(rest, name)
-        if self.setWellTargets:
-            self._assign_well_values_from_control(items)
         return well_sol, rest
 
     updateWellSol = update_well_sol
 
-    def _assign_well_values_from_control(self, well_sol_items: Sequence[Any]) -> None:
-        """Reset directly controlled wellSol values to scheduled targets."""
+    def _assign_well_values_from_control(self, well_sol_items: Sequence[Any],
+                                         wells: Sequence[Well] | None = None) -> None:
+        """Reset directly controlled wellSol values to scheduled targets.
+
+        `wells` are the controls to impose - MRST takes them from
+        `drivingForces.W`.  It defaults to the facility's own schedule wells,
+        which is what PyMRST stores when no separate driving forces are passed.
+        """
         phase_names = self._phase_names()
         q_names = [f"q{str(name).upper()}s" for name in phase_names]
         active_mask = self.get_well_status_mask(well_sol_items)
-        for ix, (item, well) in enumerate(zip(well_sol_items, self.wells)):
+        if wells is None:
+            wells = self.wells
+        for ix, (item, well) in enumerate(zip(well_sol_items, wells)):
             if ix >= active_mask.size or not bool(active_mask[ix]):
                 continue
             control = str(well.type).lower()
@@ -1486,22 +1529,27 @@ class FacilityModel:
         if len(items) != len(self.wells):
             raise ValueError("wellSol length must match number of facility wells")
 
-        well_models = getattr(self, "WellModels", getattr(self, "well_models", None))
+        # `WellModels` is optional and defaults to an *empty list*, not None: a
+        # facility built from schedule wells alone has no per-well model objects
+        # unless the caller supplied them. So the question to ask per well is
+        # "is there a model for this one", not "is the list non-None" - the
+        # latter is always true and used to walk straight off the end of an
+        # empty list. Lines 942 and 1970 already guard by length; this is the
+        # same rule, applied per index.
+        well_models = getattr(self, "WellModels",
+                              getattr(self, "well_models", None)) or []
         reservoir_model = getattr(self, "ReservoirModel", getattr(self, "reservoir_model", None))
-        if well_models is not None:
-            old_items = list(well_sol0) if well_sol0 is not None else [None] * len(items)
-            for ix, item in enumerate(items):
-                wm = well_models[ix]
-                if hasattr(wm, "updateWellSolAfterStep"):
-                    items[ix] = wm.updateWellSolAfterStep(reservoir_model, item, old_items[ix])
-                elif hasattr(wm, "update_well_sol_after_step"):
-                    items[ix] = wm.update_well_sol_after_step(reservoir_model, item, old_items[ix])
-                else:
-                    self._update_single_well_sol_after_step(item, self.wells[ix])
-            return well_sol
-
-        for item, well in zip(items, self.wells):
-            self._update_single_well_sol_after_step(item, well)
+        old_items = list(well_sol0) if well_sol0 is not None else [None] * len(items)
+        for ix, item in enumerate(items):
+            wm = well_models[ix] if ix < len(well_models) else None
+            if hasattr(wm, "updateWellSolAfterStep"):
+                items[ix] = wm.updateWellSolAfterStep(reservoir_model, item, old_items[ix])
+            elif hasattr(wm, "update_well_sol_after_step"):
+                items[ix] = wm.update_well_sol_after_step(reservoir_model, item, old_items[ix])
+            else:
+                # No per-well model: do the shared update here, which is what
+                # the (previously unreachable) fallback loop did.
+                self._update_single_well_sol_after_step(item, self.wells[ix])
         return well_sol
 
     updateWellSolAfterStep = update_well_sol_after_step

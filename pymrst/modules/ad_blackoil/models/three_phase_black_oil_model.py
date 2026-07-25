@@ -22,6 +22,7 @@ from pymrst.params.gravity_const import NORM_GRAVITY
 from pymrst.params.rock import Rock, pore_volume
 from pymrst.params.wells_and_bc import Well
 from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
+from pymrst.modules.ad_core.utils.convergence import cnv_mb_convergence
 from pymrst.utils.adi import (
     ad_sum,
     combine_equations,
@@ -300,10 +301,7 @@ class ThreePhaseBlackOilModelAD:
     def _converged(self, eqs, dt: float, st: BOState) -> bool:
         res = [value(e) for e in eqs]
         b_avg, pv = self._conv_scaling(st)
-        cnv = max(b_avg[i] * np.abs(res[i] / pv).max()
-                  for i in range(3)) * dt
-        mb = max(b_avg[i] * abs(res[i].sum())
-                 for i in range(3)) * dt / pv.sum()
+        cnv, mb = cnv_mb_convergence(res[:3], b_avg, pv, dt)
         q_ref = max(abs(w.val) for w in self.wells)
         well_ok = all(np.abs(r).max() <= self.tol_well * q_ref
                       for r in res[3:6])

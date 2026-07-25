@@ -6,6 +6,41 @@ from pymrst.modules.ad_core.utils.boundary_conditions import (
     boundary_reservoir_fluxes,
     source_reservoir_fluxes,
 )
+from pymrst.modules.ad_core.utils.convergence import (
+    cnv_mb_convergence,
+    cnv_mb_values,
+    formation_volume_factor_avg,
+    well_control_residual,
+)
+from pymrst.modules.ad_core.utils.schedule import (
+    Control,
+    Schedule,
+    combine_schedules,
+    compress_schedule,
+    refine_schedule,
+    simple_schedule,
+    subset_schedule,
+)
+from pymrst.modules.ad_core.utils.cfl import (
+    estimate_saturation_cfl,
+    fractional_flow_derivative,
+)
+from pymrst.modules.ad_core.utils.phase_densities_to_bfactor import (
+    phase_densities_to_bfactor,
+)
+from pymrst.modules.ad_core.utils.interpolate_idw import interpolate_idw
+from pymrst.modules.ad_core.utils.fast_interp_table import fast_interp_table
+from pymrst.modules.ad_core.utils.split_face_cell_value import split_face_cell_value
+from pymrst.modules.ad_core.utils.merge_ordered_arrays import merge_ordered_arrays
+from pymrst.modules.ad_core.utils.convert_reservoir_fluxes_to_surface import (
+    convert_reservoir_fluxes_to_surface,
+)
+from pymrst.modules.ad_core.utils.select_model_from_deck import (
+    deck_model_choice,
+    select_model_from_deck,
+)
+from pymrst.modules.ad_core.utils.standalone_solve import standalone_solve
+from pymrst.modules.ad_core.utils.get_well_output import get_well_output
 
 __all__ = [
     "Operators",
@@ -13,4 +48,27 @@ __all__ = [
     "boundary_reservoir_fluxes",
     "setup_operators_tpfa",
     "source_reservoir_fluxes",
+    "cnv_mb_convergence",
+    "cnv_mb_values",
+    "formation_volume_factor_avg",
+    "well_control_residual",
+    "Control",
+    "Schedule",
+    "combine_schedules",
+    "compress_schedule",
+    "refine_schedule",
+    "simple_schedule",
+    "subset_schedule",
+    "estimate_saturation_cfl",
+    "fractional_flow_derivative",
+    "phase_densities_to_bfactor",
+    "interpolate_idw",
+    "fast_interp_table",
+    "split_face_cell_value",
+    "merge_ordered_arrays",
+    "convert_reservoir_fluxes_to_surface",
+    "deck_model_choice",
+    "select_model_from_deck",
+    "standalone_solve",
+    "get_well_output",
 ]

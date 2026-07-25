@@ -909,7 +909,77 @@ is Pythonic drift: MRST's graph leans on MATLAB's class system and dynamic
 dispatch, and a faithful port must not turn into a Python framework of its own
 invention, or every later "close port" claim evaporates.
 
-## Phase 25 - Core leftovers: grid editing, rock, solvers, utils `M`
+## Phase 25 - Core leftovers: grid editing, rock, solvers, utils `M` — **IN PROGRESS**
+
+**Landed so far** (each MATLAB-validated to machine precision, same contract as
+Phase 23):
+- `utils/faceFlux2cellVelocity`, `faceFlux2cellFlux`, `cellFlux2faceFlux` ->
+  `pymrst/utils/flux_conversion.py` (Phase 364): the lowest-order per-cell
+  velocity reconstruction and the half-face/face flux conversions, needed by
+  `mimetic` and any velocity post-processing. `validate_phase364.py` matches MRST
+  to **0.0** on a 4x3x2 grid with a deterministic face-flux field.
+- `gridprocessing/processNNC` -> `pymrst/gridprocessing/process_nnc.py`
+  (Phase 365): resolves an explicit `[i1 j1 k1 i2 j2 k2 trans]` NNC list to
+  active-cell pairs, with `exclude_existing`; the prerequisite for the fracture
+  tiers' matrix/fracture coupling. `validate_phase365.py` matches MRST's resolved
+  pairs and transmissibilities exactly, keep-all and excludeExisting.
+- `params/rock/grdecl2Rock` -> `pymrst/params/rock/grdecl2rock.py` (Phase 366):
+  assembles a `Rock` from GRDECL keywords - isotropic (`PERMX` -> 1 col),
+  diagonal (`PERMX/Y/Z` -> 3), full symmetric (`+PERMXY/XZ/YZ` -> 6, in
+  `[xx,xy,xz,yy,yz,zz]` order), plus PORO/NTG/ROCKTYPE, `MULTX/Y/Z` multipliers
+  and fault data; `actmap`/grid restricts to active cells. `validate_phase366.py`
+  matches MRST across all three tensor layouts number for number. The front half
+  of every deck-driven case. **MRST quirk noted:** the isotropic collapse
+  compares column *indices*, not values - three separate equal `PERMX/Y/Z` stay
+  a 3-column tensor; only a lone `PERMX` (one column reused) collapses.
+- `gridprocessing/makeInternalBoundary` ->
+  `pymrst/gridprocessing/make_internal_boundary.py` (Phase 367): cuts a grid
+  along a set of internal faces, replacing each with two coincident boundary
+  faces (one per original neighbour) - how a sealing fault or explicit fracture
+  is put into a grid, and the other fracture-tier prerequisite. Composed from the
+  Phase-23 `add_faces`/`remove_faces` primitives. `validate_phase367.py` matches
+  MRST's resulting topology exactly on a 3x3x2 cut - face/cell/boundary counts
+  and the full neighbour-pair multiset (renumbering-independent; MRST's 1-based
+  cells shifted to 0-based for the compare). Tag-marking of the new fault faces
+  is deferred (PyMRST `add_faces` carries no tag argument yet).
+- `gridprocessing/removeInternalBoundary` ->
+  `pymrst/gridprocessing/remove_internal_boundary.py` (Phase 368): the inverse -
+  welds each coincident boundary-face pair back into one internal face (merging
+  the pair's nodes and restoring the two cells as neighbours). Validated by the
+  decisive invariant a MATLAB dump cannot better: `make` then `remove` is the
+  identity - the round trip recovers the original face count and neighbour-pair
+  multiset exactly (contract rule 3). Completes the internal-boundary pair.
+- `gridprocessing/splitDisconnectedGrid` ->
+  `pymrst/gridprocessing/split_disconnected_grid.py` (Phase 369): splits a grid
+  into the connected components of its cell-adjacency graph (interior faces plus
+  NNCs), largest first, so a simulator does not hand a singular system to the
+  linear solver when cells removal / a sealing fault has disconnected the domain.
+  Uses `scipy.csgraph.connected_components` in place of MRST's `dmperm` (same
+  partition). Invariant-validated (cells conserved, components isolated, sorted
+  by size, cartDims propagated) - the partition is a graph property both codes
+  compute identically, so a MATLAB dump adds nothing.
+- `gridprocessing/hexahedralGrid` -> `pymrst/gridprocessing/hexahedral_grid.py`
+  (Phase 370): builds a 3D grid from hex cell-node connectivity, finding shared
+  faces via MRST's canonical face-orientation + `sortrows` trick (no geometric
+  tolerance) - the entry point for an externally-meshed hex grid. Composed from
+  `empty_grid`/`add_faces`/`rlencode`/`rldecode`. `validate_phase370.py` matches
+  MRST on a two-cube mesh: identical cell/face/node counts and neighbour-pair
+  multiset. **API note:** PyMRST takes `(hexes, coords)` 0-based; MRST's
+  `hexahedralGrid(P, H)` is points-first, 1-based. Face direction tags are kept
+  on `g.hftag` (PyMRST `add_faces` takes no tag argument).
+- `gridprocessing/tessellationGrid` ->
+  `pymrst/gridprocessing/tessellation_grid.py` (Phase 371): the 2D counterpart -
+  a grid from a polygon tessellation (arbitrary polygons, not just tris/quads),
+  faces are the polygon edges, shared edges found by the same
+  smaller-node-first + unique-rows trick. Accepts a list of polygons or a
+  uniform `(nc, k)` array. `validate_phase371.py` matches MRST on a 2x2 quad
+  tessellation: identical cell/face/node counts and neighbour-pair multiset.
+
+**Still to do:** `sliceGrid`, `refineGrdecl`, `removePinch`/`processPINCH`,
+`repairNormals`, `removeShortEdges`, `findMatchingFaces`, `triangulateFaces`,
+`cellNodes`, `glue2DGrid`, `get2DGridFromFaces`;
+`params/permeabilityConverter`; `solvers/accumulateCartesianMultipliers`,
+standalone `initWellSol`.
 
 **What.** The small named gaps, which are individually trivial and collectively
 load-bearing:

@@ -22,6 +22,7 @@ from pymrst.modules.ad_props.simple_adi_fluid import ADFluid
 from pymrst.params.rock import Rock, pore_volume
 from pymrst.params.wells_and_bc import Well
 from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
+from pymrst.modules.ad_core.utils.convergence import cnv_mb_convergence
 from pymrst.utils.adi import (
     ADI,
     ad_sum,
@@ -214,9 +215,7 @@ class TwoPhaseOilWaterModelAD:
         f, pv = self.fluid, self.pv
         bw = np.mean(1.0 / np.asarray(value(f.b_w(st.pressure)), float))
         bo = np.mean(1.0 / np.asarray(value(f.b_o(st.pressure)), float))
-        cnv = max(bw * np.abs(water / pv).max(),
-                  bo * np.abs(oil / pv).max()) * dt
-        mb = max(bw * abs(water.sum()), bo * abs(oil.sum())) * dt / pv.sum()
+        cnv, mb = cnv_mb_convergence([water, oil], np.array([bw, bo]), pv, dt)
         q_ref = max(max(abs(w.val) for w in self.wells if w.type == "rate"),
                     1e-12) if any(w.type == "rate" for w in self.wells) else 1.0
         well_ok = (np.abs(eq_w).max() <= self.tol_well * q_ref

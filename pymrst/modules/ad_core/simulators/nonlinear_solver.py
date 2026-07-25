@@ -290,11 +290,42 @@ class NonLinearSolver:
 
     # -- a whole schedule ----------------------------------------------------
     def simulate_schedule(self, model, state0: State,
-                          dt_schedule) -> Tuple[List[State], SimulationReport]:
-        """Run every step of a schedule; return the states and the report."""
+                          schedule) -> Tuple[List[State], SimulationReport]:
+        """Run every step of a schedule; return the states and the report.
+
+        `schedule` is either a bare sequence of timesteps - the wells are then
+        whatever the model was built with, fixed for the run - or a structured
+        `ad_core.utils.schedule.Schedule`, whose control periods change the
+        wells / boundary / sources as time advances. The structured form is
+        what lets a well open partway through a run, or a rate step down.
+        """
+        from pymrst.modules.ad_core.utils.schedule import Schedule
+
+        if not isinstance(schedule, Schedule):
+            return self._simulate_timesteps(model, state0,
+                                            np.atleast_1d(schedule))
+
         states, report = [], SimulationReport()
         st = state0
-        for dt in np.atleast_1d(dt_schedule):
+        last_control = -1
+        for i in range(schedule.n_steps):
+            c = int(schedule.step_control[i])
+            if c != last_control:              # a new control period begins
+                self._apply_control(model, schedule.controls[c])
+                last_control = c
+            st, rep = self.solve_timestep(model, st, float(schedule.step_val[i]))
+            report.steps.append(rep)
+            states.append(st)
+            if not rep.converged:
+                if self.verbose:
+                    print(f"  step {i} did not converge; stopping")
+                break
+        return states, report
+
+    def _simulate_timesteps(self, model, state0, dts):
+        states, report = [], SimulationReport()
+        st = state0
+        for dt in dts:
             st, rep = self.solve_timestep(model, st, float(dt))
             report.steps.append(rep)
             states.append(st)
@@ -303,6 +334,34 @@ class NonLinearSolver:
                     print(f"  step of {dt:.3g} s did not converge; stopping")
                 break
         return states, report
+
+    @staticmethod
+    def _apply_control(model, control) -> None:
+        """Set a control period's driving forces on the model.
+
+        Wells are replaced object-for-object (they carry their own well index,
+        perforations and geometry, so a control supplies *complete* wells, not
+        just new targets). The well *count* may not change mid-run - the state's
+        per-well arrays would no longer line up - and a change is refused with a
+        clear message rather than a silent shape error.
+        """
+        if control is None:
+            return
+        if control.bc is not None:
+            model.bc = control.bc
+        if control.src is not None:
+            model.src = control.src
+        if control.W is not None and hasattr(model, "facility"):
+            new_wells = list(control.W)
+            if len(new_wells) != model.facility.n_wells:
+                raise NotImplementedError(
+                    "a control step changes the number of wells "
+                    f"({model.facility.n_wells} -> {len(new_wells)}); "
+                    "opening or shutting a well mid-schedule needs the well "
+                    "state re-initialised, which is not yet supported"
+                )
+            model.facility.wells[:] = new_wells
+            model.facility.within_limits = True
 
 
 if __name__ == "__main__":

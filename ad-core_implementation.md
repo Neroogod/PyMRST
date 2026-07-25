@@ -591,7 +591,7 @@ other tiers and should land first.
   (`getInitializationRegionsDeck` / `...Compositional` /
   `getMinMaxPhaseSaturationsFromRelPerm`) land with AC17's deck path.
 
-### AC17 - Deck and ECLIPSE initialization
+### AC17 - Deck and ECLIPSE initialization ~~[live-oil equilibration DONE - Phase 354; initEclipseProblemAD wrapper deferred]~~
 - **What:** `initStateBlackOilAD`, `initStateDeck`, `initEclipseProblemAD`,
   `getDeckOPMData`, `plotRegionContacts`.
 - **Path:** `ad_core/initialization/`.
@@ -602,12 +602,44 @@ other tiers and should land first.
 - **Validation:** SPE1 initial state from the deck vs the hand-built state used
   today; identical to machine precision.
 - **Size/risk:** M.
+- **Landed (Phase 354).** `init_state_deck` (explicit + equilibrated dispatch)
+  was already present; closing AC17 meant making the **live-oil equilibration**
+  path actually work and match MRST, which it never had - Phase 42 validated
+  equilibration only for an analytic *dead-oil* fluid. Three real bugs surfaced
+  and were fixed, all in the deck-fluid equilibration path:
+  - `pvt_interp` crashed on a *scalar* pressure (0-d array), which the ODE
+    integrator feeds it one depth at a time. Fixed to lift scalars to `(1,)` and
+    return in the caller's shape (`ad_props/tables.py`).
+  - `_phase_densities` handed `b_o` a `None` rs for a live fluid, producing
+    **NaN** and sending the integrator into an unbounded step-halving loop (a
+    300-cell case ran >300 s and never finished). Replaced with MRST's exact
+    `getOilDensity`/`getGasDensity`: `rs = min(rs_given, rsSat)`, saturated flag
+    `rs >= rsSat`, `rho_o = b_o(p, rs)(rhoS_o + rs rhoS_g)`, defaulting to
+    saturated absent an RSVD `rs`. Now instant.
+  - `initializeEquilibriumSaturations` dropped **connate water** (`s_min = 0`)
+    and resolved no-oil cells to a degenerate `sw = sg = 0.5`. Ported MRST's
+    two-step fill: `s_min`/`s_max` from the fluid's connate saturations, and the
+    over-filled-cell branch that re-solves the outer two phases (water vs gas)
+    directly - turning the 50/50 mush into a clean gas-over-water contact.
+  - `initStateBlackOilAD`'s `rs` assignment now caps against `rsSat(p_oil)` (the
+    oil-phase pressure, not the carried reference pressure, which differ below
+    the water contact), and `EquilibriumRegion` gained `rs`/`rv` (constant or
+    callable, RSVD-style).
+
+  `validate_phase354.py` runs a live-oil column on SPE 1's real PVTO/PVDG tables
+  with a constant `rs = rsSat(p_datum)` - undersaturated throughout, the exact
+  branch that used to NaN - and matches MATLAB `initStateBlackOilAD` at machine
+  precision: pressure 1.7e-15, saturations exactly 0.0, rs 7e-15.
+
+  **Deferred:** the `initEclipseProblemAD` wrapper (it pulls in
+  `convertDeckScheduleToMRST` = AC20 and full model construction), `getDeckOPMData`
+  (OPM test-deck fetch), and `plotRegionContacts` (plotting).
 
 ---
 
 ## Tier 6 - adjoint simulators (MRST-layout homing)
 
-### AC18 - Home the adjoint drivers under ad_core/simulators
+### AC18 - Home the adjoint drivers under ad_core/simulators ~~[adjoint + perturbation homed DONE - Phase 360; parameter-sensitivity adjoint deferred]~~
 - **What:** `computeGradientAdjointAD`, `computeGradientPerturbationAD`,
   `computeSensitivitiesAdjointAD`.
 - **Path:** `ad_core/simulators/`.
@@ -622,12 +654,34 @@ other tiers and should land first.
   finite-difference) re-run through the `ad_core/simulators` entry point;
   add a perturbation-vs-adjoint cross-check.
 - **Size/risk:** M. Mostly relocation + generalization, not new math.
+- **DONE (Phase 360):** the adjoint drivers now have their MRST home under
+  `ad_core/simulators/`. `compute_gradient_adjoint_ad.py` re-exports the backward
+  sweep (`computeGradientAdjointAD`) from `optimization.adjoint` at MRST's path;
+  `compute_gradient_perturbation_ad.py` is new - the finite-difference gradient
+  (`computeGradientPerturbationAD`) that perturbs one control at a time and
+  re-simulates, MRST's own ground-truth for an adjoint. Both sit side by side as
+  in MRST's simulators directory and are imported from their submodule (kept out
+  of the package `__init__` to avoid an `ad_core -> optimization -> ad_core`
+  import cycle). `validate_phase360.py` runs the Phase 18 adjoint-vs-central-FD check
+  through the new entry point (max rel err 8e-10) and the perturbation-vs-adjoint
+  cross-check control for control (8e-10 central, 5e-6 forward) - no MATLAB, by
+  the nature of the check: an adjoint is exact iff it matches a finite
+  difference, and the FD is the independent ground truth. The perturbation driver
+  uses a *relative* step (`perturbation * max(|u|, 1)`) so it is accurate across
+  the rate/bhp scale gap out of the box; MRST's literal absolute-step
+  forward-difference form is available via `central=False`.
+- **Deferred:** `computeSensitivitiesAdjointAD` - the general
+  *parameter*-sensitivity adjoint (dJ/d{transmissibility, pore volume,
+  well index, ...}, not just controls). The control-objective adjoint is homed
+  and validated; extending the backward sweep to model parameters is a genuine
+  new capability (per-parameter residual derivatives), not relocation, and waits
+  on a consumer - the history-matching path in `ensemble/` is the natural one.
 
 ---
 
 ## Tier 7 - utils (the genuine capability, not the plumbing)
 
-### AC19 - Convergence
+### AC19 - Convergence ~~[DONE - Phase 355]~~
 - **What:** `CNV_MBConvergence`, `checkWellConvergence`,
   `getConvergenceValuesCNV`, `getConvergenceValuesWells`,
   `printConvergenceReport`.
@@ -640,8 +694,25 @@ other tiers and should land first.
 - **Validation:** the CNV/MB values on an SPE1 step against MRST's printed
   report, number for number.
 - **Size/risk:** M.
+- **Landed (Phase 355).** `ad_core/utils/convergence.py` holds the kernels -
+  `formation_volume_factor_avg` (`B_avg = mean(1/b)`), `cnv_mb_values` /
+  `cnv_mb_convergence`, `well_control_residual`, `max_extra_residual`,
+  `print_convergence_report` - and the **five** black-oil models
+  (`generic`, `water`, `three_phase`, `two_phase_oil_water`, and through it
+  `tracer`) now call them instead of each carrying its own copy of the formula.
+  That copy was where the `B_avg` fix had to be applied five times before; there
+  is now one place. `validate_phase355.py` follows the "fix the inputs, compare
+  the algorithm" contract: it feeds the kernel MRST's *own* per-phase residuals
+  (the two codes initialise the well bhp differently, so their iteration-1
+  residuals are not shared - that is the well model's business, not the
+  criterion's) and reproduces MRST's `getConvergenceValues` output number for
+  number (CNV to ~1e-20, MB at machine zero), with `B_avg` and pore volume
+  cross-checked as matching. Full sweep unchanged: 343 passing, 0 failing.
+  **Deferred:** wiring these into a standalone `NonLinearSolver.checkConvergence`
+  entry point (the models still call the kernels directly, which is enough for
+  parity); the printed-report path exists but is unused.
 
-### AC20 - Schedule tooling
+### AC20 - Schedule tooling ~~[structured schedule + editing + solver coupling DONE - Phase 356; deck parsing deferred]~~
 - **What:** `makeScheduleConsistent`, `convertDeckScheduleToMRST`,
   `compressSchedule`, `refineSchedule`, `filterSchedule`, `combineSchedules`,
   `simpleSchedule`, `convertReportToSchedule`.
@@ -653,8 +724,34 @@ other tiers and should land first.
 - **Validation:** SPE9's schedule from its deck vs the hand-built schedule;
   `compressSchedule`/`refineSchedule` round-trip invariants.
 - **Size/risk:** M.
+- **Landed (Phase 356).** `ad_core/utils/schedule.py` ports MRST's schedule
+  structure - `Schedule` (`step_val` / `step_control` / `controls`), `Control`
+  (`W`/`bc`/`src`) - and the editing operations: `simple_schedule`,
+  `compress_schedule` (MRST's exact merge of consecutive same-control steps),
+  `refine_schedule` (uniform subdivision under a max `dt`), `combine_schedules`,
+  `subset_schedule`. **The capability that was missing** is time-varying
+  controls: `NonLinearSolver.simulate_schedule` now accepts a `Schedule` and
+  applies each control period's wells/bc/sources as time advances, so a well can
+  tighten its bhp or step its rate partway through a run - which the old
+  dt-array schedule (fixed wells for the whole run) could not express. The bare
+  dt-array path is kept, so every existing caller is unchanged.
 
-### AC21 - CFL estimates and discretization setters
+  `validate_phase356.py` validates it two ways, both MATLAB-free by design (the
+  operations are structural and the coupling is behavioural): the round-trip
+  invariants - total time preserved, `compress` leaves one step per control
+  period, `compress(refine(s))` recovers the control history - and an end-to-end
+  run where a producer's bhp drops 150 -> 120 bar at a control step, confirming
+  the change takes effect (the bhp switches) and does physical work (the harder
+  drawdown lifts more oil). Full sweep unchanged.
+
+  **Deferred:** `convert_deck_schedule_to_mrst` - it needs a general deck
+  SCHEDULE reader (WCONPROD/WCONINJE/TSTEP/DATES) and the spec's SPE9 deck,
+  neither of which is present in this tree; and `make_schedule_consistent` /
+  `convert_report_to_schedule`. A control step that changes the *number* of
+  wells (opening or shutting one) is also refused for now, since the well state
+  would need re-initialising - a clear error, not a silent shape mismatch.
+
+### AC21 - CFL estimates and discretization setters ~~[saturation CFL DONE - Phase 357; composition CFL + setters deferred]~~
 - **What:** `estimateSaturationCFL`, `estimateCompositionCFL`,
   `setTimeDiscretization`, `setWENODiscretization`, `setMPFADiscretization`.
 - **Path:** `ad_core/utils/`.
@@ -666,8 +763,23 @@ other tiers and should land first.
 - **Validation:** the saturation CFL against MRST on a Buckley-Leverett case;
   the setters against the assembled discretization they produce.
 - **Size/risk:** M.
+- **DONE (Phase 357):** `ad_core/utils/cfl.py` ports `estimateSaturationCFL`
+  and the two-phase branch of `getFractionalFlowMagnitude`
+  (`fractional_flow_derivative`): the Buckley-Leverett wave speed `|df_w/ds_w|`
+  by seeding `sW` as the AD variable, then the per-cell CFL
+  `(dt/pv)·|v_T|·|df/ds|` with upstream weighting, cross-flow handling, and the
+  `useInflow` throughput option. Validated in `validate_phase357.py` against
+  MRST's own `estimateSaturationCFL` on a 1D water/oil column with a fixed
+  saturation front and interior flux - F and CFL match number for number
+  (max|dF| 2e-16, max|dCFL| 2e-18), with N and pv confirmed identical.
+- **Deferred:** the *three-phase* CFL (largest eigenvalue of the fractional-flow
+  Jacobian) is flagged with a clear `NotImplementedError`; `estimateCompositionCFL`
+  needs a compositional model (not yet ported); the capillary diffusion term
+  (`Q` in `getFractionalFlowMagnitude`) is stubbed in MRST itself. The
+  discretization setters (`setTimeDiscretization`/`setWENODiscretization`/
+  `setMPFADiscretization`) wait on the WENO/MPFA discretizations they toggle.
 
-### AC22 - Numeric utility functions
+### AC22 - Numeric utility functions ~~[core numeric helpers DONE - Phase 358; deck/N-d helpers deferred]~~
 - **What:** `getMultiDimInterpolator`, `interpolateIDW`, `fastInterpTable`,
   `getMultipliers`, `faceUpstr`, `phaseDensitiesTobfactor`, `splitFaceCellValue`,
   `expandMatrixToCell`, `expandIfUniform`, `mergeOrderedArrays`,
@@ -681,8 +793,30 @@ other tiers and should land first.
 - **Validation:** per-function self-tests; MATLAB cross-check where a consuming
   phase already dumps the surrounding case.
 - **Size/risk:** M, spread across the tiers.
+- **DONE (Phase 358):** ported the genuinely-numeric helpers still missing, one
+  file each mirroring MRST's layout, all with self-tests:
+  `phase_densities_to_bfactor.py`, `interpolate_idw.py`, `fast_interp_table.py`,
+  `split_face_cell_value.py`, `merge_ordered_arrays.py`,
+  `convert_reservoir_fluxes_to_surface.py`. The four with non-trivial arithmetic
+  (IDW, table interp+extrapolation, dead/live b-factors, the supported
+  `mergeOrderedArrays` insertion cases) are pinned to MRST in
+  `validate_phase358.py` - all match to 0.0 (machine exact). Already present
+  before this phase and not re-ported: `face_upstr` (in the upwind state
+  function), `expand_matrix_to_cell` (compositional utils), `calculate_phase_rate`
+  (facility state function).
+- **MRST bug found:** `mergeOrderedArrays` is fragile on inputs its callers never
+  send - its end-of-array shortcuts compare a pointer *index* against an element
+  *value*, and its subset early-return calls `all(new == old)` on mismatched
+  sizes. Both raise inside MATLAB (verified on `([1,2,3,4],[1,3,4])` and
+  `([1,2,4],[1,3,4])`). The port reproduces the supported "insertion" case number
+  for number and raises on the degenerate inputs rather than mis-ordering.
+- **Deferred (as-needed):** `getMultipliers` (needs the deck rock-multiplier
+  keywords MULTX/… which wait on the deck reader), `getMultiDimInterpolator`
+  (N-dimensional gridded-interpolant closure, no consumer in the port yet),
+  `expandIfUniform` (a scalar/vector broadcast convenience with no current
+  caller). Port each when a consuming phase first needs it.
 
-### AC23 - I/O, result handling, standalone solve, model selection
+### AC23 - I/O, result handling, standalone solve, model selection ~~[factory + solve + well output DONE - Phase 359; ResultHandler + getReportOutput deferred]~~
 - **What:** `ResultHandler`, `HandleStruct`, `getReportOutput`,
   `getWellOutput`, `standaloneSolveAD`, `selectModelFromDeck`,
   `getReservoirModel`/`setReservoirModel`.
@@ -696,12 +830,29 @@ other tiers and should land first.
   the compositional model for a compositional deck; `standaloneSolveAD`
   reproduces a scripted solve.
 - **Size/risk:** M.
+- **DONE (Phase 359):** three files, each with self-tests:
+  `select_model_from_deck.py` (the factory; the routing decision is split into a
+  testable `deck_model_choice` so it can be checked without a full 3-phase
+  fluid), `standalone_solve.py` (one-call single step onto the nonlinear
+  solver's `solve_timestep`), `get_well_output.py` (the `(nsteps, nwells,
+  nfields)` well time-series extractor, fields/wells by name or index). The
+  factory's routing is pinned to MRST in `validate_phase359.py` on the real SPE1
+  deck: MRST selects `GenericBlackOilModel` with disgas on / vapoil off, and the
+  port reaches the identical decision - including SPE1's override branch, where
+  BLACKOIL is off so disgas comes from the explicit RUNSPEC DISGAS, not the PVTO
+  table. `get_reservoir_model` already exists (`wrapper_model.py`).
+- **Deferred:** the compositional and EOR (polymer/surfactant) branches of the
+  factory raise a clear `NotImplementedError` - their deck-construction path (an
+  EOS model, the ad-eor models) is not ported, so returning a black-oil model
+  would be wrong. `ResultHandler`/`HandleStruct` (MRST's on-disk state store,
+  ~400 lines) and `getReportOutput` (report-tree walker) have no consumer in the
+  port yet and are left for when one appears; `setReservoirModel` likewise.
 
 ---
 
 ## Tier 8 - backend performance internals
 
-### AC24 - Diagonal Jacobian variants and operator helpers
+### AC24 - Diagonal Jacobian variants and operator helpers ~~[equivalence validated + numeric helpers DONE - Phase 361; block layouts deferred on the performance gate]~~
 - **What:** `ConservationLawJacobian`, `FixedWidthJacobian`,
   `getSparseBlocksFixedWidth`, `blockCSRtoSparse`,
   `discreteDivergenceDiagonalJac`, and the `backends/diagonal/utils` helpers
@@ -721,12 +872,36 @@ other tiers and should land first.
 - **Size/risk:** L. **Out of scope:** the MEX operator layer
   (`backends/diagonal/operators/mex/`, 17 files + 12 `.cpp`) - MATLAB C
   acceleration with no place in a NumPy/Numba backend.
+- **DONE (Phase 361):** `backends/diagonal/utils.py` ports the layout-independent
+  numeric helpers with self-tests - `matrix_dims` (`matrixDims`),
+  `get_sparse_arguments` (`getSparseArguments`, the offset `(I, J, V)` triplet
+  for block assembly), and `diag_mult` (`diagMult`, diagonal row-scaling with
+  MRST's all-zero / scalar / empty fast paths). `validate_phase361.py` is the
+  equivalence+benchmark the tier calls for: a conservation-law residual
+  (`div(upw(mob)*T*grad p)` + accumulation) assembled over a 2500-cell grid
+  through both backends by feeding the *same* operators an ADI or a diagonal
+  `GenericAD` variable - the assembled Jacobians are **identical to machine
+  precision** (max|dJ| ~ 1.6e-19, same nnz), which transitively validates the
+  diagonal backend since the sparse one is pinned to MATLAB elsewhere.
+- **Finding (honest benchmark):** on the same case the pure-NumPy diagonal
+  backend is **~90x *slower*** than the sparse backend, not faster. Its MRST
+  speed-up lives in the MEX block kernels (out of scope), and the current
+  diagonal `div` rebuilds its connectivity matrix each call. So the diagonal
+  layout is *correct* here but not yet *fast* - reported, not hidden.
+- **Deferred on the performance gate:** `FixedWidthJacobian` /
+  `ConservationLawJacobian` / `getSparseBlocksFixedWidth` and `blockCSRtoSparse`
+  (which untransposes MEX-specific block storage, meaningless without the MEX
+  path). In pure NumPy these alternative layouts add complexity with no
+  assembly-cost win - the tier's own gate ("port when assembly cost is the
+  ceiling") is not met, and the benchmark above confirms the ceiling here is the
+  operator overhead, not the Jacobian layout. Port them with the MEX kernels or a
+  Numba block-assembly path, if either is ever in scope.
 
 ---
 
 ## Tier 9 - upscaling
 
-### AC25 - Model, schedule, and state upscaling
+### AC25 - Model, schedule, and state upscaling ~~[DONE - Phase 362]~~
 - **What:** `upscaleModelTPFA`, `upscaleSchedule`, `upscaleState`.
 - **Path:** `ad_core/upscale/`.
 - **Why here:** coarsening an AD model + its schedule + its state onto a coarse
@@ -735,6 +910,31 @@ other tiers and should land first.
 - **Depends on:** `upscaling` (present), Tier 1.
 - **Validation:** an upscaled SPE10 slab against MRST's coarse model response.
 - **Size/risk:** M.
+- **DONE (Phase 362):** three files under `ad_core/upscale/`, each with
+  self-tests, built on the existing `upscaling` coarse-grid machinery:
+  - `upscale_model_tpfa.py` (`upscaleModelTPFA`) - a runnable coarse model on the
+    partition's coarse grid, coarse rock with pore-volume-conserving porosity
+    (reusing `upscale_poro`) and MRST's default harmonic-mean permeability, coarse
+    TPFA operators from that rock; carries the partition for the other two.
+  - `upscale_state.py` (`upscaleState`) - pore-volume-weighted coarsening of
+    pressure and saturations, with `rs`/`rv` weighted by oil/gas pore volume
+    (`sO*pv`, `sG*pv`) and the no-phase block guarded to 0, not inf.
+  - `upscale_schedule.py` (`upscaleSchedule`) - wells remapped to their unique
+    coarse blocks, collapsed perforations' well indices combined (default `sum`,
+    the conductance-preserving choice; `harmonic`/`mean` available).
+  - `validate_phase362.py` pins the coarse rock and coarse state to MRST's own
+    `upscaleModelTPFA`/`upscaleState` on a deterministic 6x6 -> 3x3 model:
+    permeability and porosity match to **0.0**, saturation to 1e-16, pressure to
+    1e-9 - machine exact, with the partition numbering confirmed identical first.
+- **Difference from MRST, noted:** MRST's `upscaleSchedule` defaults to
+  `recompute` (a fresh `computeWellIndex` on the coarse grid, needing a coarse
+  well-index routine for an arbitrary perforation direction); this port defaults
+  to `sum`, which is well-defined from the fine well index alone.
+- **Deferred:** the compositional branch of `upscaleState` (EOS mole-fraction
+  coarsening + re-flash) and coarse-face flux coarsening (needs the coarse grid's
+  fine-face connectivity), plus `upscaleSchedule`'s bc/src coarsening - none has a
+  consumer in the port yet. The SPE10-slab end-to-end coarse *run* comparison
+  waits on SPE10 deck data; the per-routine MATLAB checks above cover the math.
 
 ---
 
@@ -757,7 +957,18 @@ These are counted out of the parity numbers above, on the same grounds
   `plot_toolbar`; these are MATLAB `uicontrol` panels.
 - **Examples and the book-ii tutorials** - `examples/` (12) and
   `examples/book-ii/` (13). Not library code. Port *individually* when one makes
-  a good validation case (as several already have).
+  a good validation case (as several already have). **Ported so far:**
+  `adBuckleyLeverett1D` -> `ad_core/examples/ad_buckley_leverett_1d.py` (Phase
+  363): the incompressible 1D waterflood, flux BC in / pressure BC out, 1 PVI in
+  25 steps; `validate_phase363.py` matches MRST's full 50-cell saturation profile
+  to 3e-7 (solver tolerance), inlet/outlet/breakthrough included. The script's
+  plotToolbar / general-solver-hook / `ResultHandler` tails are presentation and
+  IO layers, dropped. Still blocked, each on a listed gap: `MPFAvsTPFAwithADExample`
+  (MPFA), `wenoExampleAD` (WENO, deferred in AC21), `linearSolverExample`
+  (AGMG/external solvers), `blockAssemblyBigModelExample` + the book-ii backend
+  benchmarks (MEX/block assembly), `demoPackedProblems` /
+  `ensemblePackedProblemsExample` (packed-problem infra), `fluidInspectionExample`
+  / `mrst_demo` (GUI), `compositeModelTutorial` (SPE10 data + composite models).
 - **MATLAB session plumbing in `utils/`** - `obj2hash`, `numelData`,
   `getGridSYMRCMOrdering`, `readSummaryLocal`, and the like: helpers for
   MATLAB's runtime with no Python analogue.

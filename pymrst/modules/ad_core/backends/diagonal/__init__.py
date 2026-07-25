@@ -25,6 +25,11 @@ from pymrst.modules.ad_core.backends.diagonal.operators import (
     sparse_from_diagonal_ad,
     two_point_gradient,
 )
+from pymrst.modules.ad_core.backends.diagonal.utils import (
+    diag_mult,
+    get_sparse_arguments,
+    matrix_dims,
+)
 
 __all__ = [
     "DiagonalAutoDiffBackend",
@@ -32,12 +37,15 @@ __all__ = [
     "GenericAD",
     "RowMajorDiagonalJacobian",
     "combine_diagonal_equations",
+    "diag_mult",
     "diagonal_ad_matmul",
     "diagonal_hstack",
     "diagonal_sum",
     "discrete_divergence",
     "face_average",
+    "get_sparse_arguments",
     "init_variables_diagonal",
+    "matrix_dims",
     "setup_diagonal_operator_closures",
     "single_point_upwind",
     "sparse_from_diagonal_ad",

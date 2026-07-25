@@ -58,6 +58,14 @@ class EquilibriumRegion:
     contacts_pc: Optional[np.ndarray] = None
     s_min: Optional[np.ndarray] = None
     s_max: Optional[np.ndarray] = None
+    # Dissolved-gas / vaporised-oil specification for the density integration
+    # (MRST's `region.rs` / `region.rv`). A scalar constant, a callable of
+    # pressure, or None. None means "saturated" - the oil rides at `rsSat(p)`
+    # and the gas at `rvSat(p)`, which is the default when no RSVD table pins
+    # the composition against depth. MRST *requires* rs for a disgas model;
+    # PyMRST supplies the saturated default rather than erroring.
+    rs: Optional[Callable] = None
+    rv: Optional[Callable] = None
 
 
 def _reference_index(model) -> int:
@@ -66,15 +74,74 @@ def _reference_index(model) -> int:
     return names.index("oil") if "oil" in names else 0
 
 
-def _phase_densities(model) -> List[Callable[[np.ndarray], np.ndarray]]:
-    """rho_i(p) = b_i(p) * rhoS_i - pressure-dependent, hence the ODE."""
-    rho_s = model.fluid.rho_s
+def _as_composition(spec, p, sat_fn) -> Optional[np.ndarray]:
+    """The dissolved-gas (or vaporised-oil) amount at pressure `p`.
+
+    `None` -> the saturated value `rsSat(p)`; a callable -> `spec(p)`; a scalar
+    -> that constant. MRST requires this to be given for a live fluid and caps
+    it at saturation; the None default supplies the saturated value.
+    """
+    if sat_fn is None:
+        return None
+    sat = np.asarray(value(sat_fn(p)), dtype=float)
+    if spec is None:
+        return sat
+    given = (np.asarray(value(spec(p)), dtype=float)
+             if callable(spec) else np.full(p.shape, float(spec)))
+    return given
+
+
+def _phase_densities(model, region: "EquilibriumRegion | None" = None
+                     ) -> List[Callable[[np.ndarray], np.ndarray]]:
+    r"""`rho_i(p)` for the hydrostatic ODE (MRST's `getOilDensity`/`getGasDensity`).
+
+    For a live-oil fluid the oil column carries its dissolved gas, so its
+    density is `rho_o = b_o(p, rs) (rhoS_o + rs rhoS_g)`, and `rs` is a *given*
+    composition (a constant, or an RSVD function of depth) **capped at
+    saturation**: `rs = min(rs_given, rsSat(p))`, with the oil counted saturated
+    exactly where `rs_given >= rsSat(p)`. Absent an `rs` (no RSVD table) the oil
+    rides fully saturated, `rs = rsSat(p)`. Gas with vaporised oil is the mirror.
+
+    This is MRST's `getInitializationRegionsBlackOil` density, formula for
+    formula - including that passing `rs = None` for a live fluid would send
+    `b_o` into its undersaturated branch and return NaN, which is why the
+    saturated default exists. A dead-oil / analytic fluid ignores `rs` and this
+    reduces to `b_i(p) rhoS_i`, leaving the black-oil-free path unchanged.
+    """
+    rho_s = np.asarray(model.fluid.rho_s, dtype=float)
     nph = model.n_phases
+    disgas = bool(getattr(model.fluid, "disgas", False))
+    vapoil = bool(getattr(model.fluid, "vapoil", False))
+    rs_sat = getattr(model.fluid, "rs_sat", None) if disgas else None
+    rv_sat = getattr(model.fluid, "rv_sat", None) if vapoil else None
+    rs_spec = getattr(region, "rs", None) if region is not None else None
+    rv_spec = getattr(region, "rv", None) if region is not None else None
+    oil_ix, gas_ix = 1, 2                    # black-oil phase order W, O, G
 
     def make(i):
         def rho(p):
-            b = model.fluid.b(np.atleast_1d(np.asarray(p, dtype=float)))
-            return np.asarray(value(b[i]), dtype=float) * rho_s[i]
+            p = np.atleast_1d(np.asarray(p, dtype=float))
+            rs_given = _as_composition(rs_spec, p, rs_sat)
+            rv_given = _as_composition(rv_spec, p, rv_sat)
+            if i == oil_ix and rs_given is not None:
+                rs_max = np.asarray(value(rs_sat(p)), float)
+                rs_used = np.minimum(rs_given, rs_max)
+                flag = rs_given >= rs_max
+                b = model.fluid.b(p, rs_used, flag, None, None)
+                bi = np.asarray(value(b[oil_ix]), float)
+                return bi * (rho_s[oil_ix] + rs_used * rho_s[gas_ix])
+            if i == gas_ix and rv_given is not None:
+                rv_max = np.asarray(value(rv_sat(p)), float)
+                rv_used = np.minimum(rv_given, rv_max)
+                flag = rv_given >= rv_max
+                b = model.fluid.b(p, None, None, rv_used, flag)
+                bi = np.asarray(value(b[gas_ix]), float)
+                return bi * (rho_s[gas_ix] + rv_used * rho_s[oil_ix])
+            # water, or a phase with no dissolution
+            sat = np.ones(p.shape, bool) if disgas else None
+            sat_g = np.ones(p.shape, bool) if vapoil else None
+            b = model.fluid.b(p, rs_given, sat, rv_given, sat_g)
+            return np.asarray(value(b[i]), float) * rho_s[i]
         return rho
 
     return [make(i) for i in range(nph)]
@@ -132,7 +199,7 @@ def initialize_equilibrium_pressures(model, region: EquilibriumRegion,
     z_min = min(z.min(), contacts.min(), region.datum_depth)
     z_max = max(z.max(), contacts.max(), region.datum_depth)
 
-    rho = _phase_densities(model)
+    rho = _phase_densities(model, region)
     ref = _reference_index(model)
     pc_sign = (np.ones(nph) if region.pc_sign is None
                else np.asarray(region.pc_sign, dtype=float))
@@ -176,17 +243,62 @@ def _invert_capillary(dp: np.ndarray, pc_fn: Callable, sign: float,
     return f(dp)
 
 
+def _connate_saturations(model, region: EquilibriumRegion) -> np.ndarray:
+    """Per-phase minimum saturations for the equilibrium fill.
+
+    MRST reads these from the relative-permeability endpoints
+    (`getMinimumPhaseSaturations`): the connate water a gas cap holds, and any
+    residual the other phases carry. Without them the gas cap comes out with
+    zero water where a real reservoir holds `swcon`. The region may override;
+    otherwise water takes the fluid's connate `swcon` and the rest take zero.
+    """
+    if region.s_min is not None:
+        return np.asarray(region.s_min, dtype=float)
+    nph = model.n_phases
+    s_min = np.zeros(nph)
+    swcon = getattr(model.fluid, "swcon", None)
+    if swcon is None:
+        swcon = getattr(getattr(model, "raw_fluid", None), "swcon", 0.0)
+    s_min[0] = float(swcon)                   # water is phase 0
+    return s_min
+
+
+def _sharp_or_pc(dp, pc_fn, sign, s_lo, s_hi):
+    """One phase's saturation from its pressure excess `dp` (MRST
+    `solveSaturations`): the capillary-curve inverse, or a sharp contact when
+    there is no capillary pressure - present at `s_hi` where `dp > 0`, at the
+    connate `s_lo` where not."""
+    if pc_fn is None:
+        return np.where(dp > 0, s_hi, s_lo)
+    si = _invert_capillary(dp, pc_fn, sign)
+    si = np.where(np.isnan(si), s_hi, si)
+    return np.clip(si, s_lo, s_hi)
+
+
 def initialize_equilibrium_saturations(model, region: EquilibriumRegion,
                                        pressures: np.ndarray) -> np.ndarray:
-    """Saturations from the phase pressures, by inverting capillarity."""
+    """Saturations from the phase pressures, by inverting capillarity.
+
+    Ports MRST's `initializeEquilibriumSaturations`, including the two-step
+    resolution it does for cells the reference phase cannot fill: each
+    non-reference phase is placed against the reference first, and where that
+    leaves the reference phase *negative* - a cell with no room for oil - the
+    remaining two phases are re-solved directly against **each other** (water
+    versus gas), which is what turns a would-be 50/50 mush into a clean
+    gas-over-water contact.
+    """
     nph = model.n_phases
     ref = _reference_index(model)
     n = pressures.shape[0]
 
-    s_min = (np.zeros(nph) if region.s_min is None
-             else np.asarray(region.s_min, dtype=float))
-    s_max = (np.ones(nph) if region.s_max is None
-             else np.asarray(region.s_max, dtype=float))
+    s_min = _connate_saturations(model, region)
+    # A phase can fill a cell only up to what the *other* phases' connate leaves
+    # for it (MRST's `getMaximumPhaseSaturations`): a gas cap tops out at
+    # `1 - swcon`, so the connate water it holds is not overwritten.
+    if region.s_max is None:
+        s_max = 1.0 - (s_min.sum() - s_min)
+    else:
+        s_max = np.asarray(region.s_max, dtype=float)
     pc_fns = (region.pc_functions if region.pc_functions is not None
               else [None] * nph)
     pc_sign = (np.ones(nph) if region.pc_sign is None
@@ -198,22 +310,32 @@ def initialize_equilibrium_saturations(model, region: EquilibriumRegion,
     for i in range(nph):
         if i == ref:
             continue
-        dp = pressures[:, i] - p_ref
-        if pc_fns[i] is None:
-            # No capillary pressure: the transition zone collapses to a
-            # contact. The phase is present exactly where its own pressure
-            # exceeds the reference phase's - i.e. on its side of the contact.
-            s[:, i] = np.where(dp > 0, s_max[i], s_min[i])
-        else:
-            si = _invert_capillary(dp, pc_fns[i], pc_sign[i])
-            si = np.where(np.isnan(si), s_max[i], si)
-            s[:, i] = np.clip(si, s_min[i], s_max[i])
+        s[:, i] = _sharp_or_pc(pressures[:, i] - p_ref, pc_fns[i], pc_sign[i],
+                               s_min[i], s_max[i])
 
     s[:, ref] = 1.0 - s.sum(axis=1)
-    # A cell can end up over-filled where two contacts nearly coincide; give
-    # it back to the reference phase rather than emit a negative saturation.
+
+    # Cells with no room for the reference phase (three phases claim more than a
+    # unit volume): re-solve the outer two phases against each other. With oil
+    # as the middle reference, that is water (first) versus gas (last).
     bad = s[:, ref] < 0.0
-    if np.any(bad):
+    if np.any(bad) and nph == 3:
+        first, last = 0, nph - 1
+        assert ref not in (first, last), "reference phase must be interior"
+        s[bad, :] = 0.0
+        if pc_fns[first] is None and pc_fns[last] is None:
+            dp = pressures[bad, last] - pressures[bad, first]   # gas vs water
+            s_last = np.where(dp > 0, s_max[last], s_min[last])
+        else:
+            def pc_wg(S):
+                pw = 0.0 if pc_fns[first] is None else pc_sign[first] * pc_fns[first](S)
+                pg = 0.0 if pc_fns[last] is None else pc_sign[last] * pc_fns[last](S)
+                return pw - pg
+            s_last = _sharp_or_pc(pressures[bad, last] - pressures[bad, first],
+                                  pc_wg, 1.0, s_min[last], s_max[last])
+        s[bad, last] = s_last
+        s[bad, first] = 1.0 - s_last
+    elif np.any(bad):
         s[bad] = np.maximum(s[bad], 0.0)
         s[bad] /= s[bad].sum(axis=1, keepdims=True)
     return s
@@ -277,11 +399,33 @@ def init_state_equil(model, region: EquilibriumRegion,
         st["sO"] = s[:, 1].copy()
         st["sG"] = s[:, 2].copy()
     if model.fluid.disgas:
-        # Saturated where there is free gas, undersaturated where there is not.
-        rs_sat = np.asarray(value(model.raw_fluid.rs_sat(st["pressure"])),
-                            dtype=float)
-        st["rs"] = rs_sat.copy()
+        # MRST's `initStateBlackOilAD`: take the region's dissolved-gas
+        # composition, cap it at saturation, and force it to saturation wherever
+        # there is free gas. Absent a region `rs`, the composition *is* the
+        # saturated value, so this reduces to "saturated everywhere" - which was
+        # the old behaviour, and is wrong the moment an undersaturated oil leg
+        # is specified.
+        #
+        # `rsSat` is evaluated at the **oil-phase** pressure, not the pressure
+        # the state carries. They differ below the water-oil contact, where the
+        # state carries water pressure but the oil composition still answers to
+        # the oil pressure it would have there.
+        p_oil = p[:, ref]
+        rs_max = np.asarray(value(model.raw_fluid.rs_sat(p_oil)), dtype=float)
+        rs_given = _as_composition(region.rs, np.atleast_1d(p_oil),
+                                   model.raw_fluid.rs_sat)
+        rs = np.minimum(rs_given, rs_max)
+        rs[s[:, 2] > 0] = rs_max[s[:, 2] > 0]
+        st["rs"] = rs
         st["status"] = np.where(s[:, 2] > 0, 3, 1).astype(np.int64)
+    if model.fluid.vapoil:
+        p_gas = p[:, 2]                       # rvSat answers to the gas pressure
+        rv_max = np.asarray(value(model.raw_fluid.rv_sat(p_gas)), dtype=float)
+        rv_given = _as_composition(region.rv, np.atleast_1d(p_gas),
+                                   model.raw_fluid.rv_sat)
+        rv = np.minimum(rv_given, rv_max)
+        rv[s[:, 1] > 0] = rv_max[s[:, 1] > 0]
+        st["rv"] = rv
     return st
 
 

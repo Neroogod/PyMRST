@@ -1,6 +1,7 @@
 """Backward-compatible import path for VEM mechanics calibration utilities."""
 
 from pymrst.modules.vemmech.ad_version.calibration.calibrate_model import (
+    _objective_match_value_from_stress,
     BoundaryInfo,
     CalibrationOptions,
     ElasticCalibrationBC,
@@ -22,7 +23,11 @@ from pymrst.modules.vemmech.ad_version.calibration.calibrate_model import (
     theta_diff,
 )
 
+# `_objective_match_value_from_stress` is private by convention, and is
+# re-exported for the same reason as above: this module preserves the old
+# import path, and that path included it.
 __all__ = [
+    "_objective_match_value_from_stress",
     "BoundaryInfo",
     "CalibrationOptions",
     "ElasticCalibrationBC",

@@ -7,6 +7,10 @@ import numpy as np
 from pymrst.gridprocessing.grid import Grid
 from pymrst.modules.ad_blackoil.utils.equations_water import equations_water
 from pymrst.modules.ad_core.models.facilities.facility_model import FacilityModel
+from pymrst.modules.ad_core.utils.convergence import (
+    cnv_mb_convergence,
+    well_control_residual,
+)
 from pymrst.modules.ad_core.models.reservoir_model import ReservoirModel
 from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
 from pymrst.modules.ad_core.statefunctions.pvt_property_functions import (
@@ -120,22 +124,9 @@ class WaterModel(ReservoirModel):
     def get_convergence(self, eqs, dt: float) -> Tuple[bool, Dict[str, float]]:
         cell_eq, well_eq, ctrl = (value(eqs[0]), value(eqs[1]), value(eqs[2]))
         b_avg, pv = self._convergence_scaling()
-        scale = self._basis_scale()[0]
-        cell_eq = cell_eq / scale
-        cnv = b_avg * np.abs(cell_eq / pv).max() * dt
-        mb = b_avg * abs(cell_eq.sum()) * dt / pv.sum()
-
-        if self.facility.n_wells == 0:
-            well = ctrl_res = 0.0
-        else:
-            rates = [abs(w.val) for w in self.wells if w.type != "bhp"]
-            q_ref = max(rates) if rates else 1.0
-            well = float(np.abs(well_eq).max() / q_ref)
-            ctrl_scale = np.array([
-                1e5 if w.type == "bhp" else max(abs(w.val), 1e-12)
-                for w in self.wells
-            ])
-            ctrl_res = float(np.max(np.abs(ctrl) / ctrl_scale))
+        cell_eq = cell_eq / self._basis_scale()[0]
+        cnv, mb = cnv_mb_convergence([cell_eq], np.array([b_avg]), pv, dt)
+        well, ctrl_res = well_control_residual([well_eq], ctrl, self.wells)
 
         converged = (
             cnv <= self.tol_cnv

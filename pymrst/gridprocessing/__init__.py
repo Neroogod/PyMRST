@@ -33,6 +33,12 @@ from pymrst.gridprocessing.cart_grid import cart_grid
 from pymrst.gridprocessing.tensor_grid import tensor_grid
 from pymrst.gridprocessing.tetrahedral_grid import tetrahedral_grid
 from pymrst.gridprocessing.triangle_grid import triangle_grid
+from pymrst.gridprocessing.process_nnc import process_nnc
+from pymrst.gridprocessing.make_internal_boundary import make_internal_boundary
+from pymrst.gridprocessing.remove_internal_boundary import remove_internal_boundary
+from pymrst.gridprocessing.split_disconnected_grid import split_disconnected_grid
+from pymrst.gridprocessing.hexahedral_grid import hexahedral_grid
+from pymrst.gridprocessing.tessellation_grid import tessellation_grid
 
 __all__ = [
     "Grid", "Cells", "Faces", "Nodes",
@@ -41,6 +47,8 @@ __all__ = [
     "add_faces", "remove_faces", "remove_cells", "empty_grid",
     "extract_subgrid",
     "process_grdecl", "build_corner_pt_nodes", "cut_grdecl",
+    "process_nnc", "make_internal_boundary", "remove_internal_boundary",
+    "split_disconnected_grid", "hexahedral_grid", "tessellation_grid",
     "load_mrst_grid_mat", "mrst_grid_struct_to_grid",
     "WEST", "EAST", "SOUTH", "NORTH", "TOP", "BOTTOM",
 ]

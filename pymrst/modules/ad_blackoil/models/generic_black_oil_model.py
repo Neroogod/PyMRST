@@ -24,6 +24,11 @@ import numpy as np
 
 from pymrst.gridprocessing.grid import Grid
 from pymrst.modules.ad_core.utils.boundary_conditions import add_bc_and_sources
+from pymrst.modules.ad_core.utils.convergence import (
+    cnv_mb_convergence,
+    max_extra_residual,
+    well_control_residual,
+)
 from pymrst.modules.ad_core.models.facilities.facility_model import FacilityModel
 from pymrst.modules.ad_core.models.facilities.multisegment import (
     assemble_multisegment_equations,
@@ -491,7 +496,12 @@ class GenericBlackOilModel(GenericReservoirModel):
         return b_avg, pv
 
     def get_convergence(self, eqs, dt: float) -> Tuple[bool, Dict[str, float]]:
-        """MRST's CNV / material-balance / well residual criteria."""
+        """MRST's CNV / material-balance / well residual criteria.
+
+        The numeric kernels live in `ad_core.utils.convergence`; this method is
+        only the orchestration - which residuals are which, and the one basis
+        unscaling that is specific to how *this* model assembled its equations.
+        """
         nph = self.n_phases
         res = [value(e) for e in eqs]
         cell_eqs, well_eqs, ctrl = res[:nph], res[nph:2 * nph], res[2 * nph]
@@ -506,30 +516,9 @@ class GenericBlackOilModel(GenericReservoirModel):
         scale = self._basis_scale()
         cell_eqs = [cell_eqs[i] / scale[i] for i in range(len(cell_eqs))]
 
-        cnv = max(b_avg[i] * np.abs(cell_eqs[i] / pv).max()
-                  for i in range(len(cell_eqs))) * dt
-        mb = max(b_avg[i] * abs(cell_eqs[i].sum())
-                 for i in range(len(cell_eqs))) * dt / pv.sum()
-
-        # A model driven only by its boundary or by sources has no wells at
-        # all, and every well residual below is then an empty array.
-        if self.facility.n_wells == 0:
-            well = ctrl_res = 0.0
-        else:
-            rates = [abs(w.val) for w in self.wells if w.type != "bhp"]
-            q_ref = max(rates) if rates else 1.0
-            well = max(np.abs(r).max() for r in well_eqs) / q_ref
-            ctrl_scale = np.array(
-                [1e5 if w.type == "bhp" else max(abs(w.val), 1e-12)
-                 for w in self.wells])
-            ctrl_res = float(np.max(np.abs(ctrl) / ctrl_scale))
-
-        extra_res = 0.0
-        if extra_eqs:
-            extra_res = max(
-                np.abs(np.asarray(e, dtype=float)).max()
-                for e in extra_eqs if np.asarray(e).size
-            )
+        cnv, mb = cnv_mb_convergence(cell_eqs, b_avg, pv, dt)
+        well, ctrl_res = well_control_residual(well_eqs, ctrl, self.wells)
+        extra_res = max_extra_residual(extra_eqs)
 
         converged = (cnv <= self.tol_cnv and mb <= self.tol_mb
                      and well <= self.tol_well and ctrl_res <= self.tol_well
