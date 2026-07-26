@@ -909,7 +909,7 @@ is Pythonic drift: MRST's graph leans on MATLAB's class system and dynamic
 dispatch, and a faithful port must not turn into a Python framework of its own
 invention, or every later "close port" claim evaporates.
 
-## Phase 25 - Core leftovers: grid editing, rock, solvers, utils `M` — **IN PROGRESS**
+## Phase 25 - Core leftovers: grid editing, rock, solvers, utils `M` — **DONE**
 
 **Landed so far** (each MATLAB-validated to machine precision, same contract as
 Phase 23):
@@ -974,12 +974,152 @@ Phase 23):
   smaller-node-first + unique-rows trick. Accepts a list of polygons or a
   uniform `(nc, k)` array. `validate_phase371.py` matches MRST on a 2x2 quad
   tessellation: identical cell/face/node counts and neighbour-pair multiset.
+- `gridprocessing/triangulateFaces` ->
+  `pymrst/gridprocessing/triangulate_faces.py` (Phase 372): splits each
+  polygonal face into simplices through a face-centroid node (3D: `j`-gon -> `j`
+  triangles; 2D: edge -> two sub-edges), each inheriting the parent's neighbours -
+  what a VEM/MPFA/triangle-render path runs first. `validate_phase372.py` matches
+  MRST on a 2x2x1 grid: face/node counts, neighbour-pair multiset, and the added
+  centroid-node coordinates to 0.0.
+- `gridprocessing/findMatchingFaces` ->
+  `pymrst/gridprocessing/find_matching_faces.py` (Phase 373): groups faces by
+  their (sorted) node set and returns the coincident pairs - the step that finds
+  a fault's matching faces or an internal boundary's two sides (asserts at most
+  two share a set, as MRST does; pads the node-set key with -1 since 0 is a valid
+  0-based node). `validate_phase373.py` matches MRST after a 3x3x2 cut: 17 pairs,
+  matched-pair midpoints to 0.0.
+- `gridprocessing/refineGrdecl` + `grdeclXYZ` ->
+  `pymrst/gridprocessing/refine_grdecl.py` (Phase 374): subdivides a corner-point
+  (COORD/ZCORN) deck by integer factors `(nx, ny, nz)`, interpolating the pillar
+  geometry linearly and inheriting cell properties (PERMX/PORO/ACTNUM/...) from
+  parent to child - the standard grid-resolution study on a real corner-point
+  model. `grdecl_xyz` is the small COORD/ZCORN unpacker it needs.
+  `validate_phase374.py` matches MRST on a wavy 3x2x2 deck refined [2 2 2]:
+  cartDims, COORD, ZCORN and inherited PERMX all to 0.0. FAULTS refinement is
+  deferred (needs the deck fault-record structure).
+- `gridprocessing/get2DGridFromFaces` ->
+  `pymrst/gridprocessing/get_2d_grid_from_faces.py` (Phase 375): turns a set of
+  3D-grid faces into a 2D grid (each face -> a 2D cell, its edges -> 2D faces) -
+  the surface/cross-section extractor `sliceGrid` builds on, and a fault-surface
+  mesher on its own. `validate_phase375.py` matches MRST on the top faces of a
+  3x3x2 grid: cell/face counts and neighbour-pair multiset. **MRST bug found:**
+  MRST sets the 2D grid's `nodes.num` to the *edge* count, inconsistent with its
+  own coords array; the port sets it to the true node count (16, matching MRST's
+  actual 16 coord rows, not its buggy `nodes.num` of 24).
+- `solvers/initWellSol` -> `pymrst/solvers/init_well_sol.py` (Phase 376): the
+  blank per-well solution (zero perforation fluxes, starting pressure `p0`) the
+  first solve writes into; the well-side companion to `initResSol`. Self-tested
+  (trivial).
+- `solvers/accumulateCartesianMultipliers` ->
+  `pymrst/solvers/accumulate_cartesian_multipliers.py` (Phase 376): turns
+  per-cell directional `MULT[X/Y/Z]` keywords into a per-face multiplier by
+  matching each half-face's direction (from `cells.tags`, the 0-based form of
+  MRST's `cells.faces(:,2)`) and taking the product on both sides. How
+  directional deck multipliers reach the transmissibility. `validate_phase376.py`
+  matches MRST on a 3x2x2 grid to 0.0.
 
-**Still to do:** `sliceGrid`, `refineGrdecl`, `removePinch`/`processPINCH`,
-`repairNormals`, `removeShortEdges`, `findMatchingFaces`, `triangulateFaces`,
-`cellNodes`, `glue2DGrid`, `get2DGridFromFaces`;
-`params/permeabilityConverter`; `solvers/accumulateCartesianMultipliers`,
-standalone `initWellSol`.
+- `gridprocessing/glue2DGrid` -> `pymrst/gridprocessing/glue_2d_grid.py`
+  (Phase 377): the full 478-line stitcher - joins two 2D grids along a shared
+  boundary by concatenating, tracing each boundary as an oriented loop, merging
+  coinciding nodes within a tolerance, welding the boundary faces between the two
+  grids, and *splitting* a coarse boundary edge where the other grid has an extra
+  node (conformal insertion). `validate_phase377.py` matches MRST on both a
+  node-matching case (two squares -> 2 cells, 7 faces, 6 nodes) and a
+  non-conforming case that exercises the edge splitting (coarse square + two
+  stacked squares -> 3 cells, 10 faces, 8 nodes) - cell/face/node counts and the
+  neighbour-pair multiset all identical. One of the two big geometry pieces done.
+
+- `gridprocessing/repairNormals` -> `pymrst/gridprocessing/repair_normals.py`
+  (Phase 378): recomputes consistent 2D geometry - cell areas ("volumes"), face
+  lengths ("areas") and outward-consistent normals - from node coordinates, for
+  the 2D grids `tessellationGrid`/`glue2DGrid` produce with topology only.
+  `validate_phase378.py` matches MRST on an irregular 2-cell grid: cell areas and
+  sorted face lengths to 0.0.
+
+- `gridprocessing/removeShortEdges` ->
+  `pymrst/gridprocessing/remove_short_edges.py` (Phase 379): collapses edges
+  shorter than a tolerance (slivers from corner-point processing / gluing),
+  merging their endpoints and cleaning up the collapsed faces and cells -
+  composing `findMatchingFaces` + `removeInternalBoundary` + `removeCells`/
+  `removeFaces` built alongside it (scipy `connected_components` for MRST's
+  `dmperm`). `validate_phase379.py` matches MRST on a pentagon-with-sliver ->
+  quad: counts and merged coordinates to 0.0.
+- `gridprocessing/cellNodes` -> `pymrst/gridprocessing/cell_nodes.py`
+  (Phase 380): each cell's corner nodes in canonical local-vertex order
+  (WSD..ENU), found by summing a power-of-two per incident face direction into a
+  binary corner key - using the half-face direction tags from `cells.tags` (0-5,
+  the 0-based form of MRST's `cells.faces(:,2)`). `validate_phase380.py` matches
+  MRST's full [cell, local-vertex, node] table on a 2x2x1 grid exactly.
+
+- `gridprocessing/removePinch` -> `pymrst/gridprocessing/remove_pinch.py`
+  (Phase 381): removes pinched-out layers - merges coincident nodes, drops
+  collapsed faces/cells, and reconnects the faces that became coincident across
+  the pinch (its `uniqueFaces` = `findMatchingFaces` + `removeInternalBoundary`).
+  MRST's canonical face-node reordering is skipped: it exists only to let its
+  `uniqueFaces` match by node *sequence*, whereas `findMatchingFaces` matches by
+  node *set* (order-independent), so the reconnected topology is identical.
+  `validate_phase381.py` matches MRST on two duplicated squares -> reconnected
+  2-cell grid: counts and neighbour-pair multiset.
+
+- `utils/gridtools/computeGridSlicePolygons` (core) ->
+  `pymrst/gridprocessing/compute_grid_slice_polygons.py` (Phase 382): the
+  geometric heart of `sliceGrid` - the per-cell cross-section polygons where a
+  plane cuts a 3D grid. Defines the plane (point+normal or segment+cutDir), finds
+  each face-edge crossing, groups the points by cell, and orders each cell's ring
+  by angle in the 2D cut-plane frame. `validate_phase382.py` matches MRST on a
+  vertical x=1.5 cut of a 3x3x2 grid: same cut cells and vertex counts, all
+  intersection coordinates to 0.0. **Scoped:** the 585-line MATLAB routine's
+  extras - bounding-box face pre-selection (speed only), node snapping,
+  ellipsoid/radius clamping, finite-segment `clampSides`, and multi-segment
+  polylines - are deferred (the validation uses an over-spanning segment so
+  clamping is a no-op); they refine/accelerate the same core result.
+
+- `gridprocessing/sliceGrid` (cell-splitting) ->
+  `pymrst/gridprocessing/slice_grid.py` (Phase 383): cuts a 3D grid along a
+  plane, splitting each crossed cell in two, each crossed face in two, and
+  inserting the cross-section polygon as the internal cut face between the
+  halves. Implemented with a robust global edge-crossing (marching)
+  formulation - crossing nodes per straddling edge, polygon-clip of each cut
+  face, and a Newell-oriented cut face so `compute_geometry` signs the halves
+  correctly. `validate_phase383.py` matches MRST's `sliceGrid` on a 3x2x2 grid
+  cut at x=1.5: cell count (16), total volume (12) and the sorted per-cell
+  volumes to 0.0.
+- **Node-snapping refinement (Phase 384):** the marching formulation handles a
+  plane that passes exactly through grid nodes - on-plane nodes (`side == 0`) are
+  shared cut-polygon vertices, no crossing node is made on their edges, and a face
+  wholly on the plane is kept as-is. `validate_phase384.py` matches MRST on the
+  diagonal x=y cut of a 2x2x1 grid (through the corner nodes): 6 cells, sorted
+  volumes to 1e-16.
+- **Partial-cut refinement (Phase 385):** a finite cutting segment now bounds the
+  cut - each would-be-cut cell is checked against the segment's `[0, L]` window
+  along its direction, and cells the segment only partially reaches are left whole
+  (MRST's `removePartialCuts`, which `sliceGrid` always sets). A crossing face
+  whose neither neighbour is fully cut is kept whole. `validate_phase385.py`
+  matches MRST on a segment stopping at x=2.5 across a 3x1x1 grid: cells 0,1 cut,
+  cell 2 whole (5 cells), sorted volumes to 0.0.
+- **`sliceGrid` is now complete for all cut types** - clean interior, node-snapped,
+  and partial - each MATLAB-validated to machine precision. Remaining out of scope:
+  the ellipsoid/radius clamping and bbox speed options of `computeGridSlicePolygons`
+  (refinements/optimisations of the same result), and a plane coinciding with a
+  *cut* cell's whole face (the zero-volume degenerate MRST also warns about),
+  which is refused cleanly.
+
+- `params/rock/permeabilityConverter` ->
+  `pymrst/params/rock/permeability_converter.py` (Phase 386): rotates a
+  cell-local diagonal permeability (`PERMX/Y/Z` measured along a cell's own tilted
+  geometry) into the full symmetric global tensor `sum_i k_i (e_i ⊗ e_i)`, the
+  local axes `e_i` recovered from the corner geometry (`cell` /
+  `bedding_plane` / `bedding_plane_normal` frames). `validate_phase386.py` matches
+  MRST on a tilted corner-point deck: all six tensor components to machine
+  precision (~1e-15). **MRST bug found & refused:** the off-diagonal *input*
+  branch (`PERMXY/YZ/ZX` supplied) has its component-index `switch` inside a loop
+  but the tensor update outside it, so only the last field's indices are used and
+  with the wrong magnitude; the port refuses that input rather than reproduce it.
+
+**Phase 25 is complete.** All grid-editing / rock / solver leftovers are ported
+and MATLAB-validated (Phases 364-386), including the full `sliceGrid` (clean,
+node-snapped and partial cuts). The MPFA and fracture tiers are fully unblocked
+on the grid side.
 
 **What.** The small named gaps, which are individually trivial and collectively
 load-bearing:
@@ -1262,6 +1402,17 @@ solutions and a mass-conservation invariant.
 
 **Size / risk.** `M`. Low.
 
+**Progress.** Phases 396-397 establish the `fv-unsat` prerequisite in MRST's
+`data/`, `models/`, and `utility/` layout. The hydraulic-property catalog and
+both van Genuchten-Mualem parameterizations are ported with analytic moisture
+capacities. `modelRE` and `solverRE` provide a fully implicit backward-Euler
+Richards step over the Phase-30 MPFA operators, including arithmetic face
+relative permeability, gravity-head support, sources, and MRST-compatible
+`Q`/`psiEq` entry points. The nontrivial infiltration test closes every cell
+to `9.0e-16` and the global balance to `1.4e-15`. Upstream weighting and the
+coupled unsaturated-Biot model remain; the flow foundation needed by
+  `re-mpfa` is now runnable.
+
 ---
 
 # Tier 3 - Discretizations
@@ -1275,6 +1426,94 @@ inconsistency the meshing work exposes.
 
 **What.** `computeMultiPointTrans`, `incompMPFA`, and the O-method local
 assembly (18 files). Then `nfvm` (nonlinear FV, 24 files) and `re-mpfa` (7).
+
+**Progress.** The first MPFA vertical slice is implemented as
+`pymrst/modules/mpfa` (Phase 387): the legacy local-flux-mimetic MPFA-O
+transmissibility operators and a single-phase Dirichlet pressure solve, with
+snake-case and MRST-compatible public names. `validate_phase387.py` applies the
+discriminating linear patch test on a smoothly twisted grid with a full
+permeability tensor: MPFA is exact to roundoff while TPFA has a visible error.
+Phase 388 extends the solve with harmonic total-mobility weighting, mixed
+pressure/flux boundary conditions (unspecified faces are no-flow), cell
+sources, conservative face/subface flux reconstruction, pure-Neumann
+null-space handling, and single-phase gravity. Its tests pin local mass
+conservation, prescribed boundary rate, mobility scaling, and the hydrostatic
+patch. Wells, tensor assembly for general 3-D corners, `nfvm`, and `re-mpfa`
+remain.
+
+Phase 389 adds rate/BHP wells and restores the MRST module shape around the
+kernel: public `computeMultiPointTrans` / `incompMPFA`, the
+`private/incompMPFAlegacy` state/fluid path, and the corresponding `utils`
+block/local-flux helpers. The rate-injector/BHP-producer test closes to
+`2.6e-14`, pins BHP exactly, and verifies public/private entry-point parity.
+The remaining MPFA item is tensor assembly for general 3-D corners; `nfvm` and
+`re-mpfa` remain separate follow-on modules.
+
+Phase 390 completes that MPFA item with the stabilized general-corner tensor
+assembly and the MRST `private/computeMultiPointTransTensorAssembly` /
+`private/incompMPFATensorAssembly` dispatch. A square bipyramid provides the
+discriminating topology: its four-face apex is rejected by the legacy path,
+while tensor assembly reproduces a full-permeability-tensor linear patch to
+`1.8e-15` and conserves each cell to `1.3e-27`. On ordinary nice corners the
+legacy and tensor paths agree to `3.6e-15`.
+
+**The primary MPFA capability slice is complete.** MRST's blockwise large-model
+assembly is still an optimization gap (the numerical result is the same), and
+its alternate `nicecorner` / `directinverse` shortcuts are not separate code
+paths. The separately named `nfvm` and `re-mpfa` follow-on modules remain.
+
+Phase 391 starts the `nfvm` follow-on in the matching
+`nfvm/solvers/utils` layout: `findHAP`, two-dimensional `findOSflux`,
+`TransNTPFA`, `computeFlux`, and the `NTPFA` gradient object. On Cartesian
+grids the harmonic averaging points equal face centroids exactly in 2-D and
+3-D. On a smoothly twisted 2-D grid with a full permeability tensor, the
+complete nonlinear one-sided flux chain reproduces the linear Darcy flux on
+unaffected interior stencils to `3.6e-14`. Remaining NFVM work: automatic HAP
+correction, 3-D one-sided stencil decomposition, `AvgMPFA`, `Hybrid`, and the
+AD-model setup functions.
+
+Phase 392 adds `correctHAP` and the three-dimensional `findABC` decomposition.
+The explicit correction obeys MRST's face-radius constraint exactly without
+changing interpolation weights; on a distorted 3-D grid with a full tensor,
+NTPFA reproduces the interior linear Darcy flux to `2.5e-14`.
+
+Phase 393 adds `AvgMPFA` and `AvgTransNTPFA` in their MRST locations. The fixed
+arithmetic blend preserves the twisted-grid full-tensor linear patch to
+`3.1e-14`, with exact class/utility parity. `Hybrid` and AD-model setup remain.
+
+Phase 394 adds `Hybrid`, `setup_gdz`, and the MRST model installers
+`setNTPFADiscretization`, `setAvgMPFADiscretization`, and
+`setHybridDiscretization`. Face-block replacement and nonlinear gravity
+differences match their direct constructions exactly. AvgMPFA propagates AD
+Jacobians through its sparse maps; NTPFA propagates them in MRST's lagged mode
+(nonlinear weights frozen at the current pressure). Fully implicit
+pressure-dependent NTPFA weights remain the one functional NFVM gap.
+
+Phase 395 closes that gap. `TransNTPFA` now assembles both correction terms as
+sparse pressure maps, so the convex quotient is an AD expression and carries
+the full derivative of the pressure-dependent weights. Threshold decisions use
+current numeric values (the same semismooth branch convention as MRST). On a
+distorted anisotropic grid, the AD Jacobian matches central finite differences
+with `4.7e-09` maximum and `9.2e-10` relative error. Implicit and lagged
+residual values agree to `2.8e-14`, while their Jacobians differ materially,
+proving the nonlinear derivative is active.
+
+Phases 396-397 then supply the `fv-unsat` dependency for the final `re-mpfa`
+follow-on: van Genuchten-Mualem laws plus a conservative, fully implicit
+Richards/MPFA model and time-step solver.
+
+Phase 398 ports the complete numerical contents of `re-mpfa/functions`
+directly—`arithmeticMPFA_hydHead`, `upstreamMPFA_hydHead`, `newtonSolver`, and
+`timeStepping`—under the matching module layout. This is an implementation,
+not a delegating wrapper. A hydraulic-head operator adapter exposes the
+already-ported MPFA matrices as the `F`, `boundF`, and `div` operators used by
+the original algorithms. Both upstream directions are pinned exactly, all
+adaptive-step branches are exercised, and the ported Newton-AD infiltration
+step converges in six iterations to a `5.1e-14` residual.
+
+**The functional NFVM discretization slice is complete.** Plot helpers, cached
+stencil serialization, and MEX hull acceleration are non-functional
+optimizations/workflow conveniences.
 
 **Why here.** MPFA is the standard answer to TPFA's grid-orthogonality
 requirement, it is small, and it is the discretization the fracture and
@@ -1303,6 +1542,37 @@ upwind imposes on every saturation front PyMRST currently computes).
 sharper front than Phase 3's upwind solver against the same analytic solution.
 
 **Size / risk.** `L`, mostly `dg`. Consider splitting `dg` into its own phase.
+
+**Progress.** Phase 399 ports `computeMimeticIP` at the MRST module root,
+including the `ip_simple`, `ip_tpf`, `ip_quasitpf`, `ip_rt`, `ip_quasirt`, and
+`ip_qfamily` families; hybrid, mixed, TPFA, and composite assembly modes; and
+optional face transmissibilities. On a distorted grid with a full permeability
+tensor, the defining affine-flux consistency identity holds to `8.0e-15`.
+
+Phase 400 ports the first functional `incompMimetic` solve plus MRST's
+deprecated `solveIncompFlow` entry point in their original locations. The
+hybrid system eliminates half-face fluxes, solves cell/interface pressures,
+handles pressure/flux boundaries and sources, preserves every cell equation
+for pure-Neumann systems, and reconstructs conservative global flux. Mixed-BC
+cell conservation is `1.2e-19`; balanced-source conservation is `3.6e-21`.
+Phase 401 completes the gravity and well branches of this vertical slice.
+Gravity enters through the original half-contact centroid vectors and
+mobility-weighted mimetic operator; rate and BHP wells are assembled as
+additional hybrid contacts with Peaceman indices and completion pressure
+drops. A full-tensor distorted-grid hydrostatic patch has `1.2e-21` maximum
+flux, while the rate-injector/BHP-producer case balances to `2.1e-18`.
+The alternate hybrid-system solver modes under `modules/mimetic/utils/` are now
+ported (Phase 402) - `schur_complement_symm`, `mixed_symm`, `tpf_symm` and the
+fault variant `schur_complement_symm_fault`, the three equivalent ways
+`incompMimetic` reduces and solves the mimetic saddle-point `B v = f + C p - D
+lam`, `C'v = g`, `D'v = h`. The Schur (hybrid) mode is pinned to MRST's
+`schurComplementSymm` on identical inputs from a real mimetic discretisation
+(`validate_phase402.py`): cell pressure to 1.8e-15, half-face flux to 2.6e-26,
+face pressures to 5.3e-15. `mixed_symm`/`tpf_symm` are validated by exact
+saddle-point reconstruction, and `tpf_symm == mixed_symm` up to MRST's
+opposite multiplier-sign convention (a faithful difference between the two MRST
+functions, not a bug). `schur_complement_symm_fault` reduces to the Schur mode
+when its fault-coupling `E` is zero. **Phase 31 mimetic core is complete.**
 
 ---
 

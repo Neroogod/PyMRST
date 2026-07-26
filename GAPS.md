@@ -1243,8 +1243,29 @@ qualifications: `mpsaw` has a 439-line landing module whose lower subpackages
 are stubs, and `hfm_v2`/`dfm`/`shale` exist only as re-export shims over `hfm`
 (see the fourth band above). Neither counts as a port.
 
-- **Alternative discretizations (TPFA is the only scheme):** `mpfa`, `re-mpfa`,
-  `mpsaw`, `mimetic`, `nfvm`, `vag`, `dg`
+- **Alternative discretizations:** Phase 387 adds an MPFA-O vertical slice
+  (local transmissibility assembly), and Phase 388 extends its single-phase
+  solve with mobility, mixed pressure/flux BCs, sources, conservative fluxes,
+  pure-Neumann handling, and gravity. Phase 389 adds rate/BHP wells and the
+  MRST-matching public/private/utils layout. Phase 390 adds general-corner 3-D
+  tensor assembly, completing the primary MPFA vertical slice. MPFA's blockwise
+  large-model assembly and alternate fast inner-product shortcuts remain
+  optimization gaps. Phase 391 adds NFVM harmonic averaging and the runnable
+  2-D NTPFA flux chain; Phases 392-393 add HAP correction, 3-D stencils, and
+  AvgMPFA. Phase 394 adds Hybrid, gravity setup, model installers, AvgMPFA AD,
+  and lagged-NTPFA AD. Phase 395 adds fully implicit differentiation through
+  NTPFA's pressure-dependent convex weights, completing the functional NFVM
+  slice. Plot helpers, stencil-cache IO, and MEX hull acceleration remain
+  conveniences rather than capability gaps. Phases 396-397 add the
+  `fv-unsat` hydraulic catalog, van Genuchten-Mualem laws, and a conservative
+  fully implicit Richards/MPFA step. Phase 398 directly ports all four
+  `re-mpfa/functions` algorithms, including flux-direction upstream weighting,
+  Newton-AD iteration, and adaptive stepping. Phases 399-400 now provide the
+  actual mimetic inner-product family and a
+  conservative hybrid incompressible solve with mixed boundaries and sources;
+  Phase 401 adds gravity and rate/BHP wells. Mimetic's alternate mixed/TPFA
+  utility solver modes remain. The remaining alternative-discretization
+  modules include `mpsaw`, `vag`, and `dg`.
 - **Multiscale solvers:** `msrsb`, `msfvm`, `msmfem`, `domain-decomposition`.
   **Linear solvers are no longer the field-scale ceiling** (Phase 43):
   `ad_core.CPRSolver` gives the flow models AMG + ILU + GMRES with an iteration
@@ -1258,7 +1279,8 @@ are stubs, and `hfm_v2`/`dfm`/`shale` exist only as re-export shims over `hfm`
   `nwm`, `agglom`
 - **Physics models:** `ad-eor` (polymer/surfactant), `solvent` (4-phase),
   `ad-scal`, `geochemistry`, `steady-state`
-- **Geomechanics beyond vemmech/biot:** `fvbiot`, `fv-unsat`,
+- **Geomechanics beyond vemmech/biot:** `fvbiot`, the coupled mechanics portion
+  of `fv-unsat`,
   `dual-continuum-mech`, and bit-for-bit MRST MPSA-W local Schur/tensor
   assembly. **`ad-mechanics` is done** for the
   poroelastic MRST surface (Phase 27):

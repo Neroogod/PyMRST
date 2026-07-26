@@ -68,6 +68,11 @@ map straight onto the Python code:
 | `pymrst/plotting` | `plotting/`, `modules/mrst-gui/` | PyVista rendering: `plot_grid`, `plot_cell_data`, `plot_well`, streamlines, caprock/plume/trap maps, and `plot_toolbar` (interactive inspector) |
 | `pymrst/utils` | `utils/` | units, ADI automatic differentiation |
 | `pymrst/modules/incomp` | `modules/incomp/` | `incompTPFA`, incompressible fluids, explicit/implicit transport |
+| `pymrst/modules/mpfa` | `modules/mpfa/` | MRST-layout legacy and general-corner tensor MPFA-O assembly; conservative single-phase solve with mixed BCs, sources, mobility, gravity, and rate/BHP wells |
+| `pymrst/modules/nfvm` | `modules/nfvm/` | corrected HAPs, 2-D/3-D NTPFA with fully implicit AD weights, AvgMPFA, Hybrid, and AD-core installers |
+| `pymrst/modules/fv_unsat` | `modules/fv-unsat/` | hydraulic soil catalog, van Genuchten-Mualem laws, and a conservative fully implicit Richards/MPFA time-step model |
+| `pymrst/modules/re_mpfa` | `modules/re-mpfa/` | direct ports of hydraulic-head arithmetic/upstream MPFA weighting, Newton-AD iteration, and adaptive time stepping |
+| `pymrst/modules/mimetic` | `modules/mimetic/` | MRST-layout mimetic inner-product families and conservative hybrid incompressible pressure/flux solve with gravity and rate/BHP wells |
 | `pymrst/modules/ad_core` | `modules/ad-core/` | the state-function graph (`StateFunction`, groupings, PVT/flow/flux evaluators), the `PhysicalModel`/`ReservoirModel` protocol, the facility (wells), `NonLinearSolver`, TPFA operators, schedule driver |
 | `pymrst/modules/ad_props` | `modules/ad-props/` | `initSimpleADIFluid`, deck fluids, PVT interpolation |
 | `pymrst/modules/ad_blackoil` | `modules/ad-blackoil/` | oil-water and three-phase black-oil models |

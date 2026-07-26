@@ -39,6 +39,17 @@ from pymrst.gridprocessing.remove_internal_boundary import remove_internal_bound
 from pymrst.gridprocessing.split_disconnected_grid import split_disconnected_grid
 from pymrst.gridprocessing.hexahedral_grid import hexahedral_grid
 from pymrst.gridprocessing.tessellation_grid import tessellation_grid
+from pymrst.gridprocessing.triangulate_faces import triangulate_faces
+from pymrst.gridprocessing.find_matching_faces import find_matching_faces
+from pymrst.gridprocessing.refine_grdecl import grdecl_xyz, refine_grdecl
+from pymrst.gridprocessing.get_2d_grid_from_faces import get_2d_grid_from_faces
+from pymrst.gridprocessing.glue_2d_grid import glue_2d_grid
+from pymrst.gridprocessing.repair_normals import repair_normals
+from pymrst.gridprocessing.remove_short_edges import remove_short_edges
+from pymrst.gridprocessing.cell_nodes import cell_nodes
+from pymrst.gridprocessing.remove_pinch import remove_pinch
+from pymrst.gridprocessing.compute_grid_slice_polygons import compute_grid_slice_polygons
+from pymrst.gridprocessing.slice_grid import slice_grid
 
 __all__ = [
     "Grid", "Cells", "Faces", "Nodes",
@@ -49,6 +60,10 @@ __all__ = [
     "process_grdecl", "build_corner_pt_nodes", "cut_grdecl",
     "process_nnc", "make_internal_boundary", "remove_internal_boundary",
     "split_disconnected_grid", "hexahedral_grid", "tessellation_grid",
+    "triangulate_faces", "find_matching_faces",
+    "grdecl_xyz", "refine_grdecl", "get_2d_grid_from_faces", "glue_2d_grid",
+    "repair_normals", "remove_short_edges", "cell_nodes", "remove_pinch",
+    "compute_grid_slice_polygons", "slice_grid",
     "load_mrst_grid_mat", "mrst_grid_struct_to_grid",
     "WEST", "EAST", "SOUTH", "NORTH", "TOP", "BOTTOM",
 ]
