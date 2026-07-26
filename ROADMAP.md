@@ -1574,6 +1574,57 @@ opposite multiplier-sign convention (a faithful difference between the two MRST
 functions, not a bug). `schur_complement_symm_fault` reduces to the Schur mode
 when its fault-coupling `E` is zero. **Phase 31 mimetic core is complete.**
 
+**VEM (Phase 403) - foundation started.** VEM builds its local projections from
+moments (integrals of monomials over each cell), so it needs exact quadrature on
+general polygons. The utility layer under `modules/vem/utils/` is ported:
+`poly_dim` (dimension of the degree-`k` polynomial space), `triangle_quad_rule`
+(Gauss rules of precision 1/2/3/7), and `polygon_int`, which integrates a
+function over polygonal cells by triangulating each and mapping the reference
+rule onto every triangle (cell-node connectivity derived from the cell's faces,
+since PyMRST has no direct field). `validate_phase403.py` matches MRST's
+`polygonInt` on the monomial basis `[1,x,y,x^2,xy,y^2]` to 8.9e-16, and the rules
+integrate degree-`k` polynomials exactly (x^6 to 1/7).
+
+The **3-D quadrature (Phase 404)** completes the integration layer:
+`tetrahedron_quad_rule` (precision 2/3 on MRST's equilateral reference tet) and
+`polyhedron_int`, which Delaunay-tetrahedralises each cell and affinely maps the
+reference rule onto every tet. `validate_phase404.py` matches MRST's
+`polyhedronInt` on the 3-D monomial basis to 8.9e-16.
+
+A **working first-order VEM pressure solve** (`vem_poisson`) is now in place and
+passes the defining **patch test**: on a smoothly-twisted (non-orthogonal) grid
+it reproduces a linear pressure field to `7.1e-15` at every node - which TPFA
+cannot. It is the standard lowest-order nodal (H1-conforming) VEM: consistency
+part exact for linear pressures via the projection onto linear polynomials, plus
+a stability part that vanishes on them; each local matrix is SPD and annihilates
+constants.
+
+The **mixed VEM inner product (Phase 405)** now matches MRST's `computeVirtualIP`
+number for number. `compute_virtual_ip(g, rock, k=1)` produces the `S` structure -
+the per-cell local stiffness `A_E = PiNstar' Mc PiNstar + sigma_E (I-PiN)'(I-PiN)`
+and the node DOF map - following MRST's face-based `computeBD2D`: the constant row
+of `B` is **edge-length weighted** (not the vertex average), the gradient rows
+carry the full permeability tensor, and the `ip_simple` stability is
+`sigma_E = h_E^(dim-2) tr(K)/dim`. `incomp_vem` assembles the blocks and solves.
+`validate_phase405.py` compares the per-cell local-stiffness *eigenvalues*
+(an ordering-independent fingerprint of the inner product) against MRST on a
+twisted grid with a full permeability tensor: **max eigenvalue error 1.8e-27**
+(scale 2.76e-12, i.e. ~15 digits). The patch test holds for scalar and full-tensor
+permeability. First-order (k=1, nodal DOFs) is ported; the k=2 scheme (edge and
+cell moments), the 3-D face projections and the MPFA/TPFA flux-reconstruction
+options of `computeVirtualIP`, plus the rest of `incompVEM` (Neumann BC, wells,
+flux reconstruction), remain.
+
+**Remaining Phase 31 discretizations (scope note).** `vag`, the rest of `vem`,
+and `dg` are each large numerical-method ports. **VAG** (606 lines) is built
+entirely on MRST's `IndexArray`/`TensorMap` indexing-table DSL (`tbl_utils`),
+which PyMRST does not have - a faithful port needs that framework first, or a
+from-scratch reimplementation of the vertex-gradient scheme. **VEM** is ~2000
+lines of polynomial-projection assembly (foundation now in place). **DG** is 77
+files of high-order transport - the most valuable (sharper Buckley-Leverett
+fronts than first-order upwind) and the largest; the roadmap already suggests
+splitting it into its own phase.
+
 ---
 
 # Tier 4 - Physics breadth
