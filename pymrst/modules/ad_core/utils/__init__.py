@@ -53,6 +53,11 @@ from pymrst.modules.ad_core.utils.init_well_sol_ad import (
     init_well_sol_ad,
     initWellSolAD,
 )
+from pymrst.modules.ad_core.utils.set_well_sign import set_well_sign, setWellSign
+from pymrst.modules.ad_core.utils.assign_well_values_from_control import (
+    assign_well_values_from_control,
+    assignWellValuesFromControl,
+)
 
 __all__ = [
     "Operators",
@@ -89,4 +94,8 @@ __all__ = [
     "makeScheduleConsistent",
     "init_well_sol_ad",
     "initWellSolAD",
+    "set_well_sign",
+    "setWellSign",
+    "assign_well_values_from_control",
+    "assignWellValuesFromControl",
 ]
