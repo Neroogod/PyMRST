@@ -3,9 +3,10 @@
 This ports the structural part of MRST ``convertDeckScheduleToMRST.m``:
 step/control conversion, active-phase composition mapping, compositional
 defaults, step limiting and consistent well ordering between control periods.
-The input controls must contain processed ``W`` records (``Well`` objects or
-MRST well dictionaries). Raw ``WELSPECS``/``COMPDAT`` processing belongs to
-the deck-format parser and is deliberately rejected here.
+Controls may contain processed ``W`` records or raw ``WELSPECS``/``COMPDAT``
+geometry with ``WCON*`` operating records. The raw path reuses PyMRST's shared
+MRST record parser so compositional and black-oil schedules have one set of
+defaulting and completion rules.
 """
 
 from __future__ import annotations
@@ -105,15 +106,48 @@ def _component_count(model) -> int:
     return int(getter()) if callable(getter) else 0
 
 
-def _processed_wells(ctrl: Mapping[str, Any], model) -> list[Well]:
+def _processed_wells(
+    ctrl: Mapping[str, Any], model, base_wells: Sequence[Well]
+) -> list[Well]:
     if _get(ctrl, "W") is None:
-        raw_keys = ("WELSPECS", "COMPDAT", "WCONPROD", "WCONINJE")
-        if any(_get(ctrl, key) is not None for key in raw_keys):
-            raise NotImplementedError(
-                "raw WELSPECS/COMPDAT controls require processWells support; "
-                "supply processed control.W records"
+        raw_keys = (
+            "WELSPECS", "COMPDAT", "WCONPROD", "WCONHIST",
+            "WCONINJE", "WCONINJ", "WCONINJH", "WELOPEN",
+            "WELTARG", "WELLTARG",
+        )
+        if not any(_get(ctrl, key) is not None for key in raw_keys):
+            return deepcopy(list(base_wells))
+        grid = getattr(model, "G", None)
+        rock = getattr(model, "rock", None)
+        if grid is None or rock is None:
+            raise ValueError("model.G and model.rock are required for raw well records")
+        # These parsers already implement MRST processWells record defaulting,
+        # completion expansion, WI construction, and control/limit semantics.
+        from pymrst.modules.compositional.facility import (
+            apply_deck_well_controls,
+            wells_from_deck_completion_records,
+        )
+        geometry = None
+        if _get(ctrl, "WELSPECS") is not None or _get(ctrl, "COMPDAT") is not None:
+            geometry = wells_from_deck_completion_records(
+                grid, rock, ctrl, compi=np.array([1.0, 0.0, 0.0]),
+                gravity=np.array([0.0, 0.0, float(getattr(model, "gravity", 0.0))]),
             )
-        return []
+        wells = list(base_wells)
+        if geometry:
+            by_name = {well.name: deepcopy(well) for well in wells}
+            by_name.update({well.name: well for well in geometry})
+            order = [well.name for well in wells]
+            order.extend(well.name for well in geometry if well.name not in order)
+            wells = [by_name[name] for name in order]
+        wells = apply_deck_well_controls(wells, ctrl, grid=grid)
+        phases = _phase_names(model)
+        n_hc = _component_count(model)
+        for well in wells:
+            _map_composition(well, phases)
+            if n_hc and well.components is None:
+                well.components = np.full(n_hc, 1.0 / n_hc)
+        return wells
     phases = _phase_names(model)
     n_hc = _component_count(model)
     wells = []
@@ -135,19 +169,38 @@ def _consistent_controls(controls: list[Control]) -> list[Control]:
                 names.append(well.name)
                 templates[well.name] = deepcopy(well)
     out = []
+    previous = {}
     for ctrl in controls:
         present = {well.name: well for well in ctrl.W or []}
         wells = []
         for name in names:
             if name in present:
-                wells.append(present[name])
+                current = present[name]
+                if not current.status and name in previous:
+                    # MRST makeScheduleConsistent carries the last active
+                    # target/type for shut wells, while closing all effective
+                    # connections. This makes restart/control vectors stable.
+                    inactive = deepcopy(previous[name])
+                    inactive.status = False
+                    inactive.WI = np.zeros_like(inactive.WI, dtype=float)
+                    inactive.cstatus = np.zeros(len(inactive.cells), dtype=bool)
+                    wells.append(inactive)
+                else:
+                    if not current.status:
+                        current.WI = np.zeros_like(current.WI, dtype=float)
+                        current.cstatus = np.zeros(len(current.cells), dtype=bool)
+                    wells.append(current)
             else:
                 inactive = deepcopy(templates[name])
                 inactive.status = False
                 inactive.val = 0.0
+                inactive.WI = np.zeros_like(inactive.WI, dtype=float)
                 if inactive.cstatus is not None:
                     inactive.cstatus = np.zeros_like(inactive.cstatus, dtype=bool)
                 wells.append(inactive)
+        for well in wells:
+            if well.status:
+                previous[well.name] = deepcopy(well)
         out.append(replace(ctrl, W=wells))
     return out
 
@@ -181,14 +234,16 @@ def convert_deck_schedule_to_mrst(
 
     raw_controls = _list(_get(schedule_deck, "control", "controls", default=[]))
     controls = []
+    previous_wells: list[Well] = []
     for ctrl in raw_controls:
         if not isinstance(ctrl, Mapping):
             raise TypeError("each deck control must be a mapping")
         controls.append(Control(
-            W=_processed_wells(ctrl, model),
+            W=_processed_wells(ctrl, model, previous_wells),
             bc=_get(ctrl, "bc"),
             src=_get(ctrl, "src"),
         ))
+        previous_wells = deepcopy(list(controls[-1].W or []))
     if indices.size and indices.min() >= 1 and indices.max() <= len(controls):
         indices = indices - 1
     if step_limit is not None:
