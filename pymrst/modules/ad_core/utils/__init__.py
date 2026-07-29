@@ -49,6 +49,10 @@ from pymrst.modules.ad_core.utils.make_schedule_consistent import (
     make_schedule_consistent,
     makeScheduleConsistent,
 )
+from pymrst.modules.ad_core.utils.init_well_sol_ad import (
+    init_well_sol_ad,
+    initWellSolAD,
+)
 
 __all__ = [
     "Operators",
@@ -83,4 +87,6 @@ __all__ = [
     "convertDeckScheduleToMRST",
     "make_schedule_consistent",
     "makeScheduleConsistent",
+    "init_well_sol_ad",
+    "initWellSolAD",
 ]

@@ -130,6 +130,14 @@ def init_eclipse_problem_ad(
     schedule_out = (
         schedule if schedule is not None else _schedule_from_deck(deck, model)
     ) if get_schedule else None
+    if state0 is not None:
+        from pymrst.modules.ad_core.utils.init_well_sol_ad import init_well_sol_ad
+        wells = (
+            schedule_out.controls[0].W
+            if schedule_out is not None and schedule_out.controls
+            else getattr(model, "wells", ())
+        )
+        state0["wellSol"] = init_well_sol_ad(wells, model, state0)
     nonlinear = get_non_linear_solver(
         model, timestep_strategy=timestep_strategy, use_cpr=use_cpr,
         max_iterations=max_iterations, use_relaxation=use_relaxation,

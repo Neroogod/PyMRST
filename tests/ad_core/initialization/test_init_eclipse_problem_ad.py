@@ -24,6 +24,8 @@ def test_spe1_path_builds_complete_problem():
     assert np.allclose(schedule.step_val, model.input_data["tsteps"])
     assert isinstance(nonlinear, NonLinearSolver)
     assert nonlinear.max_iterations == 12
+    assert len(state["wellSol"]) == 2
+    assert {row.name for row in state["wellSol"]} == {"INJECTOR", "PRODUCER"}
 
 
 @pytest.mark.skipif(not SPE1.exists(), reason="local MRST SPE1 deck is unavailable")
