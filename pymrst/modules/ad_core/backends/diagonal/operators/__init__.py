@@ -31,6 +31,18 @@ def discrete_divergence(neighbors: np.ndarray, ncells: int, face_values):
     return diagonal_ad_matmul(-c.T, face_values)
 
 
+def divergence_with_accumulation(acc, flux, options):
+    """MRST ``discreteDivergence(acc, flux, options)`` contract.
+
+    ``options`` may be an object or mapping with ``N`` and ``nc`` fields.
+    """
+    get = options.get if isinstance(options, dict) else lambda key: getattr(options, key)
+    result = discrete_divergence(get("N"), int(get("nc")), flux)
+    if acc is None or (isinstance(acc, (list, tuple)) and len(acc) == 0):
+        return result
+    return result + acc
+
+
 def face_average(neighbors: np.ndarray, x):
     """Arithmetic face average."""
     n = np.asarray(neighbors, dtype=np.int64)
@@ -85,6 +97,27 @@ def setup_diagonal_operator_closures(operators, ncells: int):
     operators.avg = avg
     operators.upw = upw
     return operators
+
+
+# MRST spellings used by direct translations.
+twoPointGradient = two_point_gradient
+discreteDivergence = divergence_with_accumulation
+faceAverage = face_average
+singlePointUpwind = single_point_upwind
+
+__all__ = [
+    "discrete_divergence",
+    "discreteDivergence",
+    "divergence_with_accumulation",
+    "face_average",
+    "faceAverage",
+    "setup_diagonal_operator_closures",
+    "single_point_upwind",
+    "singlePointUpwind",
+    "sparse_from_diagonal_ad",
+    "two_point_gradient",
+    "twoPointGradient",
+]
 
 
 if __name__ == "__main__":
