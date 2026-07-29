@@ -54,6 +54,18 @@ def find_counterparts(
             [],
             "private converter for MRST FixedWidthJacobian/MEX storage",
         )
+    if symbol == "getDeckOPMData":
+        return (
+            "excluded-external",
+            [],
+            "optional opm-data/opm-tests repository and restart-output reader",
+        )
+    if symbol == "plotRegionContacts":
+        return (
+            "excluded-visualization",
+            [],
+            "MATLAB graphics helper; numerical region data remains required",
+        )
 
     exact = [
         path for path in python_sources
@@ -173,6 +185,10 @@ def main() -> int:
         f"- Excluded MATLAB catalogs: **{counts['excluded-catalog']}**\n"
         f"- Excluded MATLAB MEX implementation files: "
         f"**{counts['excluded-platform']}**\n"
+        f"- Excluded optional external-data integrations: "
+        f"**{counts['excluded-external']}**\n"
+        f"- Excluded MATLAB-only visualization helpers: "
+        f"**{counts['excluded-visualization']}**\n"
         f"- Pending manual review or implementation: "
         f"**{counts['pending-review']}**\n"
         f"- Files mentioned by reference validators: "
@@ -196,6 +212,9 @@ def main() -> int:
         "- `excluded-catalog`: MATLAB `Contents.m` catalog only.\n"
         "- `excluded-platform`: MATLAB MEX build/runtime source; its numerical "
         "fallback must still be ported and validated.\n"
+        "- `excluded-external`: optional external repository/data integration, "
+        "outside the self-contained numerical core.\n"
+        "- `excluded-visualization`: MATLAB graphics-only helper.\n"
         "- `pending-review`: no defensible automatic mapping; requires manual "
         "classification or implementation.\n\n"
         "Regenerate with:\n\n"
