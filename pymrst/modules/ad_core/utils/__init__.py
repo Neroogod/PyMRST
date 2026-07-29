@@ -58,6 +58,15 @@ from pymrst.modules.ad_core.utils.assign_well_values_from_control import (
     assign_well_values_from_control,
     assignWellValuesFromControl,
 )
+from pymrst.modules.ad_core.utils.pad_rates_and_compi import (
+    pad_rates_and_compi,
+    padRatesAndCompi,
+)
+from pymrst.modules.ad_core.utils.well_sol_to_vector import (
+    well_sol_to_vector,
+    wellSolToVector,
+)
+from pymrst.modules.ad_core.utils.recover_vars import recover_vars, recoverVars
 
 __all__ = [
     "Operators",
@@ -98,4 +107,10 @@ __all__ = [
     "setWellSign",
     "assign_well_values_from_control",
     "assignWellValuesFromControl",
+    "pad_rates_and_compi",
+    "padRatesAndCompi",
+    "well_sol_to_vector",
+    "wellSolToVector",
+    "recover_vars",
+    "recoverVars",
 ]
