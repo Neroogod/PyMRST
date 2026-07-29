@@ -45,6 +45,10 @@ from pymrst.modules.ad_core.utils.convert_deck_schedule_to_mrst import (
     convert_deck_schedule_to_mrst,
     convertDeckScheduleToMRST,
 )
+from pymrst.modules.ad_core.utils.make_schedule_consistent import (
+    make_schedule_consistent,
+    makeScheduleConsistent,
+)
 
 __all__ = [
     "Operators",
@@ -77,4 +81,6 @@ __all__ = [
     "get_well_output",
     "convert_deck_schedule_to_mrst",
     "convertDeckScheduleToMRST",
+    "make_schedule_consistent",
+    "makeScheduleConsistent",
 ]

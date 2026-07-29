@@ -1,4 +1,4 @@
-"""Validate raw-record ``convertDeckScheduleToMRST`` against MRST."""
+"""Validate ``convertDeckScheduleToMRST``/``makeScheduleConsistent`` against MRST."""
 
 from pathlib import Path
 from types import SimpleNamespace

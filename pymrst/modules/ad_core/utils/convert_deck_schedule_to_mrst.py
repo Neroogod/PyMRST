@@ -12,7 +12,6 @@ defaulting and completion rules.
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import replace
 from typing import Any, Mapping, Optional, Sequence
 
 import numpy as np
@@ -159,52 +158,6 @@ def _processed_wells(
     return wells
 
 
-def _consistent_controls(controls: list[Control]) -> list[Control]:
-    """Keep MRST's invariant: every control has every well in one name order."""
-    names = []
-    templates = {}
-    for ctrl in controls:
-        for well in ctrl.W or []:
-            if well.name not in templates:
-                names.append(well.name)
-                templates[well.name] = deepcopy(well)
-    out = []
-    previous = {}
-    for ctrl in controls:
-        present = {well.name: well for well in ctrl.W or []}
-        wells = []
-        for name in names:
-            if name in present:
-                current = present[name]
-                if not current.status and name in previous:
-                    # MRST makeScheduleConsistent carries the last active
-                    # target/type for shut wells, while closing all effective
-                    # connections. This makes restart/control vectors stable.
-                    inactive = deepcopy(previous[name])
-                    inactive.status = False
-                    inactive.WI = np.zeros_like(inactive.WI, dtype=float)
-                    inactive.cstatus = np.zeros(len(inactive.cells), dtype=bool)
-                    wells.append(inactive)
-                else:
-                    if not current.status:
-                        current.WI = np.zeros_like(current.WI, dtype=float)
-                        current.cstatus = np.zeros(len(current.cells), dtype=bool)
-                    wells.append(current)
-            else:
-                inactive = deepcopy(templates[name])
-                inactive.status = False
-                inactive.val = 0.0
-                inactive.WI = np.zeros_like(inactive.WI, dtype=float)
-                if inactive.cstatus is not None:
-                    inactive.cstatus = np.zeros_like(inactive.cstatus, dtype=bool)
-                wells.append(inactive)
-        for well in wells:
-            if well.status:
-                previous[well.name] = deepcopy(well)
-        out.append(replace(ctrl, W=wells))
-    return out
-
-
 def convert_deck_schedule_to_mrst(
     model,
     schedule_deck,
@@ -250,9 +203,13 @@ def convert_deck_schedule_to_mrst(
         if step_limit < 0:
             raise ValueError("step_limit must be non-negative")
         values, indices = values[:step_limit], indices[:step_limit]
+    schedule = Schedule(values, indices, controls)
     if ensure_consistent:
-        controls = _consistent_controls(controls)
-    return Schedule(values, indices, controls)
+        from pymrst.modules.ad_core.utils.make_schedule_consistent import (
+            make_schedule_consistent,
+        )
+        schedule = make_schedule_consistent(schedule)
+    return schedule
 
 
 convertDeckScheduleToMRST = convert_deck_schedule_to_mrst

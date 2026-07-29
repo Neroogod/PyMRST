@@ -315,7 +315,7 @@ utils/getSourceFluxesAD.m,getSourceFluxesAD,utils,ported-consolidated,pymrst/mod
 utils/getWellOutput.m,getWellOutput,utils,ported,pymrst/modules/ad_core/utils/get_well_output.py,filename,unvalidated,,
 utils/initWellSolAD.m,initWellSolAD,utils,pending-review,,,unvalidated,,
 utils/interpolateIDW.m,interpolateIDW,utils,ported,pymrst/modules/ad_core/utils/interpolate_idw.py,filename,unvalidated,,
-utils/makeScheduleConsistent.m,makeScheduleConsistent,utils,ported-consolidated,pymrst/modules/ad_core/utils/convert_deck_schedule_to_mrst.py,symbol-reference,unvalidated,,
+utils/makeScheduleConsistent.m,makeScheduleConsistent,utils,ported,pymrst/modules/ad_core/utils/make_schedule_consistent.py,filename,validated-reference,examples/validation/validate_ad_core_raw_deck_schedule.py,
 utils/mergeOrderedArrays.m,mergeOrderedArrays,utils,ported,pymrst/modules/ad_core/utils/merge_ordered_arrays.py,filename,unvalidated,,
 utils/numelData.m,numelData,utils,pending-review,,,unvalidated,,
 utils/obj2hash.m,obj2hash,utils,pending-review,,,unvalidated,,
