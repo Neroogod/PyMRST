@@ -46,6 +46,10 @@ from pymrst.modules.ad_core.solvers.linear_solvers import (
     DirectSolver,
     select_linear_solver,
 )
+from pymrst.modules.ad_core.solvers.get_non_linear_solver import (
+    get_non_linear_solver,
+    getNonLinearSolver,
+)
 from pymrst.modules.ad_core.models.facilities.facility_model import FacilityModel
 from pymrst.modules.ad_core.models.facilities.separators import (
     BasicSeparator,
@@ -113,6 +117,7 @@ __all__ = [
     "ConcentrationComponent", "blackoil_components",
     # linear solvers
     "CPRSolver", "DirectSolver", "select_linear_solver",
+    "get_non_linear_solver", "getNonLinearSolver",
     "CPR_CROSSOVER_BLOCK_JACOBI", "CPR_CROSSOVER_ILU",
     # adaptive timestepping
     "SimpleTimeStepSelector", "FactorTimeStepSelector",

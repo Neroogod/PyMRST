@@ -17,6 +17,10 @@ from pymrst.modules.ad_core.solvers.concrete_solvers import (
     GMRES_ILUSolverAD,
     NoOpSolverAD,
 )
+from pymrst.modules.ad_core.solvers.get_non_linear_solver import (
+    get_non_linear_solver,
+    getNonLinearSolver,
+)
 
 __all__ = [
     "BackslashSolverAD",
@@ -29,5 +33,7 @@ __all__ = [
     "LinearSolverAD",
     "LinearizedProblem",
     "NoOpSolverAD",
+    "get_non_linear_solver",
+    "getNonLinearSolver",
     "select_linear_solver",
 ]
