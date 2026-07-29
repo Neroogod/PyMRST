@@ -239,6 +239,75 @@ def init_variables_diagonal(*values: Numeric, row_major: bool = False) -> tuple[
     return tuple(out)
 
 
+def init_variables_diagonal_grouped(
+    *values: Numeric,
+    types=None,
+    row_major: bool = False,
+) -> tuple[GenericAD, ...]:
+    """MRST grouped diagonal initializer.
+
+    Variables with the same type share one Jacobian block. By default MRST
+    groups consecutive variables of equal size; an explicit ``types`` vector
+    can select other groups, provided every variable in a group has equal size.
+    """
+    vals = [np.atleast_1d(np.asarray(v, dtype=np.float64)).ravel() for v in values]
+    sizes = np.asarray([v.size for v in vals], dtype=np.int64)
+    if types is None:
+        labels = np.ones(len(vals), dtype=np.int64)
+        for i in range(1, len(vals)):
+            labels[i] = labels[i - 1] + (sizes[i] != sizes[i - 1])
+    else:
+        labels = np.asarray(types, dtype=np.int64).ravel()
+        if labels.size != len(vals):
+            raise ValueError("types must contain one entry per value")
+    unique = list(dict.fromkeys(labels.tolist()))
+    block_cls = _block_type(row_major)
+    group_columns = {}
+    for label in unique:
+        members = np.flatnonzero(labels == label)
+        member_sizes = sizes[members]
+        if not np.all(member_sizes == member_sizes[0]):
+            raise ValueError("variables in one diagonal type must have equal size")
+        group_columns[label] = int(member_sizes[0] * members.size)
+
+    out = []
+    for variable, val in enumerate(vals):
+        blocks = []
+        for label in unique:
+            ncols = group_columns[label]
+            if labels[variable] != label:
+                blocks.append(block_cls.zeros(val.size, ncols))
+                continue
+            members = np.flatnonzero(labels == label)
+            position = int(np.flatnonzero(members == variable)[0])
+            row = np.arange(val.size, dtype=np.int64)
+            col = position * val.size + row
+            matrix = sp.csr_array(
+                (np.ones(val.size), (row, col)), shape=(val.size, ncols)
+            )
+            blocks.append(block_cls.from_sparse(matrix))
+        out.append(GenericAD(val, blocks))
+    return tuple(out)
+
+
+def init_variables_one_block(*values: Numeric) -> tuple[GenericAD, ...]:
+    """MRST ``initVariablesAD_oneBlock`` sparse global-block initializer."""
+    vals = [np.atleast_1d(np.asarray(v, dtype=np.float64)).ravel() for v in values]
+    sizes = [v.size for v in vals]
+    total = int(sum(sizes))
+    offset = 0
+    out = []
+    for val in vals:
+        row = np.arange(val.size, dtype=np.int64)
+        col = offset + row
+        jac = sp.csr_array(
+            (np.ones(val.size), (row, col)), shape=(val.size, total)
+        )
+        out.append(GenericAD(val, [jac]))
+        offset += val.size
+    return tuple(out)
+
+
 def diagonal_ad_matmul(mat, x):
     """Matrix product for ``GenericAD`` values."""
     if isinstance(x, GenericAD):

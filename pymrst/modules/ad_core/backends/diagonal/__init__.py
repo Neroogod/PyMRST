@@ -28,6 +28,9 @@ from pymrst.modules.ad_core.backends.diagonal.operators import (
 from pymrst.modules.ad_core.backends.diagonal.utils import (
     diag_mult,
     get_sparse_arguments,
+    init_variables_ad_diagonal,
+    init_variables_ad_diagonal_row_major,
+    init_variables_one_block,
     matrix_dims,
 )
 
@@ -45,6 +48,9 @@ __all__ = [
     "face_average",
     "get_sparse_arguments",
     "init_variables_diagonal",
+    "init_variables_ad_diagonal",
+    "init_variables_ad_diagonal_row_major",
+    "init_variables_one_block",
     "matrix_dims",
     "setup_diagonal_operator_closures",
     "single_point_upwind",

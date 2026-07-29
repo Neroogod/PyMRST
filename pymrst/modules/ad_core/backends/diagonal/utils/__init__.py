@@ -126,6 +126,25 @@ __all__ = [
     "matrix_dims", "matrixDims",
 ]
 
+from pymrst.modules.ad_core.backends.diagonal.utils.init_variables_ad_diagonal import (
+    init_variables_ad_diagonal,
+    initVariablesAD_diagonal,
+)
+from pymrst.modules.ad_core.backends.diagonal.utils.init_variables_ad_diagonal_row_major import (
+    init_variables_ad_diagonal_row_major,
+    initVariablesAD_diagonalRowMajor,
+)
+from pymrst.modules.ad_core.backends.diagonal.utils.init_variables_ad_one_block import (
+    init_variables_one_block,
+    initVariablesAD_oneBlock,
+)
+
+__all__ += [
+    "init_variables_ad_diagonal", "initVariablesAD_diagonal",
+    "init_variables_ad_diagonal_row_major", "initVariablesAD_diagonalRowMajor",
+    "init_variables_one_block", "initVariablesAD_oneBlock",
+]
+
 
 if __name__ == "__main__":
     def test_matrix_dims_reads_shape():

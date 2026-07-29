@@ -48,6 +48,12 @@ def find_counterparts(
             [],
             "MATLAB MEX build/runtime implementation; Python fallback required",
         )
+    if symbol == "getSparseBlocksFixedWidth":
+        return (
+            "excluded-platform",
+            [],
+            "private converter for MRST FixedWidthJacobian/MEX storage",
+        )
 
     exact = [
         path for path in python_sources
