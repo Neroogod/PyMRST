@@ -37,7 +37,8 @@ def get_min_max_phase_saturations(model: Any) -> Tuple[np.ndarray, np.ndarray]:
     zero to the complement of the connate water. This is the unscaled default;
     endpoint scaling (`rock.krscale`) is not present in PyMRST.
     """
-    nph = model.n_phases
+    nph = (int(model.n_phases) if hasattr(model, "n_phases")
+           else int(model.getNumberOfPhases()))
     raw = getattr(model, "raw_fluid", model.fluid)
     swcon = float(getattr(raw, "swcon", 0.0) or 0.0)
     s_min = np.zeros(nph)
@@ -56,6 +57,10 @@ def get_initialization_regions_base(
     pc_functions: Optional[List[Any]] = None,
     pc_sign: Optional[np.ndarray] = None,
     contacts_pc: Optional[np.ndarray] = None,
+    reference_index: Optional[int] = None,
+    pc_scale: Optional[np.ndarray] = None,
+    s_min: Optional[np.ndarray] = None,
+    s_max: Optional[np.ndarray] = None,
 ) -> EquilibriumRegion:
     """Build one equilibration region with MRST's defaults.
 
@@ -63,11 +68,15 @@ def get_initialization_regions_base(
     per-phase density (a value or callable per phase, as
     `initialize_equilibrium_pressures` expects).
     """
-    nph = model.n_phases
+    nph = (int(model.n_phases) if hasattr(model, "n_phases")
+           else int(model.getNumberOfPhases()))
     contacts = np.asarray(contacts, dtype=float).ravel()
     assert contacts.size == nph - 1, \
         f"need {nph - 1} contacts for {nph} phases, got {contacts.size}"
-    s_min, s_max = get_min_max_phase_saturations(model)
+    if s_min is None or s_max is None:
+        default_min, default_max = get_min_max_phase_saturations(model)
+        s_min = default_min if s_min is None else s_min
+        s_max = default_max if s_max is None else s_max
     reg = EquilibriumRegion(
         datum_depth=datum_depth,
         datum_pressure=datum_pressure,
@@ -79,6 +88,8 @@ def get_initialization_regions_base(
                      else np.asarray(contacts_pc, float)),
         s_min=s_min,
         s_max=s_max,
+        reference_index=reference_index,
+        pc_scale=pc_scale,
     )
     reg.rho = list(rho)                    # carried for the pressure integration
     return reg

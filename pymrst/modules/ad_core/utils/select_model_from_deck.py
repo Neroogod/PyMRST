@@ -82,16 +82,17 @@ def select_model_from_deck(g, rock, fluid, deck: Dict[str, Any], **kwargs):
     arguments are forwarded to the model constructor.
     """
     choice = deck_model_choice(deck)
+    wells = kwargs.pop("wells", ())
     if choice["kind"] == "water":
         from pymrst.modules.ad_blackoil.models.water_model import WaterModel
 
-        model = WaterModel(g, rock, fluid, (), **kwargs)
+        model = WaterModel(g, rock, fluid, wells, **kwargs)
     else:
         from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
             GenericBlackOilModel,
         )
 
-        model = GenericBlackOilModel(g, rock, fluid, (),
+        model = GenericBlackOilModel(g, rock, fluid, wells,
                                      disgas=choice["disgas"],
                                      vapoil=choice["vapoil"], **kwargs)
     model.input_data = deck

@@ -35,6 +35,8 @@ from pymrst.modules.ad_core.backends import (
 )
 from pymrst.modules.ad_core.initialization import (
     EquilibriumRegion,
+    init_eclipse_problem_ad,
+    initEclipseProblemAD,
     init_state_equil,
     initialize_equilibrium_pressures,
     initialize_equilibrium_saturations,
@@ -111,6 +113,7 @@ __all__ = [
     "SeparatorGroup", "SeparatorStreamResult", "SeparatorSurfaceResult",
     "add_bc_and_sources", "boundary_reservoir_fluxes", "source_reservoir_fluxes",
     "EquilibriumRegion", "init_state_equil",
+    "init_eclipse_problem_ad", "initEclipseProblemAD",
     "initialize_equilibrium_pressures", "initialize_equilibrium_saturations",
     # components
     "Component", "ImmiscibleComponent", "GasComponent", "OilComponent",

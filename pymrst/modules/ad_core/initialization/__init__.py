@@ -24,6 +24,14 @@ from pymrst.modules.ad_core.initialization.get_initialization_regions_deck impor
     get_initialization_regions_deck,
     getInitializationRegionsDeck,
 )
+from pymrst.modules.ad_core.initialization.get_initialization_regions_compositional import (
+    get_initialization_regions_compositional,
+    getInitializationRegionsCompositional,
+)
+from pymrst.modules.ad_core.initialization.init_eclipse_problem_ad import (
+    init_eclipse_problem_ad,
+    initEclipseProblemAD,
+)
 
 __all__ = [
     "EquilibriumRegion",
@@ -33,6 +41,10 @@ __all__ = [
     "getMinMaxPhaseSaturationsFromRelPerm",
     "get_initialization_regions_deck",
     "getInitializationRegionsDeck",
+    "get_initialization_regions_compositional",
+    "getInitializationRegionsCompositional",
+    "init_eclipse_problem_ad",
+    "initEclipseProblemAD",
     "init_state_equil",
     "init_state_equil_regions",
     "initialize_equilibrium_pressures",

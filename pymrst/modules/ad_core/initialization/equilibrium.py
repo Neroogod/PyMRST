@@ -58,6 +58,8 @@ class EquilibriumRegion:
     contacts_pc: Optional[np.ndarray] = None
     s_min: Optional[np.ndarray] = None
     s_max: Optional[np.ndarray] = None
+    reference_index: Optional[int] = None
+    pc_scale: Optional[np.ndarray] = None
     # Dissolved-gas / vaporised-oil specification for the density integration
     # (MRST's `region.rs` / `region.rv`). A scalar constant, a callable of
     # pressure, or None. None means "saturated" - the oil rides at `rsSat(p)`
@@ -68,8 +70,13 @@ class EquilibriumRegion:
     rv: Optional[Callable] = None
 
 
-def _reference_index(model) -> int:
+def _reference_index(model, region: Optional[EquilibriumRegion] = None) -> int:
     """Oil is the reference phase when there is oil; otherwise the first."""
+    if region is not None and region.reference_index is not None:
+        return int(region.reference_index)
+    if hasattr(model, "getPhaseNames"):
+        names = tuple(str(name).lower() for name in model.getPhaseNames())
+        return names.index("o") if "o" in names else 0
     names = model.fluid.phases
     return names.index("oil") if "oil" in names else 0
 
@@ -147,6 +154,14 @@ def _phase_densities(model, region: "EquilibriumRegion | None" = None
     return [make(i) for i in range(nph)]
 
 
+def _density_at(rho: Callable, p, z):
+    """Evaluate an MRST density closure, accepting ``rho(p)`` or ``rho(p,z)``."""
+    try:
+        return rho(p, z)
+    except TypeError:
+        return rho(p)
+
+
 def _integrate_pressure(rho: Callable, p0: float, z0: float, g: float,
                         z_eval: np.ndarray, z_min: float, z_max: float):
     """Solve dp/dz = g rho(p) from (z0, p0), and return p(z) as a callable.
@@ -155,7 +170,7 @@ def _integrate_pressure(rho: Callable, p0: float, z0: float, g: float,
     comparable tolerances.
     """
     def dp(z, p):
-        return g * rho(p)
+        return g * _density_at(rho, p, z)
 
     pieces = []
     if z_min < z0:
@@ -200,7 +215,7 @@ def initialize_equilibrium_pressures(model, region: EquilibriumRegion,
     z_max = max(z.max(), contacts.max(), region.datum_depth)
 
     rho = _phase_densities(model, region)
-    ref = _reference_index(model)
+    ref = _reference_index(model, region)
     pc_sign = (np.ones(nph) if region.pc_sign is None
                else np.asarray(region.pc_sign, dtype=float))
     contacts_pc = (np.zeros(nph - 1) if region.contacts_pc is None
@@ -288,7 +303,7 @@ def initialize_equilibrium_saturations(model, region: EquilibriumRegion,
     gas-over-water contact.
     """
     nph = model.n_phases
-    ref = _reference_index(model)
+    ref = _reference_index(model, region)
     n = pressures.shape[0]
 
     s_min = _connate_saturations(model, region)
@@ -361,7 +376,7 @@ def _reference_pressure(model, region: EquilibriumRegion, p: np.ndarray,
     moves.
     """
     nph = model.n_phases
-    ref = _reference_index(model)
+    ref = _reference_index(model, region)
 
     kr = model.fluid.kr([s[:, i] for i in range(nph)])
     kr = np.column_stack([np.asarray(value(k), dtype=float) for k in kr])
@@ -391,7 +406,7 @@ def init_state_equil(model, region: EquilibriumRegion,
     """The equilibrium initial state (MRST's `initStateBlackOilAD`)."""
     p = initialize_equilibrium_pressures(model, region, gravity)
     s = initialize_equilibrium_saturations(model, region, p)
-    ref = _reference_index(model)
+    ref = _reference_index(model, region)
 
     st = State(pressure=_reference_pressure(model, region, p, s),
                sW=s[:, 0].copy())
