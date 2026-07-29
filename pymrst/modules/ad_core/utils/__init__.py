@@ -67,6 +67,16 @@ from pymrst.modules.ad_core.utils.well_sol_to_vector import (
     wellSolToVector,
 )
 from pymrst.modules.ad_core.utils.recover_vars import recover_vars, recoverVars
+from pymrst.modules.ad_core.utils.expand_if_uniform import (
+    expand_if_uniform,
+    expandIfUniform,
+)
+from pymrst.modules.ad_core.utils.expand_matrix_to_cell import (
+    expand_matrix_to_cell,
+    expandMatrixToCell,
+)
+from pymrst.modules.ad_core.utils.numel_data import numel_data, numelData
+from pymrst.modules.ad_core.utils.size_jac import size_jac, sizeJac
 
 __all__ = [
     "Operators",
@@ -113,4 +123,12 @@ __all__ = [
     "wellSolToVector",
     "recover_vars",
     "recoverVars",
+    "expand_if_uniform",
+    "expandIfUniform",
+    "expand_matrix_to_cell",
+    "expandMatrixToCell",
+    "numel_data",
+    "numelData",
+    "size_jac",
+    "sizeJac",
 ]
