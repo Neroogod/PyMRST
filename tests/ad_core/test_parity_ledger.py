@@ -12,6 +12,7 @@ VALID_PORT_STATUSES = {
     "ported",
     "ported-consolidated",
     "excluded-catalog",
+    "excluded-platform",
     "pending-review",
 }
 VALID_VALIDATION_STATUSES = {"validated-reference", "unvalidated"}

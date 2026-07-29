@@ -42,6 +42,12 @@ def find_counterparts(
 
     if symbol.lower() == "contents":
         return "excluded-catalog", [], "MATLAB package catalog"
+    if "mex" in {part.lower() for part in rel.parts[:-1]}:
+        return (
+            "excluded-platform",
+            [],
+            "MATLAB MEX build/runtime implementation; Python fallback required",
+        )
 
     exact = [
         path for path in python_sources
@@ -159,6 +165,8 @@ def main() -> int:
         f"- Consolidated/symbol-reference counterparts: "
         f"**{counts['ported-consolidated']}**\n"
         f"- Excluded MATLAB catalogs: **{counts['excluded-catalog']}**\n"
+        f"- Excluded MATLAB MEX implementation files: "
+        f"**{counts['excluded-platform']}**\n"
         f"- Pending manual review or implementation: "
         f"**{counts['pending-review']}**\n"
         f"- Files mentioned by reference validators: "
@@ -180,6 +188,8 @@ def main() -> int:
         "- `validated-reference`: a test or validation script explicitly names "
         "the MATLAB symbol. This does not yet grade validation depth.\n"
         "- `excluded-catalog`: MATLAB `Contents.m` catalog only.\n"
+        "- `excluded-platform`: MATLAB MEX build/runtime source; its numerical "
+        "fallback must still be ported and validated.\n"
         "- `pending-review`: no defensible automatic mapping; requires manual "
         "classification or implementation.\n\n"
         "Regenerate with:\n\n"

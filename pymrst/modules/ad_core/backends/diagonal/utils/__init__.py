@@ -24,6 +24,7 @@ import scipy.sparse as sp
 from pymrst.modules.ad_core.backends.diagonal.diagonal_jacobian import (
     DiagonalJacobian,
 )
+from pymrst.modules.ad_core.backends.diagonal.generic_ad import GenericAD
 
 
 def matrix_dims(m: Any) -> Tuple[int, int]:
@@ -72,6 +73,58 @@ def diag_mult(v: np.ndarray, m: Any, d: Optional[Any] = None) -> sp.spmatrix:
         n = v.size
         d = sp.csr_array((v, (np.arange(n), np.arange(n))), shape=(n, n))
     return (sp.csr_array(d) @ m).tocsr()
+
+
+def diag_product_mult(v1, v2, x, y, d1=None, d2=None):
+    """MRST ``diagProductMult``: ``diag(v2)x + diag(v1)y``."""
+    return diag_mult(v2, x, d2) + diag_mult(v1, y, d1), d1, d2
+
+
+def double_to_generic_ad(v, sample):
+    """Convert numeric ``v`` to a constant ``GenericAD`` shaped like sample."""
+    values = np.atleast_1d(np.asarray(v, dtype=float)).ravel()
+    if not isinstance(sample, GenericAD):
+        return np.asarray(v, dtype=float)
+    blocks = [
+        type(block).zeros(values.size, block.shape[1])
+        for block in sample.jac
+    ]
+    return GenericAD(values, blocks)
+
+
+def get_sparse_blocks(*args, **kwargs):
+    """MRST ``getSparseBlocks`` forwards to ``getSparseArguments``."""
+    return get_sparse_arguments(*args, **kwargs)
+
+
+def increment_subset(x, subset, v):
+    """Increment selected rows while preserving AD derivatives."""
+    if isinstance(x, GenericAD):
+        out = x.copy()
+        out[subset] = out[subset] + v
+        return out
+    out = np.array(x, dtype=np.result_type(x, v), copy=True)
+    out[subset] += v
+    return out
+
+
+diagMult = diag_mult
+diagProductMult = diag_product_mult
+double2GenericAD = double_to_generic_ad
+getSparseArguments = get_sparse_arguments
+getSparseBlocks = get_sparse_blocks
+incrementSubset = increment_subset
+matrixDims = matrix_dims
+
+__all__ = [
+    "diag_mult", "diagMult",
+    "diag_product_mult", "diagProductMult",
+    "double_to_generic_ad", "double2GenericAD",
+    "get_sparse_arguments", "getSparseArguments",
+    "get_sparse_blocks", "getSparseBlocks",
+    "increment_subset", "incrementSubset",
+    "matrix_dims", "matrixDims",
+]
 
 
 if __name__ == "__main__":
