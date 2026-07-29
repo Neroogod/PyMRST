@@ -8,10 +8,12 @@ on it.
 from pymrst.modules.vem.utils.quadrature import (
     poly_dim,
     polygon_int,
+    polygon_int_3d,
     polyhedron_int,
     tetrahedron_quad_rule,
     triangle_quad_rule,
 )
+from pymrst.modules.vem.utils.vem_geometry import compute_vem_geometry
 from pymrst.modules.vem.vem_poisson import vem_poisson
 from pymrst.modules.vem.compute_virtual_ip import (
     compute_virtual_ip,
@@ -21,10 +23,12 @@ from pymrst.modules.vem.compute_virtual_ip import (
 __all__ = [
     "poly_dim",
     "polygon_int",
+    "polygon_int_3d",
     "polyhedron_int",
     "tetrahedron_quad_rule",
     "triangle_quad_rule",
     "vem_poisson",
     "compute_virtual_ip",
     "incomp_vem",
+    "compute_vem_geometry",
 ]

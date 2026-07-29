@@ -26,6 +26,10 @@ class Cells:
     centroids: Optional[np.ndarray] = None
     nodes: Optional[np.ndarray] = None
     nodePos: Optional[np.ndarray] = None
+    # VEM augmented fields (see modules/vem/utils/compute_vem_geometry).
+    edges: Optional[np.ndarray] = None
+    edgePos: Optional[np.ndarray] = None
+    diameters: Optional[np.ndarray] = None
 
 
 @dataclass
@@ -40,6 +44,12 @@ class Faces:
     areas: Optional[np.ndarray] = None
     normals: Optional[np.ndarray] = None
     centroids: Optional[np.ndarray] = None
+    # VEM augmented fields (3-D): per face-edge edge index/sign/in-plane normal.
+    edges: Optional[np.ndarray] = None
+    edgePos: Optional[np.ndarray] = None
+    edgeSign: Optional[np.ndarray] = None
+    edgeNormals: Optional[np.ndarray] = None
+    diameters: Optional[np.ndarray] = None
 
 
 @dataclass
@@ -48,6 +58,17 @@ class Nodes:
 
     num: int
     coords: np.ndarray
+
+
+@dataclass
+class Edges:
+    """Edge topology and geometry (VEM 3-D), organized like 2-D faces."""
+
+    num: int
+    nodes: np.ndarray
+    nodePos: np.ndarray
+    lengths: Optional[np.ndarray] = None
+    centroids: Optional[np.ndarray] = None
 
 
 @dataclass
@@ -60,6 +81,7 @@ class Grid:
     griddim: int
     type: List[str] = field(default_factory=list)
     cartDims: Optional[Tuple[int, ...]] = None
+    edges: Optional[Edges] = None
 
     @property
     def spatial_dim(self) -> int:

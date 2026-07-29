@@ -140,6 +140,44 @@ def polyhedron_int(g, cells: Sequence[int], f: Callable[[np.ndarray], np.ndarray
     return out
 
 
+def polygon_int_3d(g, faces: Sequence[int], f: Callable[[np.ndarray], np.ndarray],
+                   k: int) -> np.ndarray:
+    """Integrate `f` over 3-D planar `faces` with a precision-`k` rule.
+
+    `f` maps `(n, 3)` global points to `(n, m)` values; returns `(len(faces), m)`
+    (MRST `polygonInt3D`). Each face is mapped to its own 2-D coordinate system
+    (v1 along the first edge, v2 = normal x v1), triangulated there, and the
+    reference triangle rule is affinely mapped onto every triangle - so, as in
+    MRST, the integral is taken over the face flattened into that plane.
+    """
+    Xq, w, _, vol = triangle_quad_rule(k)
+    node_pos = np.asarray(g.faces.nodePos, dtype=np.int64)
+    fnodes = np.asarray(g.faces.nodes, dtype=np.int64)
+    coords = np.asarray(g.nodes.coords, dtype=float)
+    normals = np.asarray(g.faces.normals, dtype=float)
+    m = np.atleast_2d(np.asarray(f(np.zeros((1, 3))), dtype=float)).shape[1]
+    out = np.zeros((len(faces), m))
+    for i, face in enumerate(faces):
+        nds = fnodes[node_pos[face]:node_pos[face + 1]]
+        X = coords[nds]
+        v1 = X[1] - X[0]
+        v1 /= np.linalg.norm(v1)
+        v2 = np.cross(normals[face], v1)
+        v2 /= np.linalg.norm(v2)
+        T = np.column_stack([v1, v2])                  # 3x2 global->local
+        b0 = X[0]
+        X2 = (X - b0) @ T                              # face nodes in local 2-D
+        for t in Delaunay(X2).simplices:
+            v0, e1, e2 = X2[t[0]], X2[t[1]] - X2[t[0]], X2[t[2]] - X2[t[0]]
+            A2 = np.array([e1, e2])
+            det = abs(A2[0, 0] * A2[1, 1] - A2[0, 1] * A2[1, 0])
+            xhat2 = v0 + Xq @ A2                        # local quad points
+            xhat = xhat2 @ T.T + b0                     # back to global 3-D
+            fv = np.atleast_2d(np.asarray(f(xhat), dtype=float))
+            out[i] += vol * det * (w @ fv)
+    return out
+
+
 def polygon_int(g, cells: Sequence[int], f: Callable[[np.ndarray], np.ndarray],
                 k: int) -> np.ndarray:
     """Integrate `f` over the polygonal 2D `cells` with a precision-`k` rule.
@@ -227,6 +265,18 @@ if __name__ == "__main__":
         assert np.allclose(I, expect, atol=1e-12), np.abs(I - expect).max()
         print("ok test_polyhedron_linear_moment")
 
+    def test_polygon_int_3d_face_area_and_moment():
+        """Over a 3-D planar face, integrating 1 gives the face area and
+        integrating x^2 over the x=2 face of a 2x3x4 box gives 4*12 = 48."""
+        g = compute_geometry(cart_grid([1, 1, 1], [2.0, 3.0, 4.0]))
+        area = polygon_int_3d(g, range(g.faces.num),
+                              lambda P: np.ones((P.shape[0], 1)), 1).ravel()
+        assert np.allclose(area, g.faces.areas), np.abs(area - g.faces.areas).max()
+        xf = np.flatnonzero(np.abs(np.asarray(g.faces.centroids)[:, 0] - 2.0) < 1e-9)[0]
+        I = polygon_int_3d(g, [xf], lambda P: (P[:, 0] ** 2)[:, None], 3)[0, 0]
+        assert np.isclose(I, 48.0, rtol=1e-10), I
+        print("ok test_polygon_int_3d_face_area_and_moment")
+
     test_poly_dim()
     test_constant_integral_is_cell_area()
     test_linear_integral_is_area_times_centroid()
@@ -235,4 +285,5 @@ if __name__ == "__main__":
     test_polyhedron_constant_integral_is_cell_volume()
     test_polyhedron_quadratic_is_exact()
     test_polyhedron_linear_moment()
+    test_polygon_int_3d_face_area_and_moment()
     print("\nAll tests passed!")

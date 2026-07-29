@@ -1610,10 +1610,146 @@ carry the full permeability tensor, and the `ip_simple` stability is
 (an ordering-independent fingerprint of the inner product) against MRST on a
 twisted grid with a full permeability tensor: **max eigenvalue error 1.8e-27**
 (scale 2.76e-12, i.e. ~15 digits). The patch test holds for scalar and full-tensor
-permeability. First-order (k=1, nodal DOFs) is ported; the k=2 scheme (edge and
-cell moments), the 3-D face projections and the MPFA/TPFA flux-reconstruction
-options of `computeVirtualIP`, plus the rest of `incompVEM` (Neumann BC, wells,
-flux reconstruction), remain.
+permeability.
+
+The **full first-order `incompVEM` (2-D, Phases 406-407)** is now ported and
+validated number-for-number. `incomp_vem(g, S, bc, src, ...)` assembles the
+mobility-weighted blocks, distributes cell sources through the P0 projection
+row, imposes Dirichlet (per-face constant, or exact-nodal for patch tests) and
+Neumann (Gauss-Lobatto split) boundary conditions, pins a reference dof for pure
+Neumann systems, and reconstructs face fluxes from the identity
+`K grad p = (p' A r)/|E|` averaged across each interface, with MRST's boundary
+override (non-Dirichlet boundary faces carry the prescribed/no-flow value).
+`validate_phase406.py` (function-handle Dirichlet + balanced source) matches MRST
+to **6e-16** on node pressures and **2e-16** on interior fluxes;
+`validate_phase407.py` (standard BC: Dirichlet + Neumann + natural no-flow)
+matches **all** face fluxes to **2.8e-27** and node pressures to **5.5e-16**.
+One documented MRST quirk: on the `addBCVEM` function-handle path `incompVEM`
+zeroes *every* boundary flux (it cannot distinguish Dirichlet from Neumann in
+the func struct), whereas PyMRST keeps the physically correct reconstructed
+value - so 406 compares interior fluxes only.
+
+The **second-order (k=2) VEM (2-D, Phases 408-409)** is also ported and
+validated. `compute_virtual_ip(g, rock, 2)` builds the k=2 local system over
+`[nodes, faces, cell-moment]` dofs (`computeBD2D`, k=2): D holds the six monomial
+values at nodes and face centroids plus the exact cell first moments, and B the
+Gauss-Lobatto boundary integrals of `grad phi . K grad m` with the `-2 K_ij V/h^2`
+volume term at the cell dof. `incomp_vem` handles the k=2 dof layout end to end
+(source at the cell dof, Dirichlet at nodes + face centroids, Neumann 1/6-2/3
+split, and node/face/cell flux reconstruction). `validate_phase408.py` matches
+MRST's `computeVirtualIP(...,2)` local eigenvalues to **9e-26** (scale 5.6e-11,
+~15 digits); `validate_phase409.py` matches the full k=2 `incompVEM` to MRST at
+**~2e-15** on node, face and cell pressures and **2e-14** on interior fluxes. The
+k=2 method reproduces any PDE-solving quadratic exactly (patch test to 4e-14).
+
+The **VEM grid geometry (Phase 410)** is now ported and validated, unblocking
+3-D. `compute_vem_geometry(g)` (MRST `computeVEMGeometry` + the edge-building
+part of `createAugmentedGrid`) augments a grid in place: 2-D adds
+`cells.diameters`; 3-D builds the full edge topology - a deduplicated global
+`g.edges` (nodes/nodePos/lengths/centroids from the cyclic node pairs of each
+face), per-face `edges`/`edgePos`/`edgeSign`, in-plane `faces.edgeNormals`
+(`cross(edge, face-normal)`, normalized), `cells.edges`/`edgePos` (an edge
+belongs to a cell iff both its nodes do), and cell/face `diameters`. New
+optional `Edges` container plus edge fields on `Cells`/`Faces` live in the core
+`grid_structure`. `validate_phase410.py` matches MRST on a twisted 3-D grid
+**exactly**: edge count, node pairs, lengths and centroids to `0.0`, in-plane
+edge normals to `1.1e-16`, cell/face diameters to `0.0`, and the per-face and
+per-cell edge sets identical.
+
+The **3-D first-order VEM (Phases 411-412)** is now ported and validated.
+`compute_virtual_ip(g, rock, 1)` dispatches to a 3-D path that, for each cell
+face, runs the first-order 2-D VEM on that face (in its own in-plane coordinate
+system, with the permeability projected onto the face) to obtain the face's P0
+projection row `PiNFstar(1,:)`; the cell B matrix then integrates
+`K grad m . n` over each face weighted by those face projections, with the
+constant row the uniform vertex average and `sigma_E = h_E tr(K)/3` stability.
+`incomp_vem` already handles the 3-D k=1 dof layout (nodes), so assembly, source,
+Dirichlet and 3-D flux reconstruction work unchanged. `validate_phase411.py`
+matches MRST's `computeVirtualIP` local eigenvalues to **3.2e-27** (scale
+2.87e-12, ~15 digits) on a twisted 3-D grid with a full tensor;
+`validate_phase412.py` matches the full 3-D `incompVEM` to MRST at **7e-16** on
+node pressures and **3e-17** on interior fluxes. On planar-faced (cuboid) cells
+the method is exact (linear patch + flux to ~1e-15); on twisted grids the local
+block picks up a small asymmetry and ~1e-3 linear-consistency error because the
+face P0 projection is no longer exact on a non-planar face - a property of MRST's
+3-D VEM that PyMRST reproduces number-for-number (both share the same 2.20e-4
+linear-patch error there), so those regimes are pinned against MRST rather than
+asserted analytically.
+
+The **3-D second-order VEM inner product (Phase 413)** completes the order x
+dimension grid. `compute_virtual_ip(g, rock, 2)` in 3-D builds the k=2 local
+system over `[nodes, edges, faces, cell-moment]` dofs (27 for a hex). Each cell
+face contributes through its own k=2 2-D VEM projection `PiNFstar` (built by
+`computeBD2D`-style assembly on the flattened face); the cell B matrix integrates
+`K grad m_alpha . n` over each face by expanding the linear flux in the face's
+linear monomials and pairing it, via `PiNFstar` and the face moments
+`int_f M_beta L_gamma`, with the face dofs - the same quantity MRST assembles
+through its polynomial-product machinery, computed here with direct quadrature
+(`polygon_int_3d`) instead. D uses monomial values at nodes/edges, face moments
+(constant -> 1, linear -> centroid rule, quadratic -> integral) and a
+divergence-theorem cell moment. `validate_phase413.py` pins this against MRST's
+`computeVirtualIP(...,2)`: on a **planar-faced grid the match is machine exact**
+(max eigenvalue error 7e-25, scale 1.9e-10), and each block reproduces the exact
+quadratic-field energy (self-test, 2e-13). On a **twisted (non-planar-faced)
+grid** MRST and PyMRST differ by ~6e-3 relative because MRST integrates each
+warped face with an edge Gauss-Lobatto rule using the *projected* 3-D edge
+normals while PyMRST integrates the flattened polygon exactly - two convergent
+schemes with different face-quadrature recipes, characterised rather than
+asserted.
+
+The **3-D k=2 `incompVEM` solve (Phase 414)** is now wired up too. `incomp_vem`
+handles the full node/edge/face/cell dof layout end to end: assembly, source at
+the cell-moment dof, exact-nodal Dirichlet at nodes, edges and face moments, and
+node/edge/face/cell flux reconstruction. `validate_phase414.py` matches MRST's
+3-D k=2 `incompVEM` on a planar-faced grid to **~5e-15** on node, edge, face and
+cell pressures and **3e-15** on interior fluxes, and the solver reproduces any
+PDE-solving quadratic exactly (self-test, 4e-14). The dof-layout helpers
+(`_dof_blocks`, `_dof_coords`, `_impose_dirichlet`, ...) are now dimension-aware,
+so all four order x dimension solves share one code path. Prescribed nonzero
+Neumann flux is 2-D only; in 3-D, boundary faces without a pressure BC are
+no-flow (matching how the 3-D k=1 solve already behaved).
+
+**VEM order x dimension grid - complete.** k=1 and k=2, in 2-D and 3-D, all have
+a validated inner product and `incompVEM` solve (machine-exact vs MRST, with the
+documented non-planar-face caveat for 3-D k=2).
+
+The **TPFA flux-reconstruction option (Phase 415)** is ported:
+`compute_virtual_ip(g, rock, k, trans='tpfa')` stores the two-point
+half-transmissibilities (`computeTrans`), and `incomp_vem` then reconstructs
+fluxes with a TPFA scheme on the VEM cell pressures (P0 projection of nodal
+values for k=1, the cell-moment dof for k=2) and boundary face pressures (node
+average for k=1 2-D, the face-moment dof for k=2). `validate_phase415.py` matches
+MRST's `incompVEM` + `computeVirtualIP(...,'trans','tpfa')` to machine precision
+on a twisted grid (node pressures ~1e-15, TPFA fluxes ~1e-27) for k=1 and k=2,
+and the scheme is exact for linear fields on Cartesian grids (self-test).
+
+**3-D Neumann (Phase 416)** is ported for k=2: a prescribed flux goes to the
+face-moment dof, matching MRST to machine precision on a mixed Dirichlet+Neumann
+problem (pressures ~3e-14, all fluxes 1e-25). Note that MRST's `incompVEM` has
+**no well support** (its only sources are `bc` and `src`), so there is nothing to
+port there.
+
+**3-D k=1 prescribed Neumann (Phase 422)** is now ported: the stored perm tensor
+lets the Neumann RHS recompute each boundary face's P0 projection and distribute
+the flux to its nodes by those weights. `validate_phase422.py` matches MRST's
+`incompVEM` on a mixed Dirichlet+Neumann problem to **1e-15** on node pressures
+and **2.5e-27** on all fluxes.
+
+**MPFA flux reconstruction (Phase 423)** is ported too: `trans='mpfa'` stores the
+multi-point operator (`compute_multipoint_trans`), and the flux comes from
+mapping each boundary subface to its face's VEM pressure, applying `cf_trans`,
+and aggregating with `d1`. **MRST bug found:** MRST's own `incompVEM` MPFA path
+is broken in 2024a - `computeMultiPointTrans` no longer returns the `S.T.T`
+struct `incompVEM`'s `computeFlux` expects (the old-style struct is commented out
+in `computeMultiPointTransLegacy`), so MRST errors with "Unrecognized field name
+T". A direct comparison is thus impossible; PyMRST's option is validated by the
+defining MPFA invariant instead - on a twisted, non-K-orthogonal grid it
+reconstructs a linear field's flux **exactly (3e-15)** where TPFA is off by
+`1.44` (`validate_phase423.py`), for both k=1 and k=2.
+
+**VEM is complete.** Every order x dimension inner product and `incompVEM` solve,
+the TPFA and MPFA flux options, and Dirichlet/Neumann/source BCs are ported and
+validated against MRST (or, where MRST itself is broken, by invariant).
 
 **Remaining Phase 31 discretizations (scope note).** `vag`, the rest of `vem`,
 and `dg` are each large numerical-method ports. **VAG** (606 lines) is built
@@ -1624,6 +1760,112 @@ lines of polynomial-projection assembly (foundation now in place). **DG** is 77
 files of high-order transport - the most valuable (sharper Buckley-Leverett
 fronts than first-order upwind) and the largest; the roadmap already suggests
 splitting it into its own phase.
+
+**DG foundation (Phase 417).** The framework-free mathematical core of the DG
+module is ported and validated against MRST. `pymrst/modules/dg/` now has the
+multivariate `Polynomial` class (terms as an exponent matrix + weights, with
+evaluation, derivatives and arithmetic), the 1-D `legendre`/`chebyshev`/`simple`
+families (via their three-term recurrences), and `dg_basis(dim, degree, type)` -
+the reference-element basis builder that tensor-products the 1-D families onto
+the multi-index set of total degree <= degree, ordered by ascending degree to
+match MRST's dof numbering. **Note the MRST argument order `dgBasis(dim, degree,
+type)` - dimension first**, which the port matches. `validate_phase417.py`
+compares the multi-indices and the values/gradients of every basis function at
+test points against MRST's `dgBasis` for legendre/poly/chebyshev in 2-D and 3-D:
+all match to **0** (exact).
+
+**DG reference cubatures (Phase 418).** The reference-element quadrature rules
+are ported: `get_line/square/triangle/cube/tetrahedron_cubature(k)` return the
+exact points and weights for a precision-`k` rule, with weights normalised to
+sum to 1 (the reference-element average, matching MRST). MRST's minimal symmetric
+rules are hardcoded tables (only the line rule is plain Gauss-Legendre), so the
+tables were extracted verbatim from MRST into `_cubature_tables.py` and the
+getters do MRST's precision-threshold lookup. `validate_phase418.py` confirms
+every getter reproduces MRST across all supported precisions (line 20, square 16,
+triangle 17, cube 10, tet 14) to machine precision; MRST-free self-tests check
+weight normalisation, Gauss-Legendre agreement on the line, and exact monomial
+integration. **MRST bug found and preserved:** the cube rule for k in {2,3} lists
+its second point as `(1,0,0)` instead of `(-1,0,0)`, so it does not integrate
+monomials odd in x - PyMRST reproduces the table verbatim (so the two agree) and
+documents it, steering correctness-sensitive callers to `k >= 4`.
+
+**DG element cubatures (Phase 419).** The `Cubature` classes that map the
+reference rules onto actual grid geometry are ported: `TriangleCubature`,
+`TetrahedronCubature` and `LineCubature`. Each element is split into simplices
+fanned from its centroid (a 2-D cell into triangles over its edges; a 3-D cell
+into tetrahedra over its face-edges via the face and cell centroids; a face into
+triangles or a line segment), the reference rule is affinely mapped onto every
+simplex, and weights are scaled by the simplex measure and normalised by the
+element measure - so, as in MRST, each element's weights sum to 1 (its average)
+and `measure * sum(w*f)` is the integral. `TriangleCubature` covers 2-D cells and
+3-D faces, `TetrahedronCubature` 3-D cells, `LineCubature` 2-D faces.
+`validate_phase419.py` compares the per-element points and weights against MRST's
+classes on 2-D and 3-D grids: **all match exactly (0.0)**, ordering included.
+
+**DG moment-fitting cubatures (Phase 420).** The moment-fitting kernel is ported:
+`fit_moments(x, basis, moments)` compresses a rich candidate point set into a
+minimal non-negative rule that reproduces a target set of basis moments exactly,
+by solving the non-negative least-squares `P w = M` (`scipy.optimize.nnls`, the
+`lsqnonneg` analogue) and greedily dropping the points contributing least to the
+basis until the fit can no longer stay exact. `moment_fitting_cubature(dim,
+precision)` uses it to build a compressed reference-element rule.
+`validate_phase420.py` runs MRST's `fitMoments` and PyMRST's on the identical
+candidate grid and Legendre moments: the compression is **non-unique** (greedy
+order + solver differences), so the two need not pick the same points, but both
+reproduce every moment, integrate all monomials up to the precision exactly, keep
+non-negative weights, and - notably - **compress to the same point count**
+(k=2 -> 4, k=3 -> 7, k=4 -> 15 in 2-D). MRST-free self-tests pin the invariants.
+
+**DG discretization operators (Phase 421).** The framework-free core of
+`DGDiscretization` is ported. `compute_cell_dimensions(g)` (MRST
+`computeCellDimensions`) adds the per-cell bounding box `xMin`/`xMax` and the
+reference-frame span `dx = 2*max(xMax-c, c-xMin)`; `validate_phase421.py` matches
+MRST **exactly (0.0)** on Cartesian, perturbed 2-D and 3-D grids. The
+`DGDiscretization` class then maps each cell onto `[-1,1]^dim` via
+`transform_coords` (`(x-centroid)*2/dx`, returning the `scaling` used to push
+gradients to physical space) and builds the cell operators from the basis and
+cubature: the mass matrix `M_ij = integral psi_i psi_j` and the stiffness
+`S_ijd = integral psi_i d(psi_j)/dx_d`. On a Cartesian grid with the Legendre
+basis the mass matrix is diagonal with the exact entries
+`|cell| * prod_d 1/(2 k_d + 1)` (self-test), and the stiffness reproduces the
+analytic gradient integrals.
+
+**DG transport solver (Phase 424).** The DG field layer and a working transport
+solver are ported. `DGDiscretization` now stores a variable as modal dofs and
+provides `evaluate`, `cell_mean`, `assign_from_cell_values` and an L2 `project`
+(exact for polynomials up to the basis degree, order deg+1 for smooth fields).
+`dg_transport.DGScalarTransport` assembles the DG weak form of a scalar
+conservation law `du/dt + div(f(u) v) = 0` - the mass/stiffness volume term plus
+an upwind numerical flux on faces (evaluated with a `LineCubature`) - and
+time-steps it implicitly with a Newton loop and an **analytical Jacobian**
+(matched to finite differences to 4e-7, ~50x faster). `validate_phase424.py`
+pins it to exact solutions: linear advection converges to the exact translated
+pulse as dt->0 (backward Euler is first-order/dissipative), and a
+Buckley-Leverett displacement puts the DG shock at the analytic **Welge front**
+(0.358 vs 0.362) with a bounded monotone profile.
+
+This deliberately validates the DG transport *scheme* against analytical ground
+truth rather than MRST bit-for-bit: MRST's `TransportModelDG` applies TVB +
+physical slope limiters for degree>=1 (degree 0 is plain finite volume) and runs
+inside the full sequential pressure/transport schedule, so a dof-for-dof match
+needs those limiters and setup. The shock speed is limiter-independent, so the
+front position - the physical invariant both must reproduce - is what is pinned.
+The remaining DG work is the slope limiters and wiring the solver into MRST's AD
+sequential-model schedule for the literal `TransportModelDG` comparison; the
+generic sequential `TransportModel` base and the DG state functions are the
+supporting pieces for that.
+
+**DG0 MRST transport comparison (Phase 425).** The literal comparison is now
+established at degree zero, where `TransportModelDG` has no slope modes to limit
+and is the implicit finite-volume upwind scheme. On MRST's 30-cell,
+30-report-step Buckley-Leverett schedule, PyMRST reproduces the complete
+saturation history to **9.7e-4** and the final profile to **6.5e-4**. The small
+difference is confined to near-zero front cells at MRST's nonlinear stopping
+threshold. This comparison also exposed full-Newton oscillation at residual
+saturation; `DGScalarTransport.step` now uses residual-decreasing backtracking,
+which robustly converges through the degenerate fractional-flow derivative.
+The remaining DG work is therefore specifically the degree >= 1 TVB/physical
+slope limiters and their dof-for-dof `TransportModelDG` comparison.
 
 ---
 
