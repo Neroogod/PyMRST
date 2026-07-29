@@ -28,6 +28,9 @@ from pymrst.modules.ad_core.initialization.regions import (
     get_initialization_regions_base,
     init_state_equil_regions,
 )
+from pymrst.modules.ad_core.initialization.get_initialization_regions_deck import (
+    get_initialization_regions_deck,
+)
 from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.utils.adi import value
 
@@ -45,6 +48,9 @@ def _get(deck: Any, *keys):
 def init_state_deck(model: Any, deck: Any, gravity: float = 9.80665) -> State:
     """The initial reservoir state from a parsed deck (explicit or equilibrated)."""
     equil = _get(deck, "equil", "EQUIL")
+    if equil is None:
+        solution = _get(deck, "SOLUTION", "solution")
+        equil = _get(solution, "equil", "EQUIL")
     if equil is not None:
         return _init_equilibrated(model, deck, equil, gravity)
     return _init_explicit(model, deck)
@@ -77,6 +83,14 @@ def _init_equilibrated(model: Any, deck: Any, equil: Any,
     pc_goc, ...]``; contacts are ordered shallowest-first as
     `EquilibriumRegion` expects.
     """
+    solution = _get(deck, "SOLUTION", "solution")
+    region_data = _get(deck, "REGIONS", "regions")
+    if solution is not None or region_data is not None:
+        nested = dict(deck)
+        if solution is None:
+            nested["SOLUTION"] = {"EQUIL": equil}
+        regions = get_initialization_regions_deck(model, nested)
+        return init_state_equil_regions(model, regions, gravity)
     rec = np.atleast_2d(np.asarray(equil, float))[0]
     datum_depth, datum_pressure = float(rec[0]), float(rec[1])
     owc = float(rec[2])

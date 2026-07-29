@@ -20,6 +20,10 @@ from pymrst.modules.ad_core.initialization.get_min_max_phase_saturations_from_re
     get_min_max_phase_saturations_from_rel_perm,
     getMinMaxPhaseSaturationsFromRelPerm,
 )
+from pymrst.modules.ad_core.initialization.get_initialization_regions_deck import (
+    get_initialization_regions_deck,
+    getInitializationRegionsDeck,
+)
 
 __all__ = [
     "EquilibriumRegion",
@@ -27,6 +31,8 @@ __all__ = [
     "get_min_max_phase_saturations",
     "get_min_max_phase_saturations_from_rel_perm",
     "getMinMaxPhaseSaturationsFromRelPerm",
+    "get_initialization_regions_deck",
+    "getInitializationRegionsDeck",
     "init_state_equil",
     "init_state_equil_regions",
     "initialize_equilibrium_pressures",
