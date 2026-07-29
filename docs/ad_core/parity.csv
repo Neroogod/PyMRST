@@ -280,7 +280,7 @@ utils/compressSchedule.m,compressSchedule,utils,ported-consolidated,pymrst/modul
 utils/computeCpGeometry.m,computeCpGeometry,utils,pending-review,,,unvalidated,,
 utils/computeSourcesAndBoundaryConditionsAD.m,computeSourcesAndBoundaryConditionsAD,utils,pending-review,,,unvalidated,,
 utils/convert2MSWell.m,convert2MSWell,utils,pending-review,,,unvalidated,,
-utils/convertDeckScheduleToMRST.m,convertDeckScheduleToMRST,utils,pending-review,,,unvalidated,,
+utils/convertDeckScheduleToMRST.m,convertDeckScheduleToMRST,utils,ported,pymrst/modules/ad_core/utils/convert_deck_schedule_to_mrst.py,filename,validated-reference,examples/validation/validate_ad_core_convert_deck_schedule.py,
 utils/convertIncompWellSols.m,convertIncompWellSols,utils,pending-review,,,unvalidated,,
 utils/convertMultiSegmentWellsDeck.m,convertMultiSegmentWellsDeck,utils,pending-review,,,unvalidated,,
 utils/convertReportToSchedule.m,convertReportToSchedule,utils,pending-review,,,unvalidated,,

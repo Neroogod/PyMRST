@@ -37,3 +37,23 @@ def test_model_override_and_output_switches():
     )
     assert state2 is None and schedule2 is None and model2 is model
     assert nonlinear2.timestep_selector is None
+
+
+@pytest.mark.skipif(not SPE1.exists(), reason="local MRST SPE1 deck is unavailable")
+def test_model_override_converts_processed_deck_schedule():
+    _, model, _, _ = init_eclipse_problem_ad(SPE1, get_schedule=False)
+    deck = {
+        "pressure": np.full(model.G.cells.num, 2.0e7),
+        "swat": np.full(model.G.cells.num, 0.2),
+        "sgas": np.zeros(model.G.cells.num),
+        "rs": np.zeros(model.G.cells.num),
+        "SCHEDULE": {
+            "step": {"val": [1.0, 2.0], "control": [1, 1]},
+            "control": [{"W": []}],
+        },
+    }
+    _, _, schedule, _ = init_eclipse_problem_ad(
+        deck, model=model, get_initial_state=False
+    )
+    assert schedule.n_steps == 2
+    assert np.array_equal(schedule.step_control, [0, 0])

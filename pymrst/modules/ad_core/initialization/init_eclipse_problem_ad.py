@@ -15,7 +15,7 @@ import numpy as np
 
 from pymrst.modules.ad_core.initialization.deck import init_state_deck
 from pymrst.modules.ad_core.solvers.get_non_linear_solver import get_non_linear_solver
-from pymrst.modules.ad_core.utils.schedule import Control, Schedule, simple_schedule
+from pymrst.modules.ad_core.utils.schedule import Schedule, simple_schedule
 from pymrst.modules.ad_core.utils.select_model_from_deck import select_model_from_deck
 
 
@@ -69,20 +69,10 @@ def _schedule_from_deck(deck, model) -> Optional[Schedule]:
     if isinstance(schedule, Schedule):
         return schedule
     if isinstance(schedule, Mapping):
-        step = _get(schedule, "step", default=schedule)
-        values = _get(step, "val", "step_val")
-        indices = _get(step, "control", "step_control")
-        controls_raw = _get(schedule, "controls", "control", default=[])
-        controls = [
-            c if isinstance(c, Control) else Control(
-                W=_get(c, "W", "wells"), bc=_get(c, "bc"), src=_get(c, "src")
-            )
-            for c in controls_raw
-        ]
-        indices = np.asarray(indices, dtype=np.int64).ravel()
-        if indices.size and indices.min() == 1:
-            indices = indices - 1
-        return Schedule(values, indices, controls)
+        from pymrst.modules.ad_core.utils.convert_deck_schedule_to_mrst import (
+            convert_deck_schedule_to_mrst,
+        )
+        return convert_deck_schedule_to_mrst(model, schedule)
     timesteps = _get(deck, "tsteps", "dt")
     if timesteps is None:
         return None

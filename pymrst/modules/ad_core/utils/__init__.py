@@ -41,6 +41,10 @@ from pymrst.modules.ad_core.utils.select_model_from_deck import (
 )
 from pymrst.modules.ad_core.utils.standalone_solve import standalone_solve
 from pymrst.modules.ad_core.utils.get_well_output import get_well_output
+from pymrst.modules.ad_core.utils.convert_deck_schedule_to_mrst import (
+    convert_deck_schedule_to_mrst,
+    convertDeckScheduleToMRST,
+)
 
 __all__ = [
     "Operators",
@@ -71,4 +75,6 @@ __all__ = [
     "select_model_from_deck",
     "standalone_solve",
     "get_well_output",
+    "convert_deck_schedule_to_mrst",
+    "convertDeckScheduleToMRST",
 ]
