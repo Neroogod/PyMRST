@@ -148,7 +148,7 @@ simulators/sim_runner/initEclipsePackedProblemAD.m,initEclipsePackedProblemAD,si
 simulators/sim_runner/monitorBackgroundSimulations.m,monitorBackgroundSimulations,simulators,pending-review,,,unvalidated,,
 simulators/sim_runner/packSimulationProblem.m,packSimulationProblem,simulators,ported-consolidated,pymrst/modules/ad_core/simulators/sim_runner/__init__.py; pymrst/modules/ad_core/simulators/sim_runner/packed_problem.py,symbol-reference,unvalidated,,
 simulators/sim_runner/plotPackedProblem.m,plotPackedProblem,simulators,pending-review,,,unvalidated,,
-simulators/sim_runner/simulatePackedProblem.m,simulatePackedProblem,simulators,pending-review,,,unvalidated,,
+simulators/sim_runner/simulatePackedProblem.m,simulatePackedProblem,simulators,ported,pymrst/modules/ad_core/simulators/sim_runner/simulate_packed_problem.py,filename,unvalidated,,
 simulators/sim_runner/simulatePackedProblemBackground.m,simulatePackedProblemBackground,simulators,pending-review,,,unvalidated,,
 simulators/sim_runner/simulatePackedProblemStandalone.m,simulatePackedProblemStandalone,simulators,pending-review,,,unvalidated,,
 simulators/sim_runner/tests/Contents.m,Contents,simulators,excluded-catalog,,MATLAB package catalog,validated-reference,examples/validation/validate_phase150.py; examples/validation/validate_phase240.py; examples/validation/validate_phase243.py; examples/validation/validate_phase245.py; examples/validation/validate_phase267.py; examples/validation/validate_phase278.py; examples/validation/validate_phase281.py; examples/validation/validate_phase294.py; examples/validation/validate_phase295.py; examples/validation/validate_phase296.py; examples/validation/validate_phase297.py; examples/validation/validate_phase303.py,
