@@ -16,12 +16,9 @@ per-perforation connection pressure-drop. It plays the role MRST's facility
 model does for these state functions (`model.ReservoirModel`,
 `model.getWellStruct`, `state.wellSol`), adapted to PyMRST's well structs.
 
-Core landed here: `FacilityWellMapping`, `WellIndex`,
-`PerforationPressureGradient`, `PerforationMobility`, `WellPhaseFlux`. The
-component-well fluxes (`WellComponentPhaseFlux`, `...TotalFlux`,
-`...DensityMix`, `...VolumeBalanceCrossflow`), `PerforationComponentPhaseDensity`
-and `InjectionSurfaceDensity` are the intricate crossflow-mixture layer and are
-a separate follow-on.
+The complete facility chain is registered here: the core phase-flux functions,
+perforation component and injection densities, component phase flux, and the
+standard, density-mix, and volume-balanced component-total crossflow variants.
 """
 
 from __future__ import annotations
@@ -100,12 +97,51 @@ class FacilityFlowDiscretization(StateFunctionGrouping):
         from pymrst.modules.ad_core.statefunctions.facility.well_phase_flux import (  # noqa: E501
             WellPhaseFlux,
         )
+        from pymrst.modules.ad_core.statefunctions.facility.injection_surface_density import (  # noqa: E501
+            InjectionSurfaceDensity,
+        )
+        from pymrst.modules.ad_core.statefunctions.facility.perforation_component_phase_density import (  # noqa: E501
+            PerforationComponentPhaseDensity,
+        )
+        from pymrst.modules.ad_core.statefunctions.facility.well_component_phase_flux import (  # noqa: E501
+            WellComponentPhaseFlux,
+        )
+        from pymrst.modules.ad_core.statefunctions.facility.well_component_total_flux import (  # noqa: E501
+            WellComponentTotalFlux,
+        )
+        from pymrst.modules.ad_core.statefunctions.facility.well_component_total_flux_density_mix import (  # noqa: E501
+            WellComponentTotalFluxDensityMix,
+        )
+        from pymrst.modules.ad_core.statefunctions.facility.well_component_total_volume_balance_crossflow import (  # noqa: E501
+            WellComponentTotalVolumeBalanceCrossflow,
+        )
         self.set_state_function("FacilityWellMapping", FacilityWellMapping(facility))
         self.set_state_function("WellIndex", WellIndex(facility))
         self.set_state_function("PressureGradient",
                                 PerforationPressureGradient(facility))
         self.set_state_function("Mobility", PerforationMobility(facility))
         self.set_state_function("WellPhaseFlux", WellPhaseFlux(facility))
+        self.set_state_function(
+            "ComponentPhaseDensity",
+            PerforationComponentPhaseDensity(facility),
+        )
+        self.set_state_function(
+            "InjectionSurfaceDensity", InjectionSurfaceDensity(facility)
+        )
+        self.set_state_function(
+            "ComponentPhaseFlux", WellComponentPhaseFlux(facility)
+        )
+        self.set_state_function(
+            "ComponentTotalFlux", WellComponentTotalFlux(facility)
+        )
+        self.set_state_function(
+            "ComponentTotalFluxDensityMix",
+            WellComponentTotalFluxDensityMix(facility),
+        )
+        self.set_state_function(
+            "ComponentTotalVolumeBalanceCrossflow",
+            WellComponentTotalVolumeBalanceCrossflow(facility),
+        )
 
 
 def build_well_mapping(facility: Any) -> WellMapping:

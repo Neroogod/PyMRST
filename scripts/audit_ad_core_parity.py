@@ -109,19 +109,6 @@ def find_counterparts(
             [],
             "MATLAB timing/plot driver; reusable benchmark utility is ported and validated",
         )
-    if symbol in {
-        "InjectionSurfaceDensity",
-        "PerforationComponentPhaseDensity",
-        "WellComponentPhaseFlux",
-        "WellComponentTotalFlux",
-        "WellComponentTotalFluxDensityMix",
-        "WellComponentTotalVolumeBalanceCrossflow",
-    } and rel.parts[:2] == ("statefunctions", "facility"):
-        return (
-            "pending-review",
-            [],
-            "advanced facility component/crossflow state function is not implemented",
-        )
     if rel.parts[0] == "plotting":
         return (
             "excluded-visualization",
