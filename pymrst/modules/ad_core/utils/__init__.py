@@ -178,6 +178,7 @@ from pymrst.modules.ad_core.utils.set_mpfa_discretization import (
     set_mpfa_discretization,
     setMPFADiscretization,
 )
+from pymrst.modules.ad_core.utils.obj2hash import obj2hash
 
 __all__ = [
     "Operators",
@@ -292,4 +293,5 @@ __all__ = [
     "setTimeDiscretization",
     "set_mpfa_discretization",
     "setMPFADiscretization",
+    "obj2hash",
 ]
