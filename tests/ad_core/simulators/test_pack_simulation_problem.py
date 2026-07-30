@@ -17,6 +17,7 @@ from pymrst.modules.ad_core.simulators.sim_runner import (
     simulate_packed_problem_standalone,
     init_eclipse_packed_problem_ad,
 )
+from pymrst.modules.ad_core.simulators.sim_runner.packed_problem import ResultHandler
 from pymrst.modules.ad_core.utils.schedule import simple_schedule
 
 
@@ -38,6 +39,7 @@ def test_pack_layout_and_atomic_handlers(tmp_path):
     assert problem.Description == "test case"
     assert problem.SimulatorSetup.state0 is state
     assert len(problem.OutputHandlers.states) == 0
+    assert isinstance(problem.OutputHandlers.states, ResultHandler)
     problem.OutputHandlers.states[0] = {"time": 1.0}
     assert problem.OutputHandlers.states[0] == {"time": 1.0}
     assert problem.OutputHandlers.states.indices() == [0]

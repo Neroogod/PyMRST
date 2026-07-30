@@ -1,3 +1,5 @@
+"""Numerical coverage for the WENO machinery used by MRST's wenoExampleAD."""
+
 import numpy as np
 
 from pymrst.gridprocessing import cart_grid, compute_geometry

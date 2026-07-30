@@ -4,7 +4,8 @@ AC14's multisegment-well machinery already lives on the MRST layout and is
 MATLAB-validated: `MultisegmentWell` (params) and
 `assemble_multisegment_equations` / `MultisegmentEquationResult`
 (`ad_core/models/facilities/multisegment/`), checked against MRST's converted
-MS-well layout in Phase 109. What this phase adds is
+MS-well layout in Phase 109. This is the port of
+`setupMSWellEquationSingleWell`. What this phase adds is
 `reorder_well_perforations_by_depth` - the utility a multisegment well needs so
 its perforations run shallow-to-deep, matching the segment topology and the
 hydrostatic column.

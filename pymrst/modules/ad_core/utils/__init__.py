@@ -25,6 +25,7 @@ from pymrst.modules.ad_core.utils.schedule import (
     subset_schedule,
 )
 from pymrst.modules.ad_core.utils.cfl import (
+    estimate_composition_cfl,
     estimate_saturation_cfl,
     fractional_flow_derivative,
 )
@@ -218,6 +219,7 @@ __all__ = [
     "refine_schedule",
     "simple_schedule",
     "subset_schedule",
+    "estimate_composition_cfl",
     "estimate_saturation_cfl",
     "fractional_flow_derivative",
     "phase_densities_to_bfactor",

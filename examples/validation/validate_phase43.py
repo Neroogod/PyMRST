@@ -14,7 +14,8 @@ returns a slightly wrong Newton update, the nonlinear solver absorbs it, and
 the simulation converges to something that is almost right. The only way to see
 that is to compare against a reference computed a completely different way.
 
-So this replays both cases through `CPRSolver` and checks them against:
+So this replays both cases through `CPRSolver` and checks them against, while
+also exercising the `selectLinearSolverAD` policy:
 
 - **MATLAB** (`ref_p5_ow.mat`, `ref_p5b_spe1.mat`) - the same tolerances Phase
   24 demanded of the direct solve;

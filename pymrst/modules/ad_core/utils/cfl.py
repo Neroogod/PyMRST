@@ -1,4 +1,4 @@
-"""Saturation CFL estimate (MRST ad-core `estimateSaturationCFL`).
+"""CFL estimates (MRST ``estimateSaturationCFL``/``estimateCompositionCFL``).
 
 An explicit or adaptive-implicit (AIM) scheme is stable only where the
 saturation front does not cross more than one cell in a timestep. The CFL
@@ -122,6 +122,83 @@ def estimate_saturation_cfl(model: Any, state, dt: float,
     np.add.at(rate_cell, right, rate_face * (~f | xflow))
 
     return (dt / pv) * rate_cell
+
+
+def estimate_composition_cfl(
+    model: Any,
+    state,
+    dt: float,
+    *,
+    use_inflow: bool = False,
+    component_flux: Optional[np.ndarray] = None,
+    component_mass: Optional[np.ndarray] = None,
+    phase_flux: Optional[np.ndarray] = None,
+) -> np.ndarray:
+    """Return MRST's component-throughput CFL for every cell and component.
+
+    Optional arrays expose the numerical kernel for testing and specialized
+    callers. Their shapes are respectively ``(nface, ncomp)``,
+    ``(ncell, ncomp)``, and ``(nface, nphase)``. If omitted, the corresponding
+    state functions are evaluated through ``model.get_props``.
+    """
+    n = np.asarray(model.operators.N, dtype=np.int64)
+    left, right = n[:, 0], n[:, 1]
+
+    if phase_flux is None:
+        phase_flux = state["flux"]
+    v = np.asarray(value(phase_flux), dtype=float)
+    if v.ndim == 1:
+        v = v[:, None]
+    v_t = v.sum(axis=1)
+    flag = v_t > 0
+    xflow = ~(np.all(v >= 0, axis=1) | np.all(v <= 0, axis=1))
+
+    if component_flux is None or component_mass is None:
+        ad_state = (model.init_state_ad(state)
+                    if hasattr(model, "init_state_ad") else state)
+        if component_flux is None:
+            component_flux = model.get_props(ad_state, "ComponentTotalFlux")
+        if component_mass is None:
+            component_mass = model.get_props(ad_state, "ComponentTotalMass")
+    q = np.asarray(value(component_flux), dtype=float)
+    mass = np.asarray(value(component_mass), dtype=float)
+    if q.ndim == 1:
+        q = q[:, None]
+    if mass.ndim == 1:
+        mass = mass[:, None]
+
+    total_mass = mass.sum(axis=1, keepdims=True)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        fractions = mass / total_mass
+    safe_mass = mass.copy()
+    safe_mass[fractions < 1e-7] = 1.0
+
+    mass_face = np.where(flag[:, None], safe_mass[left], safe_mass[right])
+    if np.any(xflow):
+        mass_face[xflow] = np.maximum(
+            np.abs(safe_mass[left[xflow]]),
+            np.abs(safe_mass[right[xflow]]),
+        )
+    with np.errstate(divide="ignore", invalid="ignore"):
+        rate_face = np.abs(q) / mass_face
+
+    nc, ncomp = mass.shape
+    cfl = np.zeros((nc, ncomp), dtype=float)
+    f = ~flag if use_inflow else flag
+    for component in range(ncomp):
+        np.add.at(
+            cfl[:, component],
+            left,
+            rate_face[:, component] * (f | xflow),
+        )
+        np.add.at(
+            cfl[:, component],
+            right,
+            rate_face[:, component] * (~f | xflow),
+        )
+    cfl *= float(dt)
+    cfl[~np.isfinite(cfl)] = 0.0
+    return cfl
 
 
 if __name__ == "__main__":

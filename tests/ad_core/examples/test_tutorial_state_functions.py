@@ -1,5 +1,8 @@
 import numpy as np
 
+# Numerical counterparts of MRST exampleStateFunctionsBook and
+# showConceptualAD.
+
 from pymrst.modules.ad_core.examples import (
     TutorialAdd,
     TutorialNumber,
