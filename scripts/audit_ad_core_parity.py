@@ -60,11 +60,11 @@ def find_counterparts(
             [],
             "optional opm-data/opm-tests repository and restart-output reader",
         )
-    if symbol == "plotRegionContacts":
+    if symbol in {"plotRegionContacts", "terniaryWellPlot"}:
         return (
             "excluded-visualization",
             [],
-            "MATLAB graphics helper; numerical region data remains required",
+            "MATLAB graphics-only helper; no simulation or numerical output",
         )
 
     exact = [
