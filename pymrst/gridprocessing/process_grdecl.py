@@ -349,7 +349,8 @@ def _find_faults(pre: _PreGrid, P, B, actnum_f, tags):
 
 
 def process_grdecl(grdecl: Dict, tolerance: float = 0.0,
-                   check_grid: bool = True) -> Grid:
+                   check_grid: bool = True,
+                   preserve_cp_nodes: bool = False) -> Grid:
     """Build an unstructured Grid from SPECGRID/COORD/ZCORN(/ACTNUM)."""
     grdecl = dict(grdecl)
     nx, ny, nz = grdecl["cartDims"]
@@ -408,6 +409,20 @@ def process_grdecl(grdecl: Dict, tolerance: float = 0.0,
     coords_zyx, from_map = np.unique(zyx, axis=0, return_inverse=True)
     coords = coords_zyx[:, ::-1].copy()
     P = _F(from_map + 1, Z.shape)                      # 1-based point ids
+    cp_nodes_all = None
+    if preserve_cp_nodes:
+        cp_nodes_all = np.empty((nx * ny * nz, 8), dtype=np.int64)
+        row = 0
+        for k in range(nz):
+            for j in range(ny):
+                for i in range(nx):
+                    cp_nodes_all[row] = [
+                        P[2*i + di, 2*j + dj, 2 + 2*k + dk]
+                        for dk in range(2)
+                        for dj in range(2)
+                        for di in range(2)
+                    ]
+                    row += 1
     B = _F(np.arange(1, np.prod(dims_aux) + 1), dims_aux)
 
     pre = _PreGrid(coords)
@@ -518,6 +533,11 @@ def process_grdecl(grdecl: Dict, tolerance: float = 0.0,
         type=["processGRDECL"],
         cartDims=(nx, ny, nz),
     )
+    if cp_nodes_all is not None:
+        cp_nodes = cp_nodes_all[index_map]
+        if not np.all(used[cp_nodes]):
+            raise AssertionError("preserved corner-point node was pruned")
+        g.cells.cpnodes = node_map[cp_nodes].astype(np.int64)
 
     if check_grid:
         assert np.all(np.diff(g.cells.facePos) > 3), "cell with < 4 faces"

@@ -29,17 +29,14 @@ def process_grdecl_omo(
 ):
     """Process a corner-point grid through the OMO-compatible API.
 
-    ``verbose`` is accepted for call compatibility. ``preserve_cp_nodes`` is
-    rejected because PyMRST's canonical ``Grid`` does not currently retain the
-    eight pre-deduplication corner-node indices.
+    ``verbose`` is accepted for call compatibility. With
+    ``preserve_cp_nodes=True``, ``grid.cells.cpnodes`` stores the eight
+    deduplicated vertex indices corresponding to each active cell's original
+    corner-point nodes.
     """
     del verbose
     if tolerance < 0:
         raise ValueError("tolerance must be non-negative")
-    if preserve_cp_nodes:
-        raise NotImplementedError(
-            "processGRDECLOMO PreserveCpNodes is not represented by PyMRST Grid"
-        )
     data = deepcopy(dict(grdecl))
     if tolerance > 0:
         zcorn = np.asarray(data["ZCORN"], dtype=float)
@@ -51,7 +48,12 @@ def process_grdecl_omo(
             active=data.get("ACTNUM"),
         )
 
-    grid = process_grdecl(data, tolerance=0.0, check_grid=check_grid)
+    grid = process_grdecl(
+        data,
+        tolerance=0.0,
+        check_grid=check_grid,
+        preserve_cp_nodes=preserve_cp_nodes,
+    )
     if "PINCH" in data and "ACTNUM" in data:
         nnc = process_pinch(data, grid)
         if nnc is not None:

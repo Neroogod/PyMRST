@@ -38,6 +38,15 @@ def test_omo_repair_zcorn_option_repairs_before_processing():
     assert np.all(grid.cells.volumes >= 0)
 
 
-def test_preserve_cp_nodes_is_explicitly_rejected():
-    with pytest.raises(NotImplementedError, match="PreserveCpNodes"):
-        process_grdecl_omo(_grdecl(), preserve_cp_nodes=True)
+def test_preserve_cp_nodes_retains_original_cell_vertices():
+    grid = process_grdecl_omo(_grdecl(), preserve_cp_nodes=True)
+    assert grid.cells.cpnodes.shape == (grid.cells.num, 8)
+    assert np.all(grid.cells.cpnodes >= 0)
+    assert np.all(grid.cells.cpnodes < grid.nodes.num)
+    first = grid.nodes.coords[grid.cells.cpnodes[0]]
+    assert {tuple(point) for point in first} == {
+        (0.0, 0.0, 0.0), (1.0, 0.0, 0.0),
+        (0.0, 1.0, 0.0), (1.0, 1.0, 0.0),
+        (0.0, 0.0, 1.0), (1.0, 0.0, 1.0),
+        (0.0, 1.0, 1.0), (1.0, 1.0, 1.0),
+    }
