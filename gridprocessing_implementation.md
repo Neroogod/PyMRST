@@ -814,3 +814,10 @@ centroids, directional extents, and one nominal face centroid per half-face.
 cell-face incidence and orients each pair from face-node geometry, matching
 MRST's `findNeighbors`/`findNormalDirections` path. Missing neighbor data also
 triggers reconstruction automatically; non-manifold faces are rejected.
+
+`compute_geometry(..., hinge_nodes={"faces": ..., "nodes": ...})` implements
+MRST's 3D `hingenodes` option. Face indices are zero-based in Python and each
+row of `nodes` supplies the triangulation center for the corresponding curved
+or non-planar face. The substituted centers affect face area, normal, and
+centroid as well as the derived cell volumes and centroids. Attribute-style
+objects with `.faces` and `.nodes` are also accepted.

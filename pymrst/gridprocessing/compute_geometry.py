@@ -9,12 +9,16 @@ from pymrst.utils.gridtools import mcolon
 
 
 def compute_geometry(g: Grid, *, cp_geometry: bool = False,
-                     find_neighbors: bool = False) -> Grid:
+                     find_neighbors: bool = False, hinge_nodes=None) -> Grid:
     """Fill face and cell geometry fields on ``g``.
 
     With ``cp_geometry=True``, additionally derive MRST's nominal corner-point
-    centers/extents when ``cells.cpnodes`` is available.
+    centers/extents when ``cells.cpnodes`` is available. For a 3D grid,
+    ``hinge_nodes`` may be a mapping or object with ``faces`` and ``nodes``
+    members. Its zero-based face indices and corresponding 3D coordinates
+    replace the triangulation centers of non-planar faces.
     """
+    hinges = _normalize_hinge_nodes(g, hinge_nodes)
     if find_neighbors or g.faces.neighbors is None:
         if g.griddim == 1:
             raise ValueError("neighbor reconstruction is supported in 2D/3D")
@@ -25,7 +29,7 @@ def compute_geometry(g: Grid, *, cp_geometry: bool = False,
         assert g.spatial_dim in (2, 3), "2D grids live in 2 or 3 dimensions"
         _geom_2d(g)
     elif g.griddim == 3:
-        _geom_3d(g)
+        _geom_3d(g, hinges)
     else:
         raise ValueError(f"unsupported grid dimension {g.griddim}")
     if cp_geometry:
@@ -39,6 +43,46 @@ def compute_geometry(g: Grid, *, cp_geometry: bool = False,
             )
     g.type = g.type + ["computeGeometry"]
     return g
+
+
+def _normalize_hinge_nodes(g: Grid, hinge_nodes):
+    """Validate MRST ``hingenodes`` and return its two numeric arrays."""
+    if hinge_nodes is None:
+        return None
+    if g.griddim != 3:
+        raise ValueError("hinge_nodes is only supported for 3D grids")
+    try:
+        if isinstance(hinge_nodes, dict):
+            faces = hinge_nodes["faces"]
+            nodes = hinge_nodes["nodes"]
+        else:
+            faces = hinge_nodes.faces
+            nodes = hinge_nodes.nodes
+    except (KeyError, AttributeError) as exc:
+        raise ValueError("hinge_nodes must define faces and nodes") from exc
+
+    raw_faces = np.asarray(faces)
+    if raw_faces.ndim > 2 or (raw_faces.ndim == 2 and 1 not in raw_faces.shape):
+        raise ValueError("hinge_nodes.faces must be a vector")
+    raw_faces = raw_faces.reshape(-1)
+    if not np.issubdtype(raw_faces.dtype, np.integer):
+        if not np.issubdtype(raw_faces.dtype, np.number) or not np.all(
+            np.isfinite(raw_faces) & (raw_faces == np.floor(raw_faces))
+        ):
+            raise ValueError("hinge_nodes.faces must contain integer indices")
+    faces = raw_faces.astype(np.int64)
+    nodes = np.asarray(nodes, dtype=float)
+    if faces.size == 0 and nodes.size == 0:
+        nodes = nodes.reshape(0, 3)
+    elif nodes.ndim == 1 and faces.size == 1:
+        nodes = nodes.reshape(1, -1)
+    if nodes.shape != (faces.size, 3):
+        raise ValueError("hinge_nodes.nodes must have shape (number of faces, 3)")
+    if np.any((faces < 0) | (faces >= g.faces.num)):
+        raise ValueError("hinge_nodes.faces contains an out-of-range face index")
+    if not np.all(np.isfinite(nodes)):
+        raise ValueError("hinge_nodes.nodes must contain finite coordinates")
+    return faces, nodes
 
 
 def _find_and_orient_neighbors(g: Grid) -> None:
@@ -122,7 +166,7 @@ def _accum(index: np.ndarray, values: np.ndarray, size: int) -> np.ndarray:
     )
 
 
-def _geom_3d(g: Grid) -> None:
+def _geom_3d(g: Grid, hinge_nodes=None) -> None:
     coords = g.nodes.coords
     node_pos = g.faces.nodePos
     face_nodes = g.faces.nodes
@@ -130,6 +174,10 @@ def _geom_3d(g: Grid) -> None:
     num_nodes = np.diff(node_pos)
     face_no = np.repeat(np.arange(nf, dtype=np.int64), num_nodes)
     p_centers = _accum(face_no, coords[face_nodes], nf) / num_nodes[:, None]
+    if hinge_nodes is not None:
+        hinge_faces, hinge_coords = hinge_nodes
+        for face, coordinate in zip(hinge_faces, hinge_coords):
+            p_centers[face] = coordinate
 
     nxt = np.arange(1, face_nodes.size + 1, dtype=np.int64)
     nxt[node_pos[1:] - 1] = node_pos[:-1]
