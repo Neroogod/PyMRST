@@ -37,6 +37,16 @@ from pymrst.modules.ad_core.models.facilities.uniform_facility_model import (
 from pymrst.modules.ad_core.models.facilities.well_bore_friction import (
     well_bore_friction,
 )
+from pymrst.modules.ad_core.models.facilities.nozzle_valve import (
+    nozzleValve,
+    nozzle_valve,
+)
+from pymrst.modules.ad_core.models.facilities.perforation_properties import (
+    packPerforationProperties,
+    pack_perforation_properties,
+    unpackPerforationProperties,
+    unpack_perforation_properties,
+)
 
 __all__ = [
     "FacilityLinearizedProblem",
@@ -60,4 +70,10 @@ __all__ = [
     "select_facility_from_deck",
     "vfp_tables_from_deck",
     "well_bore_friction",
+    "nozzleValve",
+    "nozzle_valve",
+    "packPerforationProperties",
+    "pack_perforation_properties",
+    "unpackPerforationProperties",
+    "unpack_perforation_properties",
 ]
