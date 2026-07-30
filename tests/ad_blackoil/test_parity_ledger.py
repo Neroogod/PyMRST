@@ -28,6 +28,7 @@ def test_missing_utilities_and_guarded_examples_remain_honestly_pending():
     rows = {row["symbol"]: row for row in generate_rows(REPO, MRST, PYTHON)}
     assert rows["eggExample"]["port_status"] == "pending"
     assert rows["blackoilTimeIntegrationExample"]["port_status"] == "partial"
+    assert rows["blackoilSectorModelExample"]["port_status"] == "ported"
 
 
 def test_new_shrinkage_helpers_are_direct_ports():

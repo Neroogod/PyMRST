@@ -6,16 +6,15 @@ The CSV ledger is authoritative; filename presence does not make a guarded examp
 ## Current scan
 
 - MRST MATLAB files inventoried: **57**
-- Ported: **38**
+- Ported: **39**
 - Partial: **3**
-- Pending: **7**
+- Pending: **6**
 - Catalogs excluded: **9**
-- Reference-validated entries: **25**
-- Unvalidated entries: **32**
+- Reference-validated entries: **26**
+- Unvalidated entries: **31**
 
 ## Incomplete executable entries
 
-- `examples/blackoilSectorModelExample.m` — **pending**: sector deck and schedule import are absent
 - `examples/blackoilTimeIntegrationExample.m` — **partial**: fully implicit SPE1 exists; explicit/AIM and SPE9 paths are absent
 - `examples/egg/eggExample.m` — **pending**: EGG dataset importer is absent
 - `examples/fieldModelNorneExample.m` — **pending**: full Norne deck and schedule import are absent

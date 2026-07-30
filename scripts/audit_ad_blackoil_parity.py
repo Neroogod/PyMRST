@@ -24,7 +24,6 @@ PLACEHOLDERS = {
     "simulateSPE9": "SPE9 deck, VFP, schedule, and summary import are absent",
     "blackoilTutorialSPE9": "depends on the guarded SPE9 simulation",
     "tenthCSP_Model_I": "SPE10 property and setup import are absent",
-    "blackoilSectorModelExample": "sector deck and schedule import are absent",
     "fieldModelNorneExample": "full Norne deck and schedule import are absent",
 }
 

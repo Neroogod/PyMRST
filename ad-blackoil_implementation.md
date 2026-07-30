@@ -124,8 +124,10 @@ The fourth implementation batch completes the missing code utilities:
 - unsupported thermal source and well forces fail explicitly rather than being
   silently omitted by the shared geothermal kernel.
 
-The generated baseline currently reports 38 ported, 3 partial, 7 pending,
-and 9 catalog entries. This is a progress measurement, not a completion claim.
+The generated baseline currently reports 39 ported, 3 partial, 6 pending,
+and 9 catalog entries. The sector-model workflow is now runnable and directly
+validated against MRST; this remains a progress measurement, not a completion
+claim.
 
 ## 4. Required final layout
 
@@ -374,7 +376,7 @@ at the boundary.
 | `simulateSPE3` | Guarded | Deck/schedule import plus reference comparison |
 | `simulateSPE9` / tutorial | Guarded | Deck, VFP, schedule, and summary comparison |
 | `tenthCSP_Model_I` | Guarded | SPE10 properties and complete setup |
-| `blackoilSectorModelExample` | Guarded | Sector deck and boundary-pressure workflow |
+| `blackoilSectorModelExample` | Runnable and MRST-validated | Full open-versus-closed pressure-boundary workflow; retain the reduced deterministic reference in CI |
 | `fieldModelNorneExample` | Guarded | Full Norne deck/schedule and field run |
 
 Every example must provide a noninteractive CLI path suitable for CI. Plotting
