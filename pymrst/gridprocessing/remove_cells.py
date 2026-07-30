@@ -58,12 +58,40 @@ def _drop_orphan_faces_and_nodes(
             facePos=face_pos,
             faces=cell_faces,
             indexMap=g.cells.indexMap[~removed_cells].copy(),
+            tags=(
+                g.cells.tags[~np.repeat(removed_cells, np.diff(g.cells.facePos))].copy()
+                if g.cells.tags is not None else None
+            ),
+            volumes=(
+                g.cells.volumes[~removed_cells].copy()
+                if g.cells.volumes is not None else None
+            ),
+            centroids=(
+                g.cells.centroids[~removed_cells].copy()
+                if g.cells.centroids is not None else None
+            ),
         ),
         faces=Faces(
             num=g.faces.num - int(face_removed.sum()),
             nodePos=np.concatenate([[0], np.cumsum(num_nodes[~face_removed])]).astype(np.int64),
             nodes=face_nodes,
             neighbors=neighbors[~face_removed],
+            tag=(
+                g.faces.tag[~face_removed].copy()
+                if g.faces.tag is not None else None
+            ),
+            areas=(
+                g.faces.areas[~face_removed].copy()
+                if g.faces.areas is not None else None
+            ),
+            normals=(
+                g.faces.normals[~face_removed].copy()
+                if g.faces.normals is not None else None
+            ),
+            centroids=(
+                g.faces.centroids[~face_removed].copy()
+                if g.faces.centroids is not None else None
+            ),
         ),
         nodes=Nodes(
             num=g.nodes.num - int(node_removed.sum()),
@@ -71,6 +99,7 @@ def _drop_orphan_faces_and_nodes(
         ),
         griddim=g.griddim,
         type=list(g.type) + ["removeCells"],
+        cartDims=g.cartDims,
     )
 
 
@@ -106,4 +135,3 @@ if __name__ == "__main__":
     test_remove_cells_drops_orphans()
     test_remove_no_cells_is_noop()
     print("\nAll tests passed!")
-
