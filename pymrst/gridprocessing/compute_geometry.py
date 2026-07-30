@@ -8,8 +8,12 @@ from pymrst.gridprocessing.grid_structure import Grid
 from pymrst.utils.gridtools import mcolon
 
 
-def compute_geometry(g: Grid) -> Grid:
-    """Fill face and cell geometry fields on `g`."""
+def compute_geometry(g: Grid, *, cp_geometry: bool = False) -> Grid:
+    """Fill face and cell geometry fields on ``g``.
+
+    With ``cp_geometry=True``, additionally derive MRST's nominal corner-point
+    centers/extents when ``cells.cpnodes`` is available.
+    """
     if g.griddim == 1:
         _geom_1d(g)
     elif g.griddim == 2:
@@ -19,8 +23,43 @@ def compute_geometry(g: Grid) -> Grid:
         _geom_3d(g)
     else:
         raise ValueError(f"unsupported grid dimension {g.griddim}")
+    if cp_geometry:
+        if hasattr(g.cells, "cpnodes"):
+            _compute_cp_geometry(g)
+        else:
+            warnings.warn(
+                "corner-point geometry requested but cells.cpnodes is missing",
+                RuntimeWarning,
+                stacklevel=2,
+            )
     g.type = g.type + ["computeGeometry"]
     return g
+
+
+def _compute_cp_geometry(g: Grid) -> None:
+    """Port of MRST private ``computeCpGeometry`` for preserved CP nodes."""
+    from types import SimpleNamespace
+
+    corners = np.asarray(g.nodes.coords)[np.asarray(g.cells.cpnodes)]
+    nominal = np.array([
+        [0, 2, 4, 6], [1, 3, 5, 7],
+        [0, 1, 4, 5], [2, 3, 6, 7],
+        [0, 1, 2, 3], [4, 5, 6, 7],
+    ], dtype=np.int64)
+    face_centers = corners[:, nominal].mean(axis=2)
+    centroids = 0.5 * (face_centers[:, 0] + face_centers[:, 1])
+    extent = np.column_stack([
+        np.linalg.norm(face_centers[:, 2*d + 1] - face_centers[:, 2*d], axis=1)
+        for d in range(g.griddim)
+    ])
+    cell_no = g.cell_no()
+    tags = np.asarray(g.cells.tags, dtype=np.int64)
+    half_face_centers = face_centers[cell_no, tags]
+    g.cells.cpgeometry = SimpleNamespace(
+        centroids=centroids,
+        extent=extent,
+        facecentroids=half_face_centers,
+    )
 
 
 def _accum(index: np.ndarray, values: np.ndarray, size: int) -> np.ndarray:
@@ -226,4 +265,3 @@ if __name__ == "__main__":
     test_2d_geometry()
     test_1d_geometry()
     print("\nAll tests passed!")
-

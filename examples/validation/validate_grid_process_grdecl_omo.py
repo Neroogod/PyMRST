@@ -39,7 +39,7 @@ def main() -> int:
     ref = loadmat(path, squeeze_me=True)
     grid = compute_geometry(process_grdecl_omo(
         _grdecl(), preserve_cp_nodes=True,
-    ))
+    ), cp_geometry=True)
     order = np.lexsort(tuple(
         grid.cells.centroids[:, column]
         for column in range(grid.cells.centroids.shape[1] - 1, -1, -1)
@@ -63,6 +63,15 @@ def main() -> int:
         "corner-point coordinates": (
             grid.nodes.coords[grid.cells.cpnodes],
             ref["cpnode_coords"],
+        ),
+        "CP centroids": (
+            grid.cells.cpgeometry.centroids, ref["cp_centroids"],
+        ),
+        "CP directional extents": (
+            grid.cells.cpgeometry.extent, ref["cp_extent"],
+        ),
+        "CP half-face centroids": (
+            grid.cells.cpgeometry.facecentroids, ref["cp_facecentroids"],
         ),
     }
     failed = False

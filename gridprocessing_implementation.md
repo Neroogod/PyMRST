@@ -805,3 +805,7 @@ Non-monotone tensor-grid axes follow MRST's warning-and-truncation algorithm:
 non-increasing entries are repeatedly discarded until each retained axis is
 strictly increasing. An axis that cannot retain two coordinates raises a clear
 error instead of constructing a zero-cell grid.
+
+`compute_geometry(..., cp_geometry=True)` implements MRST's `CpGeometry`
+option for grids carrying `cells.cpnodes`. It adds nominal corner-derived cell
+centroids, directional extents, and one nominal face centroid per half-face.
