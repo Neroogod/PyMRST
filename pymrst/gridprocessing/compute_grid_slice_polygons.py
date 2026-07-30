@@ -12,10 +12,9 @@ cut direction). For each face edge the plane-crossing point is found, points are
 grouped by the cells sharing the face, and each cell's points are ordered by
 angle about their centroid in the 2D cut-plane frame `(t, p·cutDir)`.
 
-This ports the single-plane core. The elaborate options of the MATLAB routine -
-bounding-box face pre-selection (a speed optimisation), node snapping, ellipsoid
-/ radius clamping, and multi-segment polylines - are not included; they refine or
-accelerate the same result and are noted for a later pass.
+Piecewise-linear paths, face/cell subsets, endpoint snapping, and finite segment
+width are supported. Bounding-box selection remains an internal optimisation,
+not part of the numerical result.
 """
 
 from typing import Dict, Optional
@@ -24,13 +23,17 @@ import numpy as np
 from scipy.linalg import null_space
 
 
-def _face_edges(g):
+def _face_edges(g, face_ix=None):
     """All faces' edges as `(p1, p2, face_no)` over node coordinates."""
     node_pos = np.asarray(g.faces.nodePos, dtype=np.int64)
     fnodes = np.asarray(g.faces.nodes, dtype=np.int64)
     coords = np.asarray(g.nodes.coords, dtype=float)
     a, b, fno = [], [], []
-    for f in range(g.faces.num):
+    faces = (
+        np.arange(g.faces.num, dtype=np.int64)
+        if face_ix is None else np.asarray(face_ix, dtype=np.int64).ravel()
+    )
+    for f in faces:
         seg = fnodes[node_pos[f]:node_pos[f + 1]]
         m = seg.size
         for k in range(m):
@@ -46,7 +49,9 @@ def compute_grid_slice_polygons(g, coord, normal: Optional[np.ndarray] = None,
                                 cut_dir: Optional[np.ndarray] = None,
                                 tol: float = 1e-6,
                                 remove_degenerates: bool = True,
-                                remove_repeated: bool = True) -> Dict:
+                                remove_repeated: bool = True,
+                                face_ix=None, cell_ix=None, radius=None,
+                                snap_tol: float = 0.0) -> Dict:
     """Return the per-cell cut polygons of the plane through `coord`.
 
     `coord` is either a single point (then `normal` is required) or a line
@@ -56,6 +61,17 @@ def compute_grid_slice_polygons(g, coord, normal: Optional[np.ndarray] = None,
     cut-plane coordinates).
     """
     coord = np.atleast_2d(np.asarray(coord, dtype=float))
+    if coord.shape[0] > 2:
+        pieces = [
+            compute_grid_slice_polygons(
+                g, coord[k:k + 2], cut_dir=cut_dir, tol=tol,
+                remove_degenerates=remove_degenerates,
+                remove_repeated=remove_repeated, face_ix=face_ix,
+                cell_ix=cell_ix, radius=radius, snap_tol=snap_tol,
+            )
+            for k in range(coord.shape[0] - 1)
+        ]
+        return _combine_piecewise(pieces)
     node_xyz = np.asarray(g.nodes.coords, dtype=float)
 
     if coord.shape[0] == 1:
@@ -79,12 +95,15 @@ def compute_grid_slice_polygons(g, coord, normal: Optional[np.ndarray] = None,
     n = n[:, 0]
     d = seg[0].dot(n)
 
-    p1, p2, face_no = _face_edges(g)
+    p1, p2, face_no = _face_edges(g, face_ix)
     v = p2 - p1
     vn = v.dot(n)
     ok = np.abs(vn) > tol * np.linalg.norm(v, axis=1)
     s = np.full(vn.shape, np.nan)
     s[ok] = -(p1[ok].dot(n) - d) / vn[ok]
+    if snap_tol > 0:
+        s[np.abs(s) <= snap_tol] = 0.0
+        s[np.abs(s - 1.0) <= snap_tol] = 1.0
     hit = np.flatnonzero((s >= 0) & (s <= 1))
     if hit.size == 0:
         return {"cell_ix": np.array([], dtype=np.int64),
@@ -106,6 +125,8 @@ def compute_grid_slice_polygons(g, coord, normal: Optional[np.ndarray] = None,
     p_cut = pts.dot(cut_dir) - seg[0].dot(cut_dir)
 
     cells = np.unique(cell_of)
+    if cell_ix is not None:
+        cells = np.intersect1d(cells, np.asarray(cell_ix, dtype=np.int64))
     out_cells, out_pos, out_3d, out_2d = [], [0], [], []
     for c in cells:
         m = cell_of == c
@@ -121,13 +142,34 @@ def compute_grid_slice_polygons(g, coord, normal: Optional[np.ndarray] = None,
                 np.abs(np.diff(pp_o, axis=0)) < np.sqrt(np.finfo(float).eps),
                 axis=1)])
             order = order[~same]
-        if remove_degenerates and order.size <= g.griddim - 1:
+        pp_ordered = pp[order]
+        finite_segment = coord.shape[0] == 2
+        if finite_segment:
+            width = np.inf if radius is None else float(np.asarray(radius).ravel()[0])
+            pp_ordered = _clip_rectangle(
+                pp_ordered, 0.0, np.linalg.norm(seg[1] - seg[0]), -width, width
+            )
+            if pp_ordered.size:
+                pts_ordered = (
+                    seg[0] + pp_ordered[:, :1] * vu
+                    + pp_ordered[:, 1:] * cut_dir
+                )
+            else:
+                pts_ordered = np.zeros((0, node_xyz.shape[1]))
+        else:
+            pts_m = pts[m]
+            pts_ordered = pts_m[order]
+            if radius is not None:
+                radii = np.asarray(radius, dtype=float).ravel()
+                r = float(radii[0])
+                keep = np.sum((pts_ordered - coord[0]) ** 2, axis=1) <= r*r + tol
+                pp_ordered, pts_ordered = pp_ordered[keep], pts_ordered[keep]
+        if remove_degenerates and pp_ordered.shape[0] <= g.griddim - 1:
             continue
-        pts_m = pts[m]
         out_cells.append(c)
-        out_3d.append(pts_m[order])
-        out_2d.append(pp[order])
-        out_pos.append(out_pos[-1] + order.size)
+        out_3d.append(pts_ordered)
+        out_2d.append(pp_ordered)
+        out_pos.append(out_pos[-1] + pp_ordered.shape[0])
 
     if not out_cells:
         return {"cell_ix": np.array([], dtype=np.int64),
@@ -138,6 +180,56 @@ def compute_grid_slice_polygons(g, coord, normal: Optional[np.ndarray] = None,
             "node_pos": np.asarray(out_pos, dtype=np.int64),
             "coords_3d": np.vstack(out_3d),
             "coords_2d": np.vstack(out_2d)}
+
+
+def _empty(dim=3):
+    return {
+        "cell_ix": np.array([], dtype=np.int64),
+        "node_pos": np.array([0], dtype=np.int64),
+        "coords_3d": np.zeros((0, dim)),
+        "coords_2d": np.zeros((0, 2)),
+        "segment_ix": np.array([], dtype=np.int64),
+    }
+
+
+def _combine_piecewise(pieces):
+    nonempty = [piece for piece in pieces if piece["cell_ix"].size]
+    if not nonempty:
+        return _empty()
+    counts = [np.diff(piece["node_pos"]) for piece in nonempty]
+    all_counts = np.concatenate(counts)
+    segment_ix = np.concatenate([
+        np.full(piece["cell_ix"].size, k, dtype=np.int64)
+        for k, piece in enumerate(pieces) if piece["cell_ix"].size
+    ])
+    return {
+        "cell_ix": np.concatenate([p["cell_ix"] for p in nonempty]),
+        "node_pos": np.concatenate([[0], np.cumsum(all_counts)]),
+        "coords_3d": np.vstack([p["coords_3d"] for p in nonempty]),
+        "coords_2d": np.vstack([p["coords_2d"] for p in nonempty]),
+        "segment_ix": segment_ix,
+    }
+
+
+def _clip_rectangle(poly, xmin, xmax, ymin, ymax):
+    """Sutherland-Hodgman clipping of an ordered 2D polygon."""
+    out = np.asarray(poly, dtype=float)
+    for axis, bound, keep_less in (
+        (0, xmin, False), (0, xmax, True), (1, ymin, False), (1, ymax, True),
+    ):
+        if out.size == 0:
+            break
+        result = []
+        for p, q in zip(out, np.roll(out, -1, axis=0)):
+            pin = p[axis] <= bound if keep_less else p[axis] >= bound
+            qin = q[axis] <= bound if keep_less else q[axis] >= bound
+            if pin:
+                result.append(p)
+            if pin != qin:
+                alpha = (bound - p[axis]) / (q[axis] - p[axis])
+                result.append(p + alpha * (q - p))
+        out = np.asarray(result, dtype=float)
+    return out.reshape((-1, 2))
 
 
 if __name__ == "__main__":
