@@ -31,7 +31,6 @@ PARTIAL = {
     "blackoilTimeIntegrationExample": (
         "FIM, CFL-controlled explicit, and AIM SPE1 exist; SPE9 path is absent"
     ),
-    "loadAquiferEclipseResult": "ECLIPSE result reader is not implemented",
 }
 
 REVIEWED_NAMES = {

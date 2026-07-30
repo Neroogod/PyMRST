@@ -124,10 +124,10 @@ The fourth implementation batch completes the missing code utilities:
 - unsupported thermal source and well forces fail explicitly rather than being
   silently omitted by the shared geothermal kernel.
 
-The generated baseline currently reports 40 ported, 2 partial, 6 pending,
-and 9 catalog entries. The sector-model and full 13-node SPE1 multisegment
-workflows are runnable and directly validated against MRST; this remains a
-progress measurement, not a completion claim.
+The generated baseline currently reports 41 ported, 1 partial, 6 pending,
+and 9 catalog entries. The sector model, full 13-node SPE1 multisegment
+workflow, and ECLIPSE aquifer restart/summary importer are implemented; this
+remains a progress measurement, not a completion claim.
 
 ## 4. Required final layout
 
@@ -366,7 +366,7 @@ at the boundary.
 | `blackoilTutorialGravSeg` | Runnable | Full state and conservation comparison |
 | `immiscibleTimeIntegrationExample` | Runnable | Match integration variants and reports |
 | `blackoilTutorialSPE1` / `simulateSPE1` | Runnable | Full schedule and summary regression |
-| `aquifertest` | Runnable slice | Match all aquifer cases and external result path |
+| `aquifertest` | Runnable with external-result importer | Add licensed dataset cases when locally available; split/unified restart and aquifer-summary comparison paths are covered in CI |
 | `simulatorWorkflowExample` | Runnable | Verify hooks, reports, and restart behavior |
 | `blackoilTutorialPlotHook` | Runnable | Verify callback timing and state payload |
 | `blackoilTutorialMexAcceleration` | Python timing analogue | Document backend equivalence and compare residuals |

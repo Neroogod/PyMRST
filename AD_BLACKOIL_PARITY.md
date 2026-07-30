@@ -6,12 +6,12 @@ The CSV ledger is authoritative; filename presence does not make a guarded examp
 ## Current scan
 
 - MRST MATLAB files inventoried: **57**
-- Ported: **40**
-- Partial: **2**
+- Ported: **41**
+- Partial: **1**
 - Pending: **6**
 - Catalogs excluded: **9**
-- Reference-validated entries: **28**
-- Unvalidated entries: **29**
+- Reference-validated entries: **29**
+- Unvalidated entries: **28**
 
 ## Incomplete executable entries
 
@@ -22,6 +22,5 @@ The CSV ledger is authoritative; filename presence does not make a guarded examp
 - `examples/spe3/simulateSPE3.m` — **pending**: SPE3 deck and schedule import are absent
 - `examples/spe9/blackoilTutorialSPE9.m` — **pending**: depends on the guarded SPE9 simulation
 - `examples/spe9/simulateSPE9.m` — **pending**: SPE9 deck, VFP, schedule, and summary import are absent
-- `examples/utils/loadAquiferEclipseResult.m` — **partial**: ECLIPSE result reader is not implemented
 
 See `docs/ad_blackoil/parity.csv` for per-file evidence.
