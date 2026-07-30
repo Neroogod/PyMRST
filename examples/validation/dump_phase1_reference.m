@@ -31,4 +31,15 @@ G = computeGeometry(tensorGrid( ...
     [0, 2, 1, 3], [0, 1, 1, 4], [0, 5, 3, 8]));
 save(fullfile(thisDir, 'ref_tensor_nonmonotone.mat'), '-v7', 'G');
 
-fprintf('Wrote 5 reference files to %s\n', thisDir);
+%% Cases 6/7: reconstruct missing face neighbors in 2D and 3D
+G = cartGrid([3, 2], [6, 4]);
+G.faces = rmfield(G.faces, 'neighbors');
+G = computeGeometry(G, 'findNeighbors', true);
+save(fullfile(thisDir, 'ref_find_neighbors_2d.mat'), '-v7', 'G');
+
+G = cartGrid([3, 2, 2], [6, 4, 2]);
+G.faces = rmfield(G.faces, 'neighbors');
+G = computeGeometry(G, 'findNeighbors', true);
+save(fullfile(thisDir, 'ref_find_neighbors_3d.mat'), '-v7', 'G');
+
+fprintf('Wrote 7 reference files to %s\n', thisDir);

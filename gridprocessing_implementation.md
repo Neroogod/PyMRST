@@ -809,3 +809,8 @@ error instead of constructing a zero-cell grid.
 `compute_geometry(..., cp_geometry=True)` implements MRST's `CpGeometry`
 option for grids carrying `cells.cpnodes`. It adds nominal corner-derived cell
 centroids, directional extents, and one nominal face centroid per half-face.
+
+`compute_geometry(..., find_neighbors=True)` reconstructs face adjacency from
+cell-face incidence and orients each pair from face-node geometry, matching
+MRST's `findNeighbors`/`findNormalDirections` path. Missing neighbor data also
+triggers reconstruction automatically; non-manifold faces are rejected.

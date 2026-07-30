@@ -8,12 +8,17 @@ from pymrst.gridprocessing.grid_structure import Grid
 from pymrst.utils.gridtools import mcolon
 
 
-def compute_geometry(g: Grid, *, cp_geometry: bool = False) -> Grid:
+def compute_geometry(g: Grid, *, cp_geometry: bool = False,
+                     find_neighbors: bool = False) -> Grid:
     """Fill face and cell geometry fields on ``g``.
 
     With ``cp_geometry=True``, additionally derive MRST's nominal corner-point
     centers/extents when ``cells.cpnodes`` is available.
     """
+    if find_neighbors or g.faces.neighbors is None:
+        if g.griddim == 1:
+            raise ValueError("neighbor reconstruction is supported in 2D/3D")
+        _find_and_orient_neighbors(g)
     if g.griddim == 1:
         _geom_1d(g)
     elif g.griddim == 2:
@@ -34,6 +39,52 @@ def compute_geometry(g: Grid, *, cp_geometry: bool = False) -> Grid:
             )
     g.type = g.type + ["computeGeometry"]
     return g
+
+
+def _find_and_orient_neighbors(g: Grid) -> None:
+    """Port MRST ``findNeighbors`` plus ``findNormalDirections``."""
+    cell_no = g.cell_no()
+    cell_faces = np.asarray(g.cells.faces, dtype=np.int64)
+    order = np.argsort(cell_faces, kind="stable")
+    sorted_faces = cell_faces[order]
+    sorted_cells = cell_no[order]
+    neighbors = np.full((g.faces.num, 2), -1, dtype=np.int64)
+    for face in range(g.faces.num):
+        cells = sorted_cells[sorted_faces == face]
+        if cells.size > 2:
+            raise ValueError(f"face {face} has more than two incident cells")
+        neighbors[face, :cells.size] = cells
+    g.faces.neighbors = neighbors
+
+    counts = np.diff(g.faces.nodePos)
+    face_no = np.repeat(np.arange(g.faces.num), counts)
+    face_centers = _accum(
+        face_no, g.nodes.coords[g.faces.nodes], g.faces.num
+    ) / counts[:, None]
+    per_cell = np.diff(g.cells.facePos)
+    cell_centers = _accum(
+        cell_no, face_centers[cell_faces], g.cells.num
+    ) / per_cell[:, None]
+    if g.griddim == 2:
+        if g.spatial_dim != 2:
+            raise ValueError("2D neighbor orientation requires 2D coordinates")
+        edges = g.faces.nodes.reshape(-1, 2)
+        length = g.nodes.coords[edges[:, 1]] - g.nodes.coords[edges[:, 0]]
+        normal = np.column_stack([length[:, 1], -length[:, 0]])
+        vector = face_centers[cell_faces] - cell_centers[cell_no]
+        direction = np.sum(vector * normal[cell_faces], axis=1)
+    else:
+        first = g.faces.nodes[g.faces.nodePos[:-1]]
+        second = g.faces.nodes[g.faces.nodePos[:-1] + 1]
+        n1, n2 = g.nodes.coords[first], g.nodes.coords[second]
+        v1 = face_centers[cell_faces] - cell_centers[cell_no]
+        v2 = n1[cell_faces] - face_centers[cell_faces]
+        v3 = n2[cell_faces] - n1[cell_faces]
+        direction = np.sum(np.cross(v1, v2) * v3, axis=1)
+    sign = np.where(neighbors[cell_faces, 0] == cell_no, 1.0, -1.0)
+    score = _accum(cell_faces, direction * sign, g.faces.num)
+    swap = score < 0
+    g.faces.neighbors[swap] = g.faces.neighbors[swap, ::-1]
 
 
 def _compute_cp_geometry(g: Grid) -> None:

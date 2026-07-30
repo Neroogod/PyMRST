@@ -41,7 +41,18 @@ def build_cases() -> Dict[str, Callable[[], Any]]:
             np.array([0.0, 1.0, 1.0, 4.0]),
             np.array([0.0, 5.0, 3.0, 8.0]),
         ),
+        "ref_find_neighbors_2d.mat": lambda: _without_neighbors(
+            cart_grid([3, 2], [6.0, 4.0])
+        ),
+        "ref_find_neighbors_3d.mat": lambda: _without_neighbors(
+            cart_grid([3, 2, 2], [6.0, 4.0, 2.0])
+        ),
     }
+
+
+def _without_neighbors(grid):
+    grid.faces.neighbors = None
+    return grid
 
 
 def load_matlab_grid(path: Path) -> Any:
