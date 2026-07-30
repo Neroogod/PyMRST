@@ -63,13 +63,17 @@ def _rebuild_cell_faces(num_cells, neighbors):
 
 def slice_grid(g, coord, normal: Optional[np.ndarray] = None,
                cut_dir: Optional[np.ndarray] = None, tol: float = 1e-9,
-               *, return_mapping: bool = False):
+               *, return_mapping: bool = False, return_slice: bool = False):
     """Return the grid cut by the plane through `coord` (point+`normal` or
     segment+`cut_dir`), with the crossed cells split in two.
 
     A list of coordinates performs multiple cuts in sequence. With
     ``return_mapping=True``, return ``(grid, gix)`` where ``gix`` contains
-    MRST-compatible ``old``, ``new`` and ``parent`` entity arrays.
+    MRST-compatible ``old``, ``new`` and ``parent`` entity arrays. With
+    ``return_slice=True``, also return the lower-dimensional grid formed by
+    faces on the slice, matching MRST's third output. The result is
+    ``(grid, slice_grid)`` or ``(grid, gix, slice_grid)`` when both outputs
+    are requested.
     """
     if isinstance(coord, (list, tuple)) and coord and not np.isscalar(coord[0]):
         coordinates = list(coord)
@@ -81,10 +85,25 @@ def slice_grid(g, coord, normal: Optional[np.ndarray] = None,
                 g, point, normal=nrm, cut_dir=direction, tol=tol,
             )
             mapping = _compose_mappings(mapping, current)
-        return (g, mapping) if return_mapping else g
+        return _outputs(g, mapping, return_mapping, return_slice)
     g, mapping = _slice_grid_single(
         g, coord, normal=normal, cut_dir=cut_dir, tol=tol,
     )
+    return _outputs(g, mapping, return_mapping, return_slice)
+
+
+def _outputs(g, mapping, return_mapping, return_slice):
+    """Assemble optional Python equivalents of MRST's second/third outputs."""
+    if return_slice:
+        from pymrst.gridprocessing.get_2d_grid_from_faces import (
+            get_2d_grid_from_faces,
+        )
+
+        slice_faces = np.asarray(mapping.new.faces) == 3
+        lower = get_2d_grid_from_faces(g, slice_faces) if slice_faces.any() else None
+        if return_mapping:
+            return g, mapping, lower
+        return g, lower
     return (g, mapping) if return_mapping else g
 
 

@@ -32,3 +32,50 @@ def test_slice_grid_multiple_cuts_compose_parent_mapping():
     assert sliced.cells.num == 4
     assert np.array_equal(gix.parent.cells, [0, 1, 0, 1])
     assert np.count_nonzero(gix.new.faces == 3) == 2
+
+
+def test_slice_grid_returns_lower_dimensional_slice_grid():
+    grid = cart_grid([2, 2, 1], [2.0, 2.0, 1.0])
+    sliced, gix, cross_section = slice_grid(
+        grid,
+        np.array([0.5, 0.0, 0.0]),
+        normal=np.array([1.0, 0.0, 0.0]),
+        return_mapping=True,
+        return_slice=True,
+    )
+    sliced.check()
+    cross_section.check()
+    assert cross_section.griddim == 2
+    assert cross_section.cells.num == 2
+    assert np.array_equal(
+        cross_section.cells.parent, np.flatnonzero(gix.new.faces == 3)
+    )
+    assert cross_section.faces.num == 7
+    assert cross_section.nodes.num == 6
+
+
+def test_slice_grid_multiple_cuts_returns_all_slice_surfaces():
+    grid = cart_grid([2, 2, 1], [2.0, 2.0, 1.0])
+    sliced, cross_sections = slice_grid(
+        grid,
+        [np.array([0.4, 0.0, 0.0]), np.array([1.6, 0.0, 0.0])],
+        normal=[np.array([1.0, 0.0, 0.0])] * 2,
+        return_slice=True,
+    )
+    sliced.check()
+    cross_sections.check()
+    assert cross_sections.cells.num == 4
+    assert cross_sections.faces.num == 14
+    assert cross_sections.nodes.num == 12
+
+
+def test_slice_grid_empty_cut_returns_no_slice_grid():
+    grid = cart_grid([1, 1, 1], [1.0, 1.0, 1.0])
+    unchanged, cross_section = slice_grid(
+        grid,
+        np.array([2.0, 0.0, 0.0]),
+        normal=np.array([1.0, 0.0, 0.0]),
+        return_slice=True,
+    )
+    unchanged.check()
+    assert cross_section is None

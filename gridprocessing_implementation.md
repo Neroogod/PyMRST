@@ -750,3 +750,8 @@ NNC transmissibilities, fault face counts, and fault multipliers. Across six
 two-day fully implicit report steps, maximum absolute differences were
 0.0659 Pa for reservoir pressure, 0.0756 Pa for well BHP, 9.84e-4 for water
 saturation, and 1.83e-13 m3/s for phase well rates.
+
+`slice_grid(..., return_slice=True)` also exposes MRST's third `sliceGrid`
+output: a two-dimensional grid assembled from the generated slice faces. For
+multiple cuts the returned grid contains every retained slice surface, while
+an empty cut returns `None`.

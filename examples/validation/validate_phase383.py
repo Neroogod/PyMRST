@@ -33,9 +33,10 @@ def main() -> int:
     ref = loadmat(REF)
 
     g = compute_geometry(cart_grid([3, 2, 2], [3.0, 2.0, 2.0]))
-    s, gix = slice_grid(
+    s, gix, cross_section = slice_grid(
         g, np.array([[1.5, -1.0, 0.0], [1.5, 3.0, 0.0]]),
-        cut_dir=np.array([0.0, 0.0, 1.0]), return_mapping=True)
+        cut_dir=np.array([0.0, 0.0, 1.0]), return_mapping=True,
+        return_slice=True)
     s = compute_geometry(s)
 
     failed = 0
@@ -79,6 +80,28 @@ def main() -> int:
     failed += _check(
         "face parent/status multiset",
         np.array_equal(face_parent_status, ref["face_parent_status"]),
+    )
+    failed += _check(
+        "slice-grid cell count",
+        cross_section.cells.num == int(ref["slice_cells_num"].item()),
+    )
+    failed += _check(
+        "slice-grid face count",
+        cross_section.faces.num == int(ref["slice_faces_num"].item()),
+    )
+    coords = np.asarray(cross_section.nodes.coords)
+    coords = coords[np.lexsort(tuple(coords[:, i] for i in range(2, -1, -1)))]
+    failed += _check(
+        "slice-grid node coordinates",
+        np.allclose(coords, ref["slice_coords"], rtol=0, atol=1e-14),
+    )
+    neighbor_pairs = np.sort(cross_section.faces.neighbors + 1, axis=1)
+    neighbor_pairs = neighbor_pairs[np.lexsort(
+        (neighbor_pairs[:, 1], neighbor_pairs[:, 0])
+    )]
+    failed += _check(
+        "slice-grid neighbor-pair multiset",
+        np.array_equal(neighbor_pairs, ref["slice_neighbor_pairs"]),
     )
 
     print("\nsliceGrid cell-splitting matches MRST!" if failed == 0

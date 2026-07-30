@@ -16,7 +16,7 @@ G = computeGeometry(cartGrid([3, 2, 2], [3, 2, 2]));
 
 % segment overspans y so the finite-segment clamping is a no-op
 coord = [1.5 -1 0; 1.5 3 0];
-[G2, gix] = sliceGrid(G, coord, 'cutDir', [0 0 1]);
+[G2, gix, G_slice] = sliceGrid(G, coord, 'cutDir', [0 0 1]);
 G2 = computeGeometry(G2);
 
 cells_num   = G2.cells.num;
@@ -29,11 +29,18 @@ new_cell_status_counts = accumarray(gix.new.cells, 1, [3, 1]);
 new_face_status_counts = accumarray(gix.new.faces, 1, [3, 1]);
 parent_cells = gix.parent.cells;
 face_parent_status = sortrows([gix.parent.faces, gix.new.faces]);
+slice_cells_num = G_slice.cells.num;
+slice_faces_num = G_slice.faces.num;
+slice_coords = sortrows(G_slice.nodes.coords);
+slice_neighbor_pairs = sortrows(sort(G_slice.faces.neighbors, 2));
 
 save(fullfile(thisDir, 'ref_p383_slice.mat'), '-v7', ...
      'cells_num', 'faces_num', 'total_vol', 'vol_sorted', ...
      'old_cell_count', 'old_face_count', 'new_cell_status_counts', ...
      'new_face_status_counts', 'parent_cells', 'face_parent_status');
+save(fullfile(thisDir, 'ref_p383_slice.mat'), '-append', ...
+     'slice_cells_num', 'slice_faces_num', 'slice_coords', ...
+     'slice_neighbor_pairs');
 
 fprintf('Wrote ref_p383_slice.mat to %s\n', thisDir);
 fprintf('  3x2x2 sliced at x=1.5: %d cells, total vol %.4f\n', ...
