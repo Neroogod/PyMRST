@@ -66,6 +66,7 @@ from pymrst.gridprocessing.process_faults import (
     remove_fault_boundary_faces,
     removeFaultBdryFaces,
 )
+from pymrst.gridprocessing.mark_cut_grids import mark_cut_grids, markCutGrids
 
 __all__ = [
     "Grid", "Cells", "Faces", "Nodes",
@@ -85,6 +86,7 @@ __all__ = [
     "check_and_repair_zcorn", "checkAndRepairZCORN",
     "GridFault", "process_faults", "processFaults",
     "remove_fault_boundary_faces", "removeFaultBdryFaces",
+    "mark_cut_grids", "markCutGrids",
     "load_mrst_grid_mat", "mrst_grid_struct_to_grid",
     "WEST", "EAST", "SOUTH", "NORTH", "TOP", "BOTTOM",
 ]
