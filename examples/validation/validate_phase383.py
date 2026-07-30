@@ -158,6 +158,47 @@ def main() -> int:
         not np.any(face_ix.old.faces[split_parents]),
     )
 
+    mapped_grid = compute_geometry(cart_grid([2, 1, 1], [2.0, 1.0, 1.0]))
+    mapped_grid, first_ix = slice_grid(
+        mapped_grid, np.array([0.4, 0.0, 0.0]),
+        normal=np.array([1.0, 0.0, 0.0]), return_mapping=True,
+    )
+    mapped_grid, mapped_ix = slice_grid(
+        mapped_grid, np.array([1.6, 0.0, 0.0]),
+        normal=np.array([1.0, 0.0, 0.0]), return_mapping=True,
+        gix_input=first_ix,
+    )
+    failed += _check(
+        "gix_input parent cells",
+        np.array_equal(mapped_ix.parent.cells + 1,
+                       ref["mapped_parent_cells"].ravel()),
+    )
+    failed += _check(
+        "gix_input new-cell statuses",
+        np.array_equal(mapped_ix.new.cells, ref["mapped_new_cells"].ravel()),
+    )
+    mapped_parents = np.where(mapped_ix.parent.faces >= 0,
+                              mapped_ix.parent.faces + 1, 0)
+    mapped_face_status = np.column_stack([
+        mapped_parents, mapped_ix.new.faces
+    ])
+    mapped_face_status = mapped_face_status[np.lexsort(
+        (mapped_face_status[:, 1], mapped_face_status[:, 0])
+    )]
+    failed += _check(
+        "gix_input face parent/status multiset",
+        np.array_equal(mapped_face_status,
+                       ref["mapped_parent_face_status"]),
+    )
+    # The same strict-inequality bug affects MRST's original cell/face masks
+    # during staged cuts. PyMRST maps changed intermediate entities through
+    # their parents and correctly marks both original cells as replaced.
+    failed += _check(
+        "gix_input old masks map through parents",
+        not np.any(mapped_ix.old.cells) and
+        np.count_nonzero(mapped_ix.old.faces) == 3,
+    )
+
     print("\nsliceGrid cell-splitting matches MRST!" if failed == 0
           else f"\n{failed} checks FAILED")
     return 1 if failed else 0

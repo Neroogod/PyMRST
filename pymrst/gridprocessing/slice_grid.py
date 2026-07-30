@@ -62,7 +62,7 @@ def _rebuild_cell_faces(num_cells, neighbors):
 def slice_grid(g, coord, normal: Optional[np.ndarray] = None,
                cut_dir: Optional[np.ndarray] = None, tol: float = 1e-9,
                *, only_faces: bool = False, return_mapping: bool = False,
-               return_slice: bool = False):
+               return_slice: bool = False, gix_input=None):
     """Return the grid cut by the plane through `coord` (point+`normal` or
     segment+`cut_dir`), with the crossed cells split in two.
 
@@ -76,12 +76,15 @@ def slice_grid(g, coord, normal: Optional[np.ndarray] = None,
 
     ``only_faces=True`` matches MRST's ``onlyFaces`` option: intersected faces
     are split, but cells are not split and no new slice faces are inserted.
+    ``gix_input`` accepts a mapping returned by an earlier call and composes
+    the new result back to that mapping's original grid, matching MRST's
+    staged-slicing option of the same name.
     """
     if isinstance(coord, (list, tuple)) and coord and not np.isscalar(coord[0]):
         coordinates = list(coord)
         normals = normal if isinstance(normal, (list, tuple)) else [normal] * len(coordinates)
         directions = cut_dir if isinstance(cut_dir, (list, tuple)) else [cut_dir] * len(coordinates)
-        mapping = None
+        mapping = gix_input
         for point, nrm, direction in zip(coordinates, normals, directions):
             g, current = _slice_grid_single(
                 g, point, normal=nrm, cut_dir=direction, tol=tol,
@@ -93,6 +96,7 @@ def slice_grid(g, coord, normal: Optional[np.ndarray] = None,
         g, coord, normal=normal, cut_dir=cut_dir, tol=tol,
         only_faces=only_faces,
     )
+    mapping = _compose_mappings(gix_input, mapping)
     return _outputs(g, mapping, return_mapping, return_slice)
 
 
@@ -356,10 +360,17 @@ def _compose_mappings(previous, current):
     mapped_nodes = np.full(node_parent.shape, -1, dtype=np.int64)
     valid_nodes = node_parent >= 0
     mapped_nodes[valid_nodes] = previous.parent.nodes[node_parent[valid_nodes]]
+    old_cells = previous.old.cells.copy()
+    changed_cells = previous.parent.cells[~current.old.cells]
+    old_cells[np.unique(changed_cells)] = False
+    old_faces = previous.old.faces.copy()
+    changed_faces = previous.parent.faces[~current.old.faces]
+    changed_faces = changed_faces[changed_faces >= 0]
+    old_faces[np.unique(changed_faces)] = False
     return SimpleNamespace(
         old=SimpleNamespace(
-            cells=previous.old.cells & current.old.cells[:previous.old.cells.size],
-            faces=previous.old.faces & current.old.faces[:previous.old.faces.size],
+            cells=old_cells,
+            faces=old_faces,
         ),
         new=SimpleNamespace(
             cells=np.maximum(current.new.cells, previous.new.cells[cell_parent]),

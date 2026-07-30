@@ -117,3 +117,56 @@ def test_slice_grid_multiple_face_only_cuts_compose_mapping():
     assert gix.old.cells.tolist() == [True]
     assert np.count_nonzero(gix.new.faces == 3) == 0
     assert np.all(gix.new.nodes[grid.nodes.num:] == 2)
+
+
+def test_slice_grid_gix_input_matches_one_shot_mapping_composition():
+    first_point = np.array([0.4, 0.0, 0.0])
+    second_point = np.array([1.6, 0.0, 0.0])
+    normal = np.array([1.0, 0.0, 0.0])
+
+    staged_grid, first_ix = slice_grid(
+        cart_grid([2, 1, 1], [2.0, 1.0, 1.0]),
+        first_point, normal=normal, return_mapping=True,
+    )
+    staged_grid, staged_ix = slice_grid(
+        staged_grid, second_point, normal=normal, return_mapping=True,
+        gix_input=first_ix,
+    )
+    combined_grid, combined_ix = slice_grid(
+        cart_grid([2, 1, 1], [2.0, 1.0, 1.0]),
+        [first_point, second_point], normal=[normal, normal],
+        return_mapping=True,
+    )
+
+    staged_grid.check()
+    combined_grid.check()
+    for entity in ("cells", "faces", "nodes"):
+        assert np.array_equal(
+            getattr(staged_ix.parent, entity), getattr(combined_ix.parent, entity)
+        )
+        assert np.array_equal(
+            getattr(staged_ix.new, entity), getattr(combined_ix.new, entity)
+        )
+    assert np.array_equal(staged_ix.old.cells, combined_ix.old.cells)
+    assert np.array_equal(staged_ix.old.faces, combined_ix.old.faces)
+    assert staged_ix.old.cells.tolist() == [False, False]
+    assert staged_ix.old.faces.tolist() == [
+        True, True, True, False, False, False, False, False, False, False, False
+    ]
+
+
+def test_slice_grid_gix_input_composes_with_a_multi_cut_call():
+    normal = np.array([1.0, 0.0, 0.0])
+    grid, initial = slice_grid(
+        cart_grid([3, 1, 1], [3.0, 1.0, 1.0]),
+        np.array([0.4, 0.0, 0.0]), normal=normal, return_mapping=True,
+    )
+    grid, mapping = slice_grid(
+        grid,
+        [np.array([1.4, 0.0, 0.0]), np.array([2.4, 0.0, 0.0])],
+        normal=[normal, normal], gix_input=initial, return_mapping=True,
+    )
+    grid.check()
+    assert grid.cells.num == 6
+    assert np.array_equal(mapping.parent.cells, [0, 1, 2, 0, 1, 2])
+    assert mapping.old.cells.tolist() == [False, False, False]

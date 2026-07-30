@@ -761,3 +761,7 @@ faces and crossing nodes are inserted without splitting cells or creating
 slice faces. PyMRST intentionally corrects an MRST 2024a off-by-one in the
 `old.faces` mapping (`cutFaceIx < nf_orig`), which otherwise leaves the final
 original face marked as retained when it was split.
+
+For staged workflows, pass a previous mapping through `gix_input`. The next
+single or multi-cut call composes `old`, `new`, and `parent` arrays back to the
+original grid, matching MRST's `gix_input` behavior.
