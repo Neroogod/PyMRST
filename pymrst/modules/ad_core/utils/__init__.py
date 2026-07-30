@@ -161,6 +161,10 @@ from pymrst.modules.ad_core.utils.convert_to_ms_well import (
     convert_to_ms_well,
     convert2MSWell,
 )
+from pymrst.modules.ad_core.utils.get_report_output import (
+    get_report_output,
+    getReportOutput,
+)
 
 __all__ = [
     "Operators",
@@ -265,4 +269,6 @@ __all__ = [
     "getGridSYMRCMOrdering",
     "convert_to_ms_well",
     "convert2MSWell",
+    "get_report_output",
+    "getReportOutput",
 ]

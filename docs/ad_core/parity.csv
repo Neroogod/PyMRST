@@ -307,7 +307,7 @@ utils/getMultiDimInterpolator.m,getMultiDimInterpolator,utils,ported-consolidate
 utils/getMultipliers.m,getMultipliers,utils,ported,pymrst/modules/ad_core/utils/get_multipliers.py,filename,validated-reference,examples/validation/validate_ad_core_multipliers_report_ilu.py,
 utils/getPerforationToWellMapping.m,getPerforationToWellMapping,utils,ported,pymrst/modules/ad_core/utils/get_perforation_to_well_mapping.py,filename,validated-reference,examples/validation/validate_ad_core_well_report_mapping.py,
 utils/getReportMinisteps.m,getReportMinisteps,utils,ported,pymrst/modules/ad_core/utils/get_report_ministeps.py,filename,validated-reference,examples/validation/validate_ad_core_well_report_mapping.py,
-utils/getReportOutput.m,getReportOutput,utils,pending-review,,,unvalidated,,
+utils/getReportOutput.m,getReportOutput,utils,ported,pymrst/modules/ad_core/utils/get_report_output.py,filename,validated-reference,examples/validation/validate_ad_core_report_output.py,
 utils/getReservoirModel.m,getReservoirModel,utils,ported-consolidated,pymrst/modules/ad_core/models/wrapper_model.py,symbol-reference,unvalidated,,
 utils/getSampleAD.m,getSampleAD,utils,ported,pymrst/modules/ad_core/utils/get_sample_ad.py,filename,validated-reference,examples/validation/validate_ad_core_ad_sampling_crossflow.py,
 utils/getSimulationTime.m,getSimulationTime,utils,ported,pymrst/modules/ad_core/utils/get_simulation_time.py,filename,validated-reference,examples/validation/validate_ad_core_dependency_value_time.py,
