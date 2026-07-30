@@ -41,6 +41,11 @@ from pymrst.modules.ad_core.examples.state_function_tutorial import (
     state_function_tutorial,
     stateFunctionTutorial,
 )
+from pymrst.modules.ad_core.examples.mpfa_vs_tpfa_with_ad_example import (
+    MPFATPFAComparison,
+    mpfa_vs_tpfa_with_ad_example,
+    MPFAvsTPFAwithADExample,
+)
 
 __all__ = [
     "run_ad_buckley_leverett_1d",
@@ -70,4 +75,7 @@ __all__ = [
     "StateFunctionTutorialResult",
     "state_function_tutorial",
     "stateFunctionTutorial",
+    "MPFATPFAComparison",
+    "mpfa_vs_tpfa_with_ad_example",
+    "MPFAvsTPFAwithADExample",
 ]
