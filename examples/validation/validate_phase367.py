@@ -15,6 +15,7 @@ from scipy.io import loadmat
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.gridprocessing.make_internal_boundary import make_internal_boundary
+from pymrst.gridprocessing.remove_internal_boundary import remove_internal_boundary
 
 REF = Path(__file__).with_name("ref_p367_intbnd.mat")
 
@@ -77,6 +78,25 @@ def main() -> int:
     failed += _check(
         "directional half-face tags preserved",
         np.array_equal(half_tags, ref["replacement_half_tags"]),
+    )
+    restored, merged = remove_internal_boundary(tagged, tag_N)
+    failed += _check(
+        "merged face tag reset",
+        np.array_equal(restored.faces.tag[merged],
+                       ref["merged_face_tag"].ravel()),
+    )
+    merged_half_tags = np.column_stack([
+        restored.cells.faces + 1, restored.cells.tags + 1
+    ])
+    merged_half_tags = merged_half_tags[
+        np.isin(merged_half_tags[:, 0], merged + 1)
+    ]
+    merged_half_tags = merged_half_tags[np.lexsort(
+        (merged_half_tags[:, 1], merged_half_tags[:, 0])
+    )]
+    failed += _check(
+        "merged directional half-face tags",
+        np.array_equal(merged_half_tags, ref["merged_half_tags"]),
     )
 
     print("\nmakeInternalBoundary matches MRST!" if failed == 0

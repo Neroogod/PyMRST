@@ -2,7 +2,12 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from pymrst.gridprocessing import cart_grid, compute_geometry, make_internal_boundary
+from pymrst.gridprocessing import (
+    cart_grid,
+    compute_geometry,
+    make_internal_boundary,
+    remove_internal_boundary,
+)
 
 
 def _half_face_tags(grid):
@@ -61,3 +66,23 @@ def test_make_internal_boundary_preserves_grid_and_cell_metadata():
     assert np.array_equal(boundary.nnc.cells, [[0, 1]])
     assert np.array_equal(boundary.nnc.trans, [2.0])
     assert boundary.faces.areas is None
+
+
+def test_internal_boundary_roundtrip_preserves_directional_and_grid_metadata():
+    grid = compute_geometry(cart_grid([2, 1, 1], [2.0, 1.0, 1.0]))
+    original_half_tags = sorted(_half_face_tags(grid).values())
+    volumes = grid.cells.volumes.copy()
+    grid.nnc = {"cells": np.array([[0, 1]]), "trans": np.array([3.0])}
+    internal = np.flatnonzero(np.all(grid.faces.neighbors >= 0, axis=1))
+
+    boundary, pairs = make_internal_boundary(grid, internal, tag=77)
+    restored, merged = remove_internal_boundary(boundary, pairs)
+    restored.check()
+    assert restored.cells.num == grid.cells.num
+    assert restored.faces.num == grid.faces.num
+    assert sorted(_half_face_tags(restored).values()) == original_half_tags
+    assert np.all(restored.faces.tag[merged] == 0)
+    assert restored.cartDims == grid.cartDims
+    assert np.array_equal(restored.cells.volumes, volumes)
+    assert np.array_equal(restored.nnc["cells"], [[0, 1]])
+    assert np.array_equal(restored.nnc["trans"], [3.0])

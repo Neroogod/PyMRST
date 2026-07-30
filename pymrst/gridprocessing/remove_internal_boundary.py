@@ -50,13 +50,33 @@ def remove_internal_boundary(g, N) -> Tuple[object, np.ndarray]:
     if N.size == 0:
         return g, np.array([], dtype=np.int64)
 
+    source_grid = g
+    grid_extras = {
+        name: value for name, value in vars(g).items()
+        if name not in {"cells", "faces", "nodes", "griddim", "type",
+                        "cartDims", "edges"}
+    }
+    source_face_tag = (
+        np.asarray(g.faces.tag).copy() if g.faces.tag is not None else None
+    )
+    source_half_tags = None
+    source_half_tag_dtype = None
+    if g.cells.tags is not None:
+        source_half_tag_dtype = np.asarray(g.cells.tags).dtype
+        source_half_tags = {
+            (int(cell), int(face)): value
+            for cell, face, value in zip(
+                g.cell_no(), np.asarray(g.cells.faces), np.asarray(g.cells.tags)
+            )
+        }
+
     f1, f2 = N[:, 0], N[:, 1]
     fnodes1, nnodes1, neigh1 = _copy_faces(g, f1)
     fnodes2, _, neigh2 = _copy_faces(g, f2)
 
     _replace_nodes(g, fnodes1, fnodes2)
 
-    g, _ = remove_faces(g, N.ravel())
+    g, face_map = remove_faces(g, N.ravel())
 
     # restore the internal neighbour pair: fill each boundary face's outside
     # slot (-1) with the real cell from its partner
@@ -66,6 +86,37 @@ def remove_internal_boundary(g, N) -> Tuple[object, np.ndarray]:
     merged[mask] = real2
 
     g, f = add_faces(g, fnodes1, nnodes1, merged)
+    base = int(f[0])
+    retained = np.flatnonzero(face_map >= 0)
+    if source_face_tag is not None or source_half_tags is not None:
+        dtype = source_face_tag.dtype if source_face_tag is not None else np.int64
+        face_tags = np.zeros(g.faces.num, dtype=dtype)
+        if source_face_tag is not None:
+            face_tags[face_map[retained]] = source_face_tag[retained]
+        g.faces.tag = face_tags
+    if source_half_tags is not None:
+        inverse = np.full(base, -1, dtype=np.int64)
+        inverse[face_map[retained]] = retained
+        merged_source = {}
+        for new_face, left, right, neighbors in zip(f, f1, f2, merged):
+            for cell in neighbors:
+                source = left if (int(cell), int(left)) in source_half_tags else right
+                merged_source[(int(cell), int(new_face))] = int(source)
+        tags = []
+        for cell, face in zip(g.cell_no(), np.asarray(g.cells.faces)):
+            parent = (inverse[face] if face < base
+                      else merged_source[(int(cell), int(face))])
+            tags.append(source_half_tags[(int(cell), int(parent))])
+        g.cells.tags = np.asarray(tags, dtype=source_half_tag_dtype)
+    for name in ("volumes", "centroids", "nodes", "nodePos", "edges",
+                 "edgePos", "diameters"):
+        value = getattr(source_grid.cells, name, None)
+        setattr(g.cells, name, value.copy() if hasattr(value, "copy") else value)
+    g.cartDims = source_grid.cartDims
+    g.edges = source_grid.edges
+    for name, value in grid_extras.items():
+        setattr(g, name, value)
+    g.type = list(g.type) + ["removeInternalBoundary"]
     return g, f
 
 

@@ -770,3 +770,7 @@ original grid, matching MRST's `gix_input` behavior.
 half-face tags and existing retained face tags while applying `value` to both
 replacement boundary faces. Duplicate inputs remain supported and map back to
 the same replacement pair; already-exterior faces retain `NaN` mappings.
+
+The inverse `remove_internal_boundary` restores each side's directional
+half-face tag on the merged face, preserves Cartesian/cell/custom metadata,
+and follows MRST by assigning zero to the newly merged face tag.

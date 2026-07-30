@@ -41,7 +41,7 @@ refineGrdecl.m,refineGrdecl,root,ported,pymrst/gridprocessing/refine_grdecl.py,f
 removeCells.m,removeCells,root,ported,pymrst/gridprocessing/remove_cells.py,filename,validated-reference,examples/validation/validate_grid_editing.py,
 removeFaultBdryFaces.m,removeFaultBdryFaces,root,ported,pymrst/gridprocessing/remove_fault_bdry_faces.py,filename,validated-reference,examples/validation/validate_grid_fault_processing.py,
 removeIntGrid.m,removeIntGrid,root,excluded-matlab-compatibility,,legacy MATLAB int32-to-double grid storage conversion,unvalidated,,
-removeInternalBoundary.m,removeInternalBoundary,root,ported,pymrst/gridprocessing/remove_internal_boundary.py,filename,validated-reference,examples/validation/validate_grid_editing.py,
+removeInternalBoundary.m,removeInternalBoundary,root,ported,pymrst/gridprocessing/remove_internal_boundary.py,filename,validated-reference,examples/validation/validate_grid_editing.py; examples/validation/validate_phase367.py; tests/gridprocessing/test_make_internal_boundary_metadata.py,
 removePinch.m,removePinch,root,ported,pymrst/gridprocessing/remove_pinch.py,filename,validated-reference,examples/validation/validate_phase381.py,
 removeShortEdges.m,removeShortEdges,root,ported,pymrst/gridprocessing/remove_short_edges.py,filename,validated-reference,examples/validation/validate_phase379.py,
 repairNormals.m,repairNormals,root,ported,pymrst/gridprocessing/repair_normals.py,filename,validated-reference,examples/validation/validate_phase378.py,
