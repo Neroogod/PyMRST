@@ -26,11 +26,15 @@ from typing import Any, List, Sequence
 import numpy as np
 
 from pymrst.modules.ad_core.statefunctions.state_function import StateFunction
+from pymrst.modules.ad_core.statefunctions.facility.component_mixing import (
+    crossflow_composition,
+)
 from pymrst.utils.adi import value
 
 
 def calculate_phase_rate(tdp: Any, mobw: Sequence[Any], mapping: Any,
-                         wells: Sequence[Any]) -> List[Any]:
+                         wells: Sequence[Any], allow_cross_flow: bool = True,
+                         model: Any = None) -> List[Any]:
     """Per-perforation phase rate ``q_alpha`` from ``Tdp`` and perforation
     mobility, splitting producers (reservoir mobility) from injectors
     (total mobility times the well injection composition)."""
@@ -41,6 +45,18 @@ def calculate_phase_rate(tdp: Any, mobw: Sequence[Any], mapping: Any,
 
     compi = np.array([np.asarray(w.compi, dtype=float).ravel()[:nph]
                       for w in wells])                     # (n_well, nph)
+    perf_is_injector = mapping.is_injector[mapping.perf2well]
+    production = (v_tdp < 0)
+    crossflow = (
+        ((inj_f.astype(bool) & ~perf_is_injector)
+         | (production & perf_is_injector))
+        & allow_cross_flow
+    )
+    if np.any(crossflow):
+        q_wellbore = np.column_stack(
+            [np.asarray(value(mob), dtype=float) * v_tdp for mob in mobw]
+        )
+        compi = crossflow_composition(q_wellbore, compi, mapping)
     compi_perf = compi[mapping.perf2well]                  # (n_perf, nph)
 
     mob_t = mobw[0]
