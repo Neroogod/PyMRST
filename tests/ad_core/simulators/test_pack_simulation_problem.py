@@ -7,9 +7,16 @@ from pymrst.modules.ad_core.simulators.sim_runner import (
     copy_packed_problem,
     get_packed_simulator_output,
     get_multiple_packed_simulator_outputs,
+    monitor_background_simulations,
     pack_simulation_problem,
     simulate_packed_problem,
+    simulate_packed_problem_background,
 )
+
+
+class PickleModel:
+    def step(self, state, dt):
+        return {"x": state["x"] + dt}, True, 1
 
 
 def test_pack_layout_and_atomic_handlers(tmp_path):
@@ -155,3 +162,23 @@ def test_collection_filters_incomplete_cases_and_copy_is_isolated(tmp_path):
     assert copied.BaseName == "Copied" and copied.Name == "complete"
     assert len(copied.OutputHandlers.states) == 0
     assert len(complete.OutputHandlers.states) == 2
+
+
+def test_background_process_writes_output_and_releases_lock(tmp_path):
+    schedule = SimpleNamespace(step=SimpleNamespace(
+        val=[1.0, 2.0], control=[1, 1]
+    ))
+    problem = pack_simulation_problem(
+        {"x": 0.0}, PickleModel(), schedule, "Case",
+        directory=tmp_path / "results", name="background",
+    )
+    info = simulate_packed_problem_background(
+        problem, workdir=tmp_path / "work"
+    )
+    status = monitor_background_simulations(
+        info, wait=True, timeout=20.0
+    )[0]
+    assert status["exitcode"] == 0
+    assert not status["running"]
+    assert "ok=True" in status["log"]
+    assert len(problem.OutputHandlers.states) == 2

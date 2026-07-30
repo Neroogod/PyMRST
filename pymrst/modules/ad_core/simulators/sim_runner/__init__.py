@@ -23,6 +23,15 @@ from pymrst.modules.ad_core.simulators.sim_runner.packed_collection import (
     get_multiple_packed_simulator_outputs,
     getMultiplePackedSimulatorOutputs,
 )
+from pymrst.modules.ad_core.simulators.sim_runner.background import (
+    BackgroundSimulationInfo,
+    monitor_background_simulations,
+    monitorBackgroundSimulations,
+    simulate_packed_problem_background,
+    simulate_packed_problem_standalone,
+    simulatePackedProblemBackground,
+    simulatePackedProblemStandalone,
+)
 
 __all__ = [
     "PackedSimulationProblem",
@@ -40,4 +49,11 @@ __all__ = [
     "copyPackedProblem",
     "get_multiple_packed_simulator_outputs",
     "getMultiplePackedSimulatorOutputs",
+    "BackgroundSimulationInfo",
+    "monitor_background_simulations",
+    "monitorBackgroundSimulations",
+    "simulate_packed_problem_background",
+    "simulatePackedProblemBackground",
+    "simulate_packed_problem_standalone",
+    "simulatePackedProblemStandalone",
 ]
