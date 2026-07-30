@@ -721,3 +721,32 @@ When the work is complete, report:
 
 Only after these gates pass should `pymrst/gridprocessing` be described as a
 complete end-to-end MRST 2024a gridprocessing implementation.
+
+## Combined fault/PINCH/NNC simulation gate
+
+The runnable Python case
+`pymrst/gridprocessing/examples/fault_pinch_nnc_waterflood.py` and its MRST
+counterpart `gridprocessing/examples/faultPinchNNCWaterflood.m` exercise the
+features together instead of validating them only in isolation. The case has
+a 5-by-4-by-3 corner-point grid, two inactive cells, two named faults with
+different multipliers, two PINCH connections, one explicit long-range NNC,
+heterogeneous rock, a three-completion rate injector, and a three-completion
+BHP producer.
+
+Generate and validate the MRST reference with:
+
+```bash
+/Applications/MATLAB_R2021b.app/bin/matlab -batch \
+  "cd('../mrst-2024a-Geomech'); startup; makePlots=false; \
+   outputFile='/tmp/fault_pinch_nnc_mrst_results.mat'; \
+   run('gridprocessing/examples/faultPinchNNCWaterflood.m')"
+
+PYTHONPATH=. python3 scripts/validate_fault_pinch_nnc_waterflood.py \
+  /tmp/fault_pinch_nnc_mrst_results.mat
+```
+
+The July 2026 validation produced exact active-cell maps, NNC cell pairs,
+NNC transmissibilities, fault face counts, and fault multipliers. Across six
+two-day fully implicit report steps, maximum absolute differences were
+0.0659 Pa for reservoir pressure, 0.0756 Pa for well BHP, 9.84e-4 for water
+saturation, and 1.83e-13 m3/s for phase well rates.

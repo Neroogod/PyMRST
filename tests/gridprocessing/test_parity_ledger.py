@@ -26,7 +26,7 @@ def _rows():
 
 def test_ledger_covers_the_reference_tree_once():
     rows = _rows()
-    assert len(rows) == 68
+    assert len(rows) == 69
     paths = [row["mrst_path"] for row in rows]
     assert len(paths) == len(set(paths))
 
