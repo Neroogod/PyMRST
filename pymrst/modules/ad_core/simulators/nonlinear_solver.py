@@ -194,6 +194,15 @@ class NonLinearSolver:
         if self.timestep_selector is not None:
             return self._solve_adaptive(model, state0, dt)
 
+        flow = getattr(model, "FlowDiscretization", None)
+        if flow is not None:
+            from pymrst.modules.ad_core.statefunctions.flux.flow_state import (
+                ImplicitFlowStateBuilder,
+            )
+            builder = flow.get_flow_state_builder()
+            if not isinstance(builder, ImplicitFlowStateBuilder):
+                return self._solve_flow_discretized(model, state0, dt, flow)
+
         st, report = self.solve_ministep(model, state0, state0.copy(), dt)
         if report.converged:
             return st, report
@@ -220,6 +229,52 @@ class NonLinearSolver:
 
         return st, StepReport(converged=False, iterations=report.iterations,
                               dt=dt, cuts=self.max_timestep_cuts)
+
+    def _solve_flow_discretized(self, model, state0, dt, flow):
+        """Cross one report step using the flow builder's CFL/ministep policy."""
+        st = state0
+        elapsed = 0.0
+        total_iterations = cuts = 0
+        ministeps: List[float] = []
+        forces = {"W": list(getattr(getattr(model, "facility", None),
+                                    "wells", []))}
+        floor = float(dt) / 2.0 ** self.max_timestep_cuts
+
+        while elapsed < float(dt) * (1.0 - 1e-12):
+            remaining = float(dt) - elapsed
+            maximum = flow.get_maximum_timestep(
+                model, st, st, remaining, forces
+            )
+            dt_try = min(remaining, float(maximum))
+            if not np.isfinite(dt_try) or dt_try <= 0.0:
+                dt_try = remaining
+
+            while True:
+                guess = st.copy()
+                flow, guess = flow.prepare_timestep(
+                    model, guess, st, dt_try, forces
+                )
+                candidate, rep = self.solve_ministep(
+                    model, st, guess, dt_try
+                )
+                total_iterations += rep.iterations
+                if rep.converged:
+                    st = candidate
+                    elapsed += dt_try
+                    ministeps.append(dt_try)
+                    break
+                cuts += 1
+                dt_try *= 0.5
+                if dt_try < floor:
+                    return st, StepReport(
+                        converged=False, iterations=total_iterations, dt=dt,
+                        cuts=cuts, ministeps=ministeps,
+                    )
+
+        return st, StepReport(
+            converged=True, iterations=total_iterations, dt=dt,
+            cuts=cuts, ministeps=ministeps,
+        )
 
     def _solve_adaptive(self, model, state0: State, dt: float,
                         control=None) -> Tuple[State, StepReport]:

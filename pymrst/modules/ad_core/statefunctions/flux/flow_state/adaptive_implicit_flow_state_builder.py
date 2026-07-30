@@ -63,8 +63,14 @@ class AdaptiveImplicitFlowStateBuilder(ExplicitFlowStateBuilder):
             implicit = np.asarray(mask, bool).copy()
         elif self.cfl_estimator is not None:
             cfl_s, cfl_c = self.cfl_estimator(model, state, dt, forces)
-            implicit = (np.asarray(cfl_s) >= self.saturation_cfl)
-            implicit |= (np.max(np.atleast_2d(cfl_c), axis=0) >= self.composition_cfl)
+            sat = np.asarray(cfl_s, dtype=float)
+            if sat.ndim > 1:
+                sat = np.max(sat, axis=1)
+            comp = np.asarray(cfl_c, dtype=float)
+            if comp.ndim > 1:
+                comp = np.max(comp, axis=1)
+            implicit = sat >= self.saturation_cfl
+            implicit |= comp >= self.composition_cfl
         else:
             implicit = np.full(nc, self.first_step_implicit, bool)
         if self.implicit_wells and forces is not None:

@@ -99,10 +99,12 @@ class ExplicitFlowStateBuilder(FlowStateBuilder):
             # CFL estimation is AC21; without it we cannot cap the step here.
             return float("inf")
         cfl_s, cfl_c = self.cfl_estimator(model, state, dt, forces)
-        dt_s = np.min(1.0 / np.maximum(np.max(cfl_s, axis=-1) / self.saturation_cfl,
-                                       1e-30))
-        dt_c = np.min(1.0 / np.maximum(np.max(cfl_c, axis=-1) / self.composition_cfl,
-                                       1e-30))
+        dt_s = dt * np.min(1.0 / np.maximum(
+            np.max(np.atleast_2d(cfl_s), axis=-1) / self.saturation_cfl, 1e-30
+        ))
+        dt_c = dt * np.min(1.0 / np.maximum(
+            np.max(np.atleast_2d(cfl_c), axis=-1) / self.composition_cfl, 1e-30
+        ))
         return float(min(dt_s, dt_c))
 
     def build(self, model: Any, state: State, state0: State, dt: float,

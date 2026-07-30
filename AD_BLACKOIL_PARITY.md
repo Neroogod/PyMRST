@@ -10,12 +10,12 @@ The CSV ledger is authoritative; filename presence does not make a guarded examp
 - Partial: **3**
 - Pending: **6**
 - Catalogs excluded: **9**
-- Reference-validated entries: **26**
-- Unvalidated entries: **31**
+- Reference-validated entries: **27**
+- Unvalidated entries: **30**
 
 ## Incomplete executable entries
 
-- `examples/blackoilTimeIntegrationExample.m` — **partial**: fully implicit SPE1 exists; explicit/AIM and SPE9 paths are absent
+- `examples/blackoilTimeIntegrationExample.m` — **partial**: FIM, CFL-controlled explicit, and AIM SPE1 exist; SPE9 path is absent
 - `examples/egg/eggExample.m` — **pending**: EGG dataset importer is absent
 - `examples/fieldModelNorneExample.m` — **pending**: full Norne deck and schedule import are absent
 - `examples/multisegmentWellExample.m` — **partial**: reduced packing workflow exists; full SPE1 multisegment case remains

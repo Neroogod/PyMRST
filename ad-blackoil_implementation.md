@@ -371,7 +371,7 @@ at the boundary.
 | `blackoilTutorialPlotHook` | Runnable | Verify callback timing and state payload |
 | `blackoilTutorialMexAcceleration` | Python timing analogue | Document backend equivalence and compare residuals |
 | `multisegmentWellExample` | Reduced runnable case | Complete SPE1 multisegment topology and controls |
-| `blackoilTimeIntegrationExample` | Fully implicit SPE1 only | Add explicit and adaptive-implicit paths and SPE9 |
+| `blackoilTimeIntegrationExample` | FIM, CFL-controlled explicit, and AIM on SPE1 | Add the SPE9 path after its deck/VFP/schedule importer; extend direct MATLAB trajectory comparisons |
 | `eggExample` | Guarded | Dataset loader plus complete simulation |
 | `simulateSPE3` | Guarded | Deck/schedule import plus reference comparison |
 | `simulateSPE9` / tutorial | Guarded | Deck, VFP, schedule, and summary comparison |

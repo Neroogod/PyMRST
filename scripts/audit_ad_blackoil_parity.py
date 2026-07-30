@@ -29,7 +29,7 @@ PLACEHOLDERS = {
 
 PARTIAL = {
     "blackoilTimeIntegrationExample": (
-        "fully implicit SPE1 exists; explicit/AIM and SPE9 paths are absent"
+        "FIM, CFL-controlled explicit, and AIM SPE1 exist; SPE9 path is absent"
     ),
     "multisegmentWellExample": (
         "reduced packing workflow exists; full SPE1 multisegment case remains"

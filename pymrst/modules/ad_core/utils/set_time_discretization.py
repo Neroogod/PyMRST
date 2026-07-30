@@ -7,6 +7,7 @@ from pymrst.modules.ad_core.statefunctions.flux.flow_state import (
     ExplicitFlowStateBuilder,
     ImplicitFlowStateBuilder,
 )
+from pymrst.modules.ad_core.utils.cfl import estimate_flow_cfl
 
 
 def _field(value, *names):
@@ -75,6 +76,8 @@ def set_time_discretization(model, discretization_type, **options):
     """
     key = str(discretization_type).strip().lower()
     options = _normalize_options(options)
+    if key in ("adaptive-implicit", "aim", "explicit", "impes"):
+        options.setdefault("cfl_estimator", estimate_flow_cfl)
     if key in ("fully-implicit", "fim"):
         builder = ImplicitFlowStateBuilder(**options)
     elif key in ("adaptive-implicit", "aim"):

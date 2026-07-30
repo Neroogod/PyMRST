@@ -30,6 +30,43 @@ import numpy as np
 from pymrst.utils.adi import init_variables_adi, value
 
 
+def estimate_flow_cfl(model: Any, state, dt: float, forces=None):
+    """Return saturation and composition CFL arrays for FIM/AIM/IMPES.
+
+    The composition estimate is valid for arbitrary component counts and is
+    the stability controller for three-phase black oil.  The specialized
+    Buckley--Leverett saturation wave-speed estimate is additionally used for
+    two-phase models.
+    """
+    ad_state = model.init_state_ad(state)
+    phase_flux = np.column_stack([
+        np.asarray(value(v), dtype=float)
+        for v in model.get_props(ad_state, "PhaseFlux")
+    ])
+    component_flux = np.column_stack([
+        np.asarray(value(v), dtype=float)
+        for v in model.get_props(ad_state, "ComponentTotalFlux")
+    ])
+    component_mass = np.column_stack([
+        np.asarray(value(v), dtype=float)
+        for v in model.get_props(ad_state, "ComponentTotalMass")
+    ])
+    composition = estimate_composition_cfl(
+        model, state, dt, phase_flux=phase_flux,
+        component_flux=component_flux, component_mass=component_mass,
+    )
+    if model.n_phases == 2:
+        saturation = estimate_saturation_cfl(
+            model, state, dt, flux=phase_flux
+        )
+    else:
+        # MRST also considers a saturation-characteristic estimate. Until its
+        # three-phase eigenvalue branch is ported, component throughput is the
+        # conservative controller and the saturation contribution is neutral.
+        saturation = np.zeros(model.G.cells.num)
+    return saturation, composition
+
+
 def fractional_flow_derivative(model: Any, sw) -> np.ndarray:
     r"""`|df_w/ds_w|` per cell - the Buckley-Leverett wave speed.
 

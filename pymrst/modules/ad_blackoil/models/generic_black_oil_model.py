@@ -276,6 +276,8 @@ class GenericBlackOilModel(GenericReservoirModel):
                 out[q] = prim[2 + i]
             for i, name in enumerate(ms_names):
                 out[name] = prim[2 + nph + 1 + i]
+            if "implicit" in st:
+                out["implicit"] = np.asarray(st["implicit"], dtype=bool).copy()
             return out
 
         st1, st2, st3 = self._status_masks(st["status"])
@@ -299,6 +301,8 @@ class GenericBlackOilModel(GenericReservoirModel):
             out[q] = prim[3 + i]
         for i, name in enumerate(ms_names):
             out[name] = prim[3 + nph + 1 + i]
+        if "implicit" in st:
+            out["implicit"] = np.asarray(st["implicit"], dtype=bool).copy()
         return out
 
     def _state0_props(self, st0: State) -> State:
@@ -462,6 +466,14 @@ class GenericBlackOilModel(GenericReservoirModel):
             state[keys[1]] = b_new
         if self.facility.last_flux is not None:
             state["well_flux"] = [q.copy() for q in self.facility.last_flux]
+        # The explicit and AIM builders estimate the next step from the flux
+        # just accepted. Keeping it on the state also mirrors MRST's simulator
+        # state payload and makes ministep reporting reproducible.
+        ad_state = self.init_state_ad(state)
+        state["flux"] = np.column_stack([
+            np.asarray(value(v), dtype=float)
+            for v in self.get_props(ad_state, "PhaseFlux")
+        ])
         return state
 
     def _convergence_scaling(self, nph: int):
