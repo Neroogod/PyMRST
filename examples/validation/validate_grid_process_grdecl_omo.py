@@ -37,7 +37,9 @@ def main() -> int:
         print(f"{path.name} missing (run the matching MATLAB dump)")
         return 1
     ref = loadmat(path, squeeze_me=True)
-    grid = compute_geometry(process_grdecl_omo(_grdecl()))
+    grid = compute_geometry(process_grdecl_omo(
+        _grdecl(), preserve_cp_nodes=True,
+    ))
     order = np.lexsort(tuple(
         grid.cells.centroids[:, column]
         for column in range(grid.cells.centroids.shape[1] - 1, -1, -1)
@@ -57,6 +59,11 @@ def main() -> int:
         ),
         "sorted volumes": (grid.cells.volumes[order], ref["sorted_volumes"]),
         "total volume": (grid.cells.volumes.sum(), ref["total_volume"]),
+        "corner-point nodes": (grid.cells.cpnodes + 1, ref["cpnodes"]),
+        "corner-point coordinates": (
+            grid.nodes.coords[grid.cells.cpnodes],
+            ref["cpnode_coords"],
+        ),
     }
     failed = False
     for name, (actual, expected) in checks.items():
