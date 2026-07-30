@@ -280,7 +280,7 @@ def _split_boundary_edges(target, inserts):
     return g
 
 
-def glue_2d_grid(g1, g2, tol: float = 1e-3) -> Grid:
+def glue_2d_grid(g1, g2, tol: float = 1e-3, *, return_mapping=False):
     """Return the single 2D grid formed by gluing `g1` and `g2` along their
     shared boundary."""
     g1c = _ensure_conformal(g1, g2, tol)
@@ -310,7 +310,7 @@ def glue_2d_grid(g1, g2, tol: float = 1e-3) -> Grid:
         _merge_all_faces(g, mfaces)
     _cleanup_unused_faces(g)
 
-    return Grid(
+    result = Grid(
         cells=Cells(num=int(g.cells.num),
                     facePos=np.asarray(g.cells.facePos, dtype=np.int64),
                     faces=np.asarray(g.cells.faces, dtype=np.int64),
@@ -321,6 +321,48 @@ def glue_2d_grid(g1, g2, tol: float = 1e-3) -> Grid:
                     neighbors=np.asarray(g.faces.neighbors, dtype=np.int64)),
         nodes=Nodes(num=int(g.nodes.num), coords=np.asarray(g.nodes.coords)),
         griddim=2, type=["glue2DGrid"])
+    if return_mapping:
+        return result, _glue_mapping(result, g1, g2, tol)
+    return result
+
+
+def _glue_mapping(result, g1, g2, tol):
+    """Map glued entities back to both inputs; ``-1`` means no parent."""
+    node_parent = np.full((result.nodes.num, 2), -1, dtype=np.int64)
+    for column, source in enumerate((g1, g2)):
+        delta = (
+            result.nodes.coords[:, None, :2]
+            - np.asarray(source.nodes.coords)[None, :, :2]
+        )
+        distance = np.linalg.norm(delta, axis=2)
+        nearest = np.argmin(distance, axis=1)
+        hit = distance[np.arange(result.nodes.num), nearest] < tol
+        node_parent[hit, column] = nearest[hit]
+
+    face_parent = np.full((result.faces.num, 2), -1, dtype=np.int64)
+    result_pairs = result.faces.nodes.reshape(-1, 2)
+    result_keys = [
+        frozenset(map(tuple, result.nodes.coords[pair, :2]))
+        for pair in result_pairs
+    ]
+    for column, source in enumerate((g1, g2)):
+        source_pairs = np.asarray(source.faces.nodes).reshape(-1, 2)
+        source_coords = np.asarray(source.nodes.coords)
+        lookup = {
+            frozenset(map(tuple, source_coords[pair, :2])): face
+            for face, pair in enumerate(source_pairs)
+        }
+        for face, key in enumerate(result_keys):
+            face_parent[face, column] = lookup.get(key, -1)
+
+    cell_parent = np.full((result.cells.num, 2), -1, dtype=np.int64)
+    cell_parent[:g1.cells.num, 0] = np.arange(g1.cells.num)
+    cell_parent[g1.cells.num:, 1] = np.arange(g2.cells.num)
+    return SimpleNamespace(
+        cells=cell_parent,
+        faces=face_parent,
+        nodes=node_parent,
+    )
 
 
 if __name__ == "__main__":
