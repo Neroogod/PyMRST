@@ -4,10 +4,12 @@ The single-well control layer, factored onto MRST's `models/wells/` layout.
 Proved against the MATLAB-validated procedural facility path (Phases 39, 120),
 which already reproduces MRST:
 
-1. **Control equations.** For every control type - bhp, total rate, water /
+1. **Control equations.** MRST `setupWellControlEquationsSingleWell`: for
+   every control type - bhp, total rate, water /
    oil / gas rate, liquid rate - `setup_well_control_equation_single_well`
    reproduces `FacilityModel._control_equation` exactly, value and Jacobian.
-2. **Control switching.** On a schedule where a rate injector needs more than
+2. **Control switching.** MRST `updateSwitchedWellControls`: on a schedule
+   where a rate injector needs more than
    its bhp cap (and a bhp producer exceeds its rate cap), the standalone
    `update_switched_controls` switches exactly the wells that
    `FacilityModel.update_switched_controls` switches, to the same modes.
