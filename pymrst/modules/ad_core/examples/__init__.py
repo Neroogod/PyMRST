@@ -60,6 +60,12 @@ from pymrst.modules.ad_core.examples.mrst_demo import (
     MRSTDemoResult,
     mrst_demo,
 )
+from pymrst.modules.ad_core.examples.paired_heterogeneous_waterflood import (
+    WaterfloodResult,
+    build_paired_waterflood,
+    run_paired_waterflood,
+    save_result,
+)
 
 __all__ = [
     "run_ad_buckley_leverett_1d",
@@ -100,4 +106,8 @@ __all__ = [
     "linearSolverExample",
     "MRSTDemoResult",
     "mrst_demo",
+    "WaterfloodResult",
+    "build_paired_waterflood",
+    "run_paired_waterflood",
+    "save_result",
 ]
