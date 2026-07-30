@@ -44,6 +44,7 @@ from pymrst.modules.ad_core.statefunctions.flowprops.saturation_limits import (
 )
 from pymrst.modules.ad_core.statefunctions.flowprops.pressure_reduction_factors import (  # noqa: E501
     BlackOilPressureReductionFactors,
+    NumericalPressureReductionFactors,
     PressureReductionFactors,
 )
 from pymrst.modules.ad_core.statefunctions.flowprops.component_properties import (
@@ -66,6 +67,7 @@ __all__ = [
     "BlackOilDensity",
     "BlackOilPoreVolume",
     "BlackOilPressureReductionFactors",
+    "NumericalPressureReductionFactors",
     "ComponentMobility",
     "ComponentPhaseDensity",
     "ComponentProperty",

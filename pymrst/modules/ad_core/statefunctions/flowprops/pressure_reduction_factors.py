@@ -17,11 +17,9 @@ below. The defining invariant - ``sum_i w_i M_i`` has no saturation derivative -
 is what `validate_phase341.py` checks, because there is no simpler reference
 for machinery whose whole purpose is to be saturation-independent.
 
-Not ported here: `NumericalPressureReductionFactors` (weights differentiated
-numerically from the mass Jacobian - tied to the diagonal-AD backend and the
-sequential solver's `reductionFactorProps`), and the ``useUndersaturated``
-diagonal-AD refinement of the black-oil weights. Both are accuracy/plumbing
-refinements on top of the analytic weights implemented here.
+The numerical Jacobian-derived variant is also implemented below. The
+``useUndersaturated`` diagonal-AD refinement of the analytic black-oil weights
+remains backend-specific rather than a separate MRST file.
 """
 
 from __future__ import annotations
@@ -29,11 +27,16 @@ from __future__ import annotations
 from typing import Any, List
 
 import numpy as np
+import scipy.sparse as sp
+import scipy.sparse.linalg as spla
 
 from pymrst.modules.ad_core.statefunctions.state_function import (
     STATE,
     StateFunction,
 )
+from pymrst.utils.adi import ADI, value
+
+BARSA = 1e5
 
 
 class PressureReductionFactors(StateFunction):
@@ -103,7 +106,145 @@ class BlackOilPressureReductionFactors(PressureReductionFactors):
         return w
 
 
-__all__ = ["BlackOilPressureReductionFactors", "PressureReductionFactors"]
+def _factor_get(factor: Any, name: str, default: Any = None) -> Any:
+    if isinstance(factor, dict):
+        return factor.get(name, default)
+    return getattr(factor, name, default)
+
+
+class NumericalPressureReductionFactors(StateFunction):
+    """Pressure weights obtained from the component-mass Jacobian.
+
+    For each cell, solve ``w A = [1/barsa, 0, ...]``, where ``A`` is the
+    component accumulation Jacobian with respect to pressure and the remaining
+    reservoir primary variables. This is MRST's numerical true-IMPES
+    construction and works with ordinary sparse AD Jacobians.
+    """
+
+    def __init__(
+        self, model: Any = None, include_derivatives: bool = True,
+        check_derivatives: bool = False,
+    ):
+        super().__init__(model, label="w_i^{p,num}")
+        self.include_derivatives = include_derivatives
+        self.check_derivatives = check_derivatives
+        self.depends_on("ComponentTotalMass")
+
+    @staticmethod
+    def get_weights(
+        mass: List[Any], mass0: List[Any], dt: float, ncell: int, ncomp: int
+    ) -> np.ndarray:
+        accumulation = [
+            (current - previous) / dt
+            for current, previous in zip(mass, mass0)
+        ]
+        if all(not hasattr(item, "jac") for item in accumulation):
+            return np.ones((ncell, ncomp))
+
+        rows = []
+        for item in accumulation:
+            if not hasattr(item, "jac") or len(item.jac) < ncomp:
+                raise ValueError(
+                    "component masses must carry one AD block per reservoir "
+                    "primary variable"
+                )
+            rows.append(sp.hstack(item.jac[:ncomp], format="csr"))
+        matrix = sp.vstack(rows, format="csr")
+        ndof = ncell * ncomp
+        if matrix.shape != (ndof, ndof):
+            raise ValueError(
+                f"expected a {ndof}x{ndof} reservoir mass Jacobian, got "
+                f"{matrix.shape}"
+            )
+
+        pressure_columns = matrix[:, :ncell]
+        if pressure_columns.nnz == 0 or (
+            pressure_columns.data.size
+            and np.max(np.abs(pressure_columns.data)) < 1e-16
+        ):
+            matrix = matrix + sp.csr_array(
+                (np.ones(ncell), (np.arange(ncell), np.arange(ncell))),
+                shape=(ndof, ndof),
+            )
+        rhs = np.zeros(ndof)
+        rhs[:ncell] = 1.0 / BARSA
+        flat = spla.spsolve(matrix.T.tocsc(), rhs)
+        return np.asarray(flat).reshape(ncomp, ncell).T
+
+    @staticmethod
+    def get_weight_derivatives(
+        weights: np.ndarray, previous_weights: Any, pressure: np.ndarray,
+        previous_pressure: Any, mass: List[Any],
+    ) -> np.ndarray | None:
+        if previous_weights is None or previous_pressure is None:
+            return None
+        old = np.asarray(previous_weights, dtype=float)
+        p = np.asarray(pressure, dtype=float).ravel()
+        p0 = np.asarray(previous_pressure, dtype=float).ravel()
+        mass_values = np.column_stack([value(item) for item in mass])
+        numerator = np.sum(mass_values * weights, axis=1)
+        denominator = np.sum(mass_values * old, axis=1)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            scale = numerator / denominator
+            derivative = (weights - scale[:, None] * old) / (
+                p - p0
+            )[:, None]
+        derivative[~np.isfinite(derivative)] = 0.0
+        return derivative
+
+    def evaluate_on_domain(self, model: Any, state: Any) -> List[Any]:
+        factor = state.get(
+            "reductionFactorProps", state.get("reduction_factor_props")
+        )
+        if factor is None:
+            raise KeyError(
+                "NumericalPressureReductionFactors requires "
+                "state.reductionFactorProps"
+            )
+        mass = model.get_props(state, "ComponentTotalMass")
+        mass0 = _factor_get(factor, "mass0")
+        if mass0 is None:
+            raise KeyError("reductionFactorProps.mass0 is required")
+        ncell = model.G.cells.num
+        ncomp = len(model.components)
+        weights = self.get_weights(
+            mass, mass0, float(_factor_get(factor, "dt")), ncell, ncomp
+        )
+
+        pressure = np.asarray(value(state["pressure"]), dtype=float)
+        derivative = self.get_weight_derivatives(
+            weights,
+            _factor_get(factor, "weights"),
+            pressure,
+            _factor_get(factor, "pressure"),
+            mass,
+        )
+        pressure_ad = state["pressure"]
+        output: List[Any] = []
+        for component in range(ncomp):
+            component_weights = weights[:, component]
+            if (
+                derivative is not None
+                and self.include_derivatives
+                and isinstance(pressure_ad, ADI)
+            ):
+                jac = [
+                    sp.csr_array((ncell, block.shape[1]))
+                    for block in pressure_ad.jac
+                ]
+                jac[0] = sp.diags(
+                    derivative[:, component], format="csr"
+                )
+                component_weights = ADI(component_weights, jac)
+            output.append(component_weights)
+        return output
+
+
+__all__ = [
+    "BlackOilPressureReductionFactors",
+    "NumericalPressureReductionFactors",
+    "PressureReductionFactors",
+]
 
 
 if __name__ == "__main__":

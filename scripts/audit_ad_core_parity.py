@@ -65,12 +65,6 @@ def find_counterparts(
             [],
             "optional opm-data/opm-tests repository and restart-output reader",
         )
-    if symbol == "NumericalPressureReductionFactors":
-        return (
-            "pending-review",
-            [],
-            "numerical Jacobian-derived sequential pressure weights are not implemented",
-        )
     if symbol in {
         "AGMGSolverAD",
         "AMGCLSolverAD",
