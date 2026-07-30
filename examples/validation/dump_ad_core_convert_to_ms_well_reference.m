@@ -1,0 +1,49 @@
+%% MRST reference for standard-to-multisegment well conversion.
+
+mrstModule add ad-core
+thisDir = fileparts(mfilename('fullpath'));
+
+w = struct();
+w.cells = [1; 2; 3];
+w.r = [0.1; 0.2; 0.3];
+w.dZ = [0; 5; 10];
+w.refDepth = 100;
+G = struct();
+G.cells = struct('centroids', [ ...
+    0, 0, 100; ...
+    3, 0, 104; ...
+    3, 4, 110]);
+
+default_well = convert2MSWell(w, 'G', G);
+default_cell2node = full(default_well.cell2node);
+default_depth = default_well.nodes.depth;
+default_volume = default_well.nodes.vol;
+default_topology = default_well.segments.topo;
+default_length = default_well.segments.length;
+default_diameter = default_well.segments.diam;
+default_delta = default_well.segments.deltaDistance;
+default_conn_dz = default_well.connDZ;
+
+grouped_well = convert2MSWell(w, ...
+    'cell2node', [1; 1; 2], ...
+    'topo', [1, 2], ...
+    'segLength', 12, ...
+    'segDiam', 0.4, ...
+    'connDZ', [1; 2; 3], ...
+    'vol', [7; 8]);
+grouped_cell2node = full(grouped_well.cell2node);
+grouped_depth = grouped_well.nodes.depth;
+grouped_volume = grouped_well.nodes.vol;
+grouped_topology = grouped_well.segments.topo;
+grouped_length = grouped_well.segments.length;
+grouped_diameter = grouped_well.segments.diam;
+grouped_conn_dz = grouped_well.connDZ;
+
+save(fullfile(thisDir, 'ref_ad_core_convert_to_ms_well.mat'), '-v7', ...
+    'default_cell2node', 'default_depth', 'default_volume', ...
+    'default_topology', 'default_length', 'default_diameter', ...
+    'default_delta', 'default_conn_dz', ...
+    'grouped_cell2node', 'grouped_depth', 'grouped_volume', ...
+    'grouped_topology', 'grouped_length', 'grouped_diameter', ...
+    'grouped_conn_dz');
+fprintf('Wrote ref_ad_core_convert_to_ms_well.mat\n');

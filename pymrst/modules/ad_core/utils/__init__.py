@@ -157,6 +157,10 @@ from pymrst.modules.ad_core.utils.get_grid_symrcm_ordering import (
     get_grid_symrcm_ordering,
     getGridSYMRCMOrdering,
 )
+from pymrst.modules.ad_core.utils.convert_to_ms_well import (
+    convert_to_ms_well,
+    convert2MSWell,
+)
 
 __all__ = [
     "Operators",
@@ -259,4 +263,6 @@ __all__ = [
     "CNV_MBConvergence",
     "get_grid_symrcm_ordering",
     "getGridSYMRCMOrdering",
+    "convert_to_ms_well",
+    "convert2MSWell",
 ]
