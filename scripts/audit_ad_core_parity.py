@@ -65,6 +65,21 @@ def find_counterparts(
             [],
             "optional opm-data/opm-tests repository and restart-output reader",
         )
+    if symbol == "SaturationProperty":
+        return (
+            "pending-review",
+            [],
+            "base connate-water behavior is ported; endpoint-scaling machinery remains",
+        )
+    if symbol in {
+        "plotStateFunctionGroupings",
+        "printStateFunctionGroupingTikz",
+    }:
+        return (
+            "excluded-visualization",
+            [],
+            "state-function graph visualization/export helper",
+        )
     if symbol in {
         "AGMGSolverAD",
         "AMGCLSolverAD",

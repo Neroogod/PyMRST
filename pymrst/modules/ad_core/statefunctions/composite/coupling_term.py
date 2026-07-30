@@ -28,9 +28,40 @@ from pymrst.utils.adi import value as _value
 
 
 class StateFunctionDependent:
-    """Marker mixin (MRST `StateFunctionDependent`): a state function whose
-    value is derived from other state functions rather than the raw state.
-    Carried for MRST parity; coupling terms are its main use here."""
+    """Per-method state-function dependency registry.
+
+    MRST uses this mixin when individual member functions, rather than the
+    object's primary evaluation method, depend on graph properties.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.function_dependencies: Dict[str, List[Any]] = {}
+
+    def clear_function_dependencies(self, function_name: str):
+        self.function_dependencies[function_name] = []
+        return self
+
+    def function_depends_on(
+        self, function_name: str, names: Any, grouping: str = "self"
+    ):
+        from pymrst.modules.ad_core.statefunctions.state_function import Dependency
+
+        if isinstance(names, str):
+            names = [names]
+        dependencies = self.function_dependencies.setdefault(function_name, [])
+        for name in names:
+            dependency = Dependency(name, grouping)
+            if dependency not in dependencies:
+                dependencies.append(dependency)
+        return self
+
+    def get_function_dependencies(self, function_name: str) -> List[Any]:
+        return list(self.function_dependencies.get(function_name, []))
+
+    functionDependsOn = function_depends_on
+    getFunctionDependencies = get_function_dependencies
+    clearFunctionDependencies = clear_function_dependencies
 
 
 class CouplingTerm(StateFunctionDependent):
@@ -38,6 +69,7 @@ class CouplingTerm(StateFunctionDependent):
 
     def __init__(self, couplings: Optional[List[Dict[str, Any]]] = None,
                  label: str = "q_{coupling}"):
+        super().__init__()
         self.couplings: List[Dict[str, Any]] = list(couplings or [])
         self.label = label
 
