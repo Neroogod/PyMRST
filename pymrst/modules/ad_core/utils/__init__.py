@@ -77,6 +77,19 @@ from pymrst.modules.ad_core.utils.expand_matrix_to_cell import (
 )
 from pymrst.modules.ad_core.utils.numel_data import numel_data, numelData
 from pymrst.modules.ad_core.utils.size_jac import size_jac, sizeJac
+from pymrst.modules.ad_core.utils.critical_point_chop import (
+    critical_point_chop,
+    criticalPointChop,
+)
+from pymrst.modules.ad_core.utils.split_matrix_for_reduction import (
+    ReductionSystem,
+    split_matrix_for_reduction,
+    splitMatrixForReduction,
+)
+from pymrst.modules.ad_core.utils.get_cell_major_reordering import (
+    get_cell_major_reordering,
+    getCellMajorReordering,
+)
 
 __all__ = [
     "Operators",
@@ -131,4 +144,11 @@ __all__ = [
     "numelData",
     "size_jac",
     "sizeJac",
+    "critical_point_chop",
+    "criticalPointChop",
+    "ReductionSystem",
+    "split_matrix_for_reduction",
+    "splitMatrixForReduction",
+    "get_cell_major_reordering",
+    "getCellMajorReordering",
 ]
