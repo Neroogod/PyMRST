@@ -19,8 +19,11 @@ from pymrst.modules.ad_core.statefunctions.components.components import (
     blackoil_components,
 )
 from pymrst.modules.ad_core.utils.boundary_conditions import (
+    ForceContributions,
     add_bc_and_sources,
     boundary_reservoir_fluxes,
+    compute_sources_and_boundary_conditions_ad,
+    computeSourcesAndBoundaryConditionsAD,
     source_reservoir_fluxes,
 )
 from pymrst.modules.ad_core.backends import (
@@ -111,7 +114,9 @@ __all__ = [
     "PhysicalModel", "ReservoirModel", "FacilityModel",
     "BasicSeparator", "EOSSeparator", "SeparatorFlashResult", "SeparatorMassResult",
     "SeparatorGroup", "SeparatorStreamResult", "SeparatorSurfaceResult",
-    "add_bc_and_sources", "boundary_reservoir_fluxes", "source_reservoir_fluxes",
+    "ForceContributions", "add_bc_and_sources", "boundary_reservoir_fluxes",
+    "compute_sources_and_boundary_conditions_ad",
+    "computeSourcesAndBoundaryConditionsAD", "source_reservoir_fluxes",
     "EquilibriumRegion", "init_state_equil",
     "init_eclipse_problem_ad", "initEclipseProblemAD",
     "initialize_equilibrium_pressures", "initialize_equilibrium_saturations",

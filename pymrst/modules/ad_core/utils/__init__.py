@@ -2,8 +2,11 @@
 
 from pymrst.modules.ad_core.utils.operators import Operators, setup_operators_tpfa
 from pymrst.modules.ad_core.utils.boundary_conditions import (
+    ForceContributions,
     add_bc_and_sources,
     boundary_reservoir_fluxes,
+    compute_sources_and_boundary_conditions_ad,
+    computeSourcesAndBoundaryConditionsAD,
     source_reservoir_fluxes,
 )
 from pymrst.modules.ad_core.utils.convergence import (
@@ -191,8 +194,11 @@ from pymrst.modules.ad_core.utils.convert_multi_segment_wells_deck import (
 
 __all__ = [
     "Operators",
+    "ForceContributions",
     "add_bc_and_sources",
     "boundary_reservoir_fluxes",
+    "compute_sources_and_boundary_conditions_ad",
+    "computeSourcesAndBoundaryConditionsAD",
     "setup_operators_tpfa",
     "source_reservoir_fluxes",
     "cnv_mb_convergence",

@@ -28,7 +28,8 @@ a boundary the same way it is carried across a face. The upwind side supplies
 the densities, exactly as in `ComponentPhaseFlux`.
 """
 
-from typing import Any, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Any, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 import scipy.sparse as sp
@@ -36,6 +37,236 @@ import scipy.sparse as sp
 from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.params.wells_and_bc import BoundaryCondition, Source
 from pymrst.utils.adi import ADI, value
+from pymrst.modules.ad_core.utils.phase_densities_to_bfactor import (
+    phase_densities_to_bfactor,
+)
+
+
+@dataclass
+class ForceContributions:
+    """Normalized output of MRST ``computeSourcesAndBoundaryConditionsAD``."""
+
+    phaseMass: List[Any]
+    phaseVolume: List[Any]
+    components: List[Any]
+    mapping: sp.csr_array
+    sourceCells: np.ndarray
+
+
+def _field(obj, name, default=None):
+    if obj is None:
+        return default
+    if isinstance(obj, Mapping):
+        return obj.get(name, default)
+    return getattr(obj, name, default)
+
+
+def _surface_densities(model) -> np.ndarray:
+    if hasattr(model, "get_surface_densities"):
+        return np.asarray(model.get_surface_densities(), dtype=float).ravel()
+    if hasattr(model, "getSurfaceDensities"):
+        return np.asarray(model.getSurfaceDensities(), dtype=float).ravel()
+    return np.asarray(model.fluid.rho_s, dtype=float).ravel()
+
+
+def _empty_contributions(nph: int, nc: int) -> ForceContributions:
+    return ForceContributions(
+        phaseMass=[np.zeros(0) for _ in range(nph)],
+        phaseVolume=[np.zeros(0) for _ in range(nph)],
+        components=[],
+        mapping=sp.csr_array((0, 0)),
+        sourceCells=np.zeros(0, dtype=np.int64),
+    )
+
+
+def _force_map(cells: np.ndarray, nc: int) -> sp.csr_array:
+    base = _scatter(cells, nc)
+    # This deliberately retains one row per force.  Repeated cells therefore
+    # have identical rows, exactly like MRST's ``map(cells, :)``.
+    return base[cells, :].tocsr()
+
+
+def _contributions(force, q_s, q_r, b, rho_s, cells, dissolved, nc):
+    nph = len(q_s)
+    if force is None or cells.size == 0:
+        return _empty_contributions(nph, nc)
+    q_s = list(q_s)
+    q0 = list(q_s)
+    if dissolved is not None:
+        total = np.zeros(cells.size)
+        for q in q0:
+            total += np.asarray(value(q), dtype=float)
+        inj = total > 0
+        override = _field(force, "dissolution")
+        for i in range(nph):
+            for j in range(nph):
+                r_cell = dissolved[i][j]
+                if r_cell is None:
+                    continue
+                if override is None:
+                    r_inj = 0.0
+                else:
+                    ds = np.asarray(override)
+                    r_inj = ds[:, i, j] if ds.ndim == 3 else ds[i, j]
+                r = np.where(inj, r_inj, np.asarray(value(r_cell))[cells])
+                q_s[i] = q_s[i] + r * q0[j]
+    mass = [q_s[i] * rho_s[i] for i in range(nph)]
+    return ForceContributions(mass, list(q_r), [], _force_map(cells, nc), cells)
+
+
+def compute_sources_and_boundary_conditions_ad(
+    model,
+    pressure: Sequence[Any],
+    saturation: Sequence[Any],
+    mobility: Sequence[Any],
+    density: Sequence[Any],
+    dissolved,
+    forces,
+) -> Tuple[ForceContributions, ForceContributions]:
+    """Compute MRST-compatible normalized source and BC contributions.
+
+    Rates in ``phaseMass`` are phase-pseudocomponent mass rates at surface
+    conditions. ``phaseVolume`` contains reservoir-condition phase volumes.
+    """
+    nph = len(mobility)
+    nc = int(model.G.cells.num)
+    rho_s = _surface_densities(model)
+    b = phase_densities_to_bfactor(density, rho_s, dissolved)
+    bc_force = _field(forces, "bc")
+    src_force = _field(forces, "src")
+
+    if bc_force is None or np.asarray(_field(bc_force, "face", [])).size == 0:
+        bc_out = _empty_contributions(nph, nc)
+    else:
+        q_s, q_r, bc_cells = _boundary_fluxes_ad(
+            model, pressure, saturation, mobility, density, b, bc_force
+        )
+        bc_out = _contributions(
+            bc_force, q_s, q_r, b, rho_s, bc_cells, dissolved, nc
+        )
+
+    if src_force is None or np.asarray(_field(src_force, "cell", [])).size == 0:
+        src_out = _empty_contributions(nph, nc)
+    else:
+        q_s, src_cells = _source_surface_fluxes(mobility, src_force)
+        q_r = [q_s[i] / b[i][src_cells] for i in range(nph)]
+        src_out = _contributions(
+            src_force, q_s, q_r, b, rho_s, src_cells, dissolved, nc
+        )
+    return src_out, bc_out
+
+
+computeSourcesAndBoundaryConditionsAD = compute_sources_and_boundary_conditions_ad
+
+
+def _source_surface_fluxes(mobility, src):
+    cells = np.asarray(_field(src, "cell"), dtype=np.int64).ravel()
+    rate = np.asarray(_field(src, "rate"), dtype=float).ravel()
+    sat = np.asarray(_field(src, "sat"), dtype=float)
+    assert sat.shape == (cells.size, len(mobility))
+    mob_c = [m[cells] for m in mobility]
+    total = sum(mob_c[1:], mob_c[0])
+    inj = rate > 0
+    q_s = [
+        rate * sat[:, i] * inj + rate * (mob_c[i] / total) * (~inj)
+        for i in range(len(mobility))
+    ]
+    return q_s, cells
+
+
+def _boundary_fluxes_ad(model, pressure, saturation, mobility, density, b, bc):
+    faces = np.asarray(_field(bc, "face"), dtype=np.int64).ravel()
+    kinds = np.char.lower(np.asarray(_field(bc, "type"), dtype=str))
+    values = np.asarray(_field(bc, "value"), dtype=float)
+    if values.ndim == 1:
+        values = values[:, None]
+    sat = np.asarray(_field(bc, "sat"), dtype=float).copy()
+    nbc, nph = faces.size, len(mobility)
+    assert sat.shape == (nbc, nph)
+    nbr = np.asarray(model.G.faces.neighbors)[faces]
+    assert not np.any(np.all(nbr >= 0, axis=1)), "bc on internal boundary"
+    cells = nbr.max(axis=1)
+    t = np.asarray(model.operators.t_all)[faces]
+    dz = (np.asarray(model.G.cells.centroids)[cells]
+          - np.asarray(model.G.faces.centroids)[faces])
+    if hasattr(model, "get_gravity_vector"):
+        gvec = np.asarray(model.get_gravity_vector())
+        gdz = -(dz @ gvec)
+    else:
+        gdz = -float(getattr(model, "gravity_magnitude", 0.0)) * dz[:, -1]
+
+    no_sat = np.all(sat == 0, axis=1)
+    for i in range(nph):
+        sat[no_sat, i] = np.asarray(value(saturation[i][cells]))[no_sat]
+    outside_mob = _field(bc, "mob")
+    outside_rho = _field(bc, "rho")
+    mob_in = [m[cells] for m in mobility]
+    total = sum(mob_in[1:], mob_in[0])
+    if outside_mob is None:
+        mob_out = [total * sat[:, i] for i in range(nph)]
+    else:
+        om = np.asarray(outside_mob, dtype=float)
+        mob_out = [om[:, i] for i in range(nph)]
+    if outside_rho is None:
+        rho_out = [density[i][cells] for i in range(nph)]
+        b_out = [b[i][cells] for i in range(nph)]
+    else:
+        ore = np.asarray(outside_rho, dtype=float)
+        rho_s = _surface_densities(model)
+        rho_out = [ore[:, i] for i in range(nph)]
+        b_out = [ore[:, i] / rho_s[i] for i in range(nph)]
+
+    is_p = kinds == "pressure"
+    is_sf = kinds == "flux"
+    is_rf = ~(is_p | is_sf)
+    q_s, q_r = [], []
+    # MRST reservoir-flux boundaries split the imposed total by potential
+    # upwinding. Iterate the small local fixed point used by that split.
+    qph = [np.zeros(nbc) for _ in range(nph)]
+    if np.any(is_rf):
+        vt = values.sum(axis=1) if values.shape[1] > 1 else values[:, 0]
+        use_out = np.tile((vt > 0)[:, None], (1, nph))
+        for _ in range(4):
+            mf = [np.where(use_out[:, i], value(mob_out[i]), value(mob_in[i]))
+                  for i in range(nph)]
+            mt = sum(mf)
+            trial = []
+            for i in range(nph):
+                grav = sum(
+                    mf[j] * gdz * (value(rho_out[i] + density[i][cells]) / 2
+                                    - value(rho_out[j] + density[j][cells]) / 2)
+                    for j in range(nph) if j != i
+                )
+                trial.append(mf[i] / mt * (vt + t * grav))
+            use_out = np.column_stack([value(q) > 0 for q in trial])
+            qph = trial
+
+    for i in range(nph):
+        sample = pressure[i][cells]
+        qr = sample * 0.0
+        qs = sample * 0.0
+        bc_v = values[:, 0] if values.shape[1] == 1 else values[:, i]
+        p_out = sample * 1.0
+        p_out = p_out + (bc_v - value(sample)) * is_p
+        rho_avg = (rho_out[i] + density[i][cells]) / 2
+        dp = p_out - sample - rho_avg * gdz
+        inj_p = is_p & (value(dp) > 0)
+        prod_p = is_p & ~inj_p
+        qr_prod = mob_in[i] * t * dp * prod_p
+        qr_inj = mob_out[i] * t * dp * inj_p
+        qr = qr + qr_prod + qr_inj
+        qs = qs + b[i][cells] * qr_prod + b_out[i] * qr_inj
+        inj_sf = is_sf & (bc_v > 0)
+        prod_sf = is_sf & ~inj_sf
+        qs = qs + bc_v * sat[:, i] * inj_sf
+        qs = qs + bc_v * (mob_in[i] / total) * prod_sf
+        qr = qr + bc_v * sat[:, i] / b_out[i] * inj_sf
+        qr = qr + bc_v * (mob_in[i] / total) / b[i][cells] * prod_sf
+        qs = qs + qph[i] * np.where(value(qph[i]) > 0, b_out[i], b[i][cells]) * is_rf
+        qr = qr + qph[i] * is_rf
+        q_s.append(qs)
+        q_r.append(qr)
+    return q_s, q_r, cells
 
 
 def _scatter(cells: np.ndarray, n_cells: int) -> sp.csr_array:

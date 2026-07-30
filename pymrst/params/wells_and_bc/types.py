@@ -16,6 +16,14 @@ class BoundaryCondition:
     sat: np.ndarray = field(default_factory=lambda: np.zeros((0, 0)))
     # Overall mole fractions for compositional inflow (MRST `bc.components`).
     components: Optional[np.ndarray] = None
+    # Optional properties of the fluid outside the domain.  MRST uses these
+    # for pressure and reservoir-flux boundaries; when absent, the inside
+    # density/mobility is mirrored.
+    mob: Optional[np.ndarray] = None
+    rho: Optional[np.ndarray] = None
+    # Optional injected dissolution ratios, either (phase, phase) or
+    # (boundary, phase, phase).
+    dissolution: Optional[np.ndarray] = None
 
 
 @dataclass
@@ -27,6 +35,7 @@ class Source:
     sat: np.ndarray = field(default_factory=lambda: np.zeros((0, 0)))
     # Overall mole fractions for compositional inflow (MRST-like extension).
     components: Optional[np.ndarray] = None
+    dissolution: Optional[np.ndarray] = None
 
 
 @dataclass
