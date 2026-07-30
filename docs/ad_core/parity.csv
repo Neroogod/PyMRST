@@ -277,7 +277,7 @@ utils/checkWellConvergence.m,checkWellConvergence,utils,ported-consolidated,pymr
 utils/combineEquations.m,combineEquations,utils,ported,pymrst/modules/ad_core/utils/combine_equations.py,filename,validated-reference,examples/validation/validate_ad_core_pressure_bc_equations.py,
 utils/combineSchedules.m,combineSchedules,utils,ported-consolidated,pymrst/modules/ad_core/utils/schedule.py,symbol-reference,unvalidated,,
 utils/compressSchedule.m,compressSchedule,utils,ported-consolidated,pymrst/modules/ad_core/utils/schedule.py,symbol-reference,unvalidated,,
-utils/computeCpGeometry.m,computeCpGeometry,utils,pending-review,,,unvalidated,,
+utils/computeCpGeometry.m,computeCpGeometry,utils,ported,pymrst/modules/ad_core/utils/compute_cp_geometry.py,filename,validated-reference,examples/validation/validate_phase426.py,
 utils/computeSourcesAndBoundaryConditionsAD.m,computeSourcesAndBoundaryConditionsAD,utils,pending-review,,,unvalidated,,
 utils/convert2MSWell.m,convert2MSWell,utils,ported-consolidated,pymrst/modules/ad_core/utils/__init__.py; pymrst/modules/ad_core/utils/convert_to_ms_well.py,symbol-reference,validated-reference,examples/validation/validate_ad_core_convert_to_ms_well.py,
 utils/convertDeckScheduleToMRST.m,convertDeckScheduleToMRST,utils,ported,pymrst/modules/ad_core/utils/convert_deck_schedule_to_mrst.py,filename,validated-reference,examples/validation/validate_ad_core_convert_deck_schedule.py; examples/validation/validate_ad_core_raw_deck_schedule.py,

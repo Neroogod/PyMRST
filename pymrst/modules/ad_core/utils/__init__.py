@@ -165,6 +165,10 @@ from pymrst.modules.ad_core.utils.get_report_output import (
     get_report_output,
     getReportOutput,
 )
+from pymrst.modules.ad_core.utils.compute_cp_geometry import (
+    compute_cp_geometry,
+    computeCpGeometry,
+)
 
 __all__ = [
     "Operators",
@@ -271,4 +275,6 @@ __all__ = [
     "convert2MSWell",
     "get_report_output",
     "getReportOutput",
+    "compute_cp_geometry",
+    "computeCpGeometry",
 ]
