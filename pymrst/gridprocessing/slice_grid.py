@@ -7,13 +7,11 @@ neighbours only across it. The result is a valid grid with the plane represented
 as internal faces, which is what a fault, a well trajectory, or a reporting
 cross-section needs.
 
-This is a clean-cut implementation using a global edge-crossing (marching)
-formulation: it handles a planar cut that passes through cell *interiors* (no
-node lies exactly on the plane, each crossed face is crossed on exactly two
-edges). MRST's `sliceGrid` additionally copes with cuts that snap to existing
-nodes, partial cuts, and the resulting degenerate/duplicate faces via its
-`topologicalCellSplit`; those cases are out of this port's scope and are flagged.
-The geometric core - which cells are cut and where - is
+This implementation uses a global edge-crossing (marching) formulation. It
+handles clean planar cuts, cuts snapped to existing nodes, finite partial cuts,
+repeated cuts, and MRST's face-only mode. A plane coinciding with a face of a
+cell that is simultaneously split remains the same known zero-volume edge case
+that MRST warns about. The geometric core - which cells are cut and where - is
 `compute_grid_slice_polygons`.
 """
 
@@ -63,7 +61,8 @@ def _rebuild_cell_faces(num_cells, neighbors):
 
 def slice_grid(g, coord, normal: Optional[np.ndarray] = None,
                cut_dir: Optional[np.ndarray] = None, tol: float = 1e-9,
-               *, return_mapping: bool = False, return_slice: bool = False):
+               *, only_faces: bool = False, return_mapping: bool = False,
+               return_slice: bool = False):
     """Return the grid cut by the plane through `coord` (point+`normal` or
     segment+`cut_dir`), with the crossed cells split in two.
 
@@ -74,6 +73,9 @@ def slice_grid(g, coord, normal: Optional[np.ndarray] = None,
     faces on the slice, matching MRST's third output. The result is
     ``(grid, slice_grid)`` or ``(grid, gix, slice_grid)`` when both outputs
     are requested.
+
+    ``only_faces=True`` matches MRST's ``onlyFaces`` option: intersected faces
+    are split, but cells are not split and no new slice faces are inserted.
     """
     if isinstance(coord, (list, tuple)) and coord and not np.isscalar(coord[0]):
         coordinates = list(coord)
@@ -83,11 +85,13 @@ def slice_grid(g, coord, normal: Optional[np.ndarray] = None,
         for point, nrm, direction in zip(coordinates, normals, directions):
             g, current = _slice_grid_single(
                 g, point, normal=nrm, cut_dir=direction, tol=tol,
+                only_faces=only_faces,
             )
             mapping = _compose_mappings(mapping, current)
         return _outputs(g, mapping, return_mapping, return_slice)
     g, mapping = _slice_grid_single(
         g, coord, normal=normal, cut_dir=cut_dir, tol=tol,
+        only_faces=only_faces,
     )
     return _outputs(g, mapping, return_mapping, return_slice)
 
@@ -107,7 +111,8 @@ def _outputs(g, mapping, return_mapping, return_slice):
     return (g, mapping) if return_mapping else g
 
 
-def _slice_grid_single(g, coord, normal=None, cut_dir=None, tol=1e-9):
+def _slice_grid_single(g, coord, normal=None, cut_dir=None, tol=1e-9,
+                       only_faces=False):
     coords = np.asarray(g.nodes.coords, dtype=float)
     node_pos = np.asarray(g.faces.nodePos, dtype=np.int64)
     fnodes = np.asarray(g.faces.nodes, dtype=np.int64)
@@ -178,11 +183,14 @@ def _slice_grid_single(g, coord, normal=None, cut_dir=None, tol=1e-9):
 
     cut_ids = np.flatnonzero(fully_cut)
     plus_id = np.full(nc0, -1, dtype=np.int64)
-    plus_id[cut_ids] = nc0 + np.arange(cut_ids.size)     # + half of each cut cell
+    if not only_faces:
+        plus_id[cut_ids] = nc0 + np.arange(cut_ids.size)  # + half of cut cell
 
     def half(c, side_pos):
         if c < 0:
             return -1
+        if only_faces:
+            return c
         return plus_id[c] if (side_pos and fully_cut[c]) else c
 
     out_nodes, out_np, out_neigh = [], [0], []
@@ -252,7 +260,8 @@ def _slice_grid_single(g, coord, normal=None, cut_dir=None, tol=1e-9):
 
     # one cut-polygon face per cut cell, between its - and + halves; wind it so
     # its normal points from the minus half to the plus half (along +n)
-    for c in cut_ids:
+    split_cell_ids = np.empty(0, dtype=np.int64) if only_faces else cut_ids
+    for c in split_cell_ids:
         ring = _order_ring(cell_cut_edges[int(c)])
         if np.dot(_polygon_normal(all_coords[ring]), n) < 0:
             ring = ring[::-1]
@@ -264,14 +273,16 @@ def _slice_grid_single(g, coord, normal=None, cut_dir=None, tol=1e-9):
     neighbors = np.asarray(out_neigh, dtype=np.int64)
     faces_nodes = np.asarray(out_nodes, dtype=np.int64)
     faces_pos = np.asarray(out_np, dtype=np.int64)
-    num_cells = nc0 + cut_ids.size
+    num_cells = nc0 + split_cell_ids.size
     cell_faces, cell_face_pos = _rebuild_cell_faces(num_cells, neighbors)
 
     source_index = (
         np.asarray(g.cells.indexMap, dtype=np.int64)
         if g.cells.indexMap is not None else np.arange(nc0, dtype=np.int64)
     )
-    cell_parent = np.concatenate([np.arange(nc0, dtype=np.int64), cut_ids])
+    cell_parent = np.concatenate([
+        np.arange(nc0, dtype=np.int64), split_cell_ids
+    ])
     cell_tags = None
     if g.cells.tags is not None:
         source_tags = {}
@@ -288,7 +299,7 @@ def _slice_grid_single(g, coord, normal=None, cut_dir=None, tol=1e-9):
             for cell, face in zip(output_cell, cell_faces)
         ])
     cell_status = np.ones(num_cells, dtype=np.int64)
-    cell_status[cut_ids] = 2
+    cell_status[split_cell_ids] = 2
     cell_status[nc0:] = 2
     result = Grid(
         cells=Cells(num=int(num_cells), facePos=cell_face_pos, faces=cell_faces,
@@ -305,7 +316,7 @@ def _slice_grid_single(g, coord, normal=None, cut_dir=None, tol=1e-9):
     if result.faces.tag is not None:
         result.faces.tag[np.asarray(face_parent) < 0] = 0
     old_cells = np.ones(nc0, dtype=bool)
-    old_cells[cut_ids] = False
+    old_cells[split_cell_ids] = False
     old_faces = np.ones(g.faces.num, dtype=bool)
     split_parent = np.asarray(face_parent)[np.asarray(face_status) == 2]
     old_faces[np.unique(split_parent)] = False
@@ -357,7 +368,11 @@ def _compose_mappings(previous, current):
                 np.maximum(current.new.faces, previous.new.faces[face_parent]),
                 current.new.faces,
             ),
-            nodes=current.new.nodes,
+            nodes=np.where(
+                valid_nodes,
+                np.maximum(current.new.nodes, previous.new.nodes[node_parent]),
+                current.new.nodes,
+            ),
         ),
         parent=SimpleNamespace(
             cells=mapped_cells, faces=mapped_faces, nodes=mapped_nodes,

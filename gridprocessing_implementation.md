@@ -755,3 +755,9 @@ saturation, and 1.83e-13 m3/s for phase well rates.
 output: a two-dimensional grid assembled from the generated slice faces. For
 multiple cuts the returned grid contains every retained slice surface, while
 an empty cut returns `None`.
+
+The `only_faces=True` option matches MRST's `onlyFaces` topology: intersected
+faces and crossing nodes are inserted without splitting cells or creating
+slice faces. PyMRST intentionally corrects an MRST 2024a off-by-one in the
+`old.faces` mapping (`cutFaceIx < nf_orig`), which otherwise leaves the final
+original face marked as retained when it was split.

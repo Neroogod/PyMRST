@@ -104,6 +104,60 @@ def main() -> int:
         np.array_equal(neighbor_pairs, ref["slice_neighbor_pairs"]),
     )
 
+    face_grid = compute_geometry(cart_grid([1, 1, 1], [1.0, 1.0, 1.0]))
+    face_grid, face_ix = slice_grid(
+        face_grid, np.array([0.5, 0.0, 0.0]), normal=np.array([1.0, 0.0, 0.0]),
+        only_faces=True, return_mapping=True,
+    )
+    failed += _check(
+        "onlyFaces retains cell count",
+        face_grid.cells.num == int(ref["only_cells_num"].item()),
+    )
+    failed += _check(
+        "onlyFaces face count",
+        face_grid.faces.num == int(ref["only_faces_num"].item()),
+    )
+    only_coords = np.asarray(face_grid.nodes.coords)
+    only_coords = only_coords[np.lexsort(
+        (only_coords[:, 2], only_coords[:, 1], only_coords[:, 0])
+    )]
+    failed += _check(
+        "onlyFaces node coordinates",
+        np.allclose(only_coords, ref["only_coords"], rtol=0, atol=1e-14),
+    )
+    failed += _check(
+        "onlyFaces cell status counts",
+        np.array_equal(
+            np.bincount(face_ix.new.cells, minlength=4)[1:4],
+            ref["only_new_cell_counts"].ravel(),
+        ),
+    )
+    failed += _check(
+        "onlyFaces face status counts",
+        np.array_equal(
+            np.bincount(face_ix.new.faces, minlength=4)[1:4],
+            ref["only_new_face_counts"].ravel(),
+        ),
+    )
+    only_parents = np.where(face_ix.parent.faces >= 0,
+                            face_ix.parent.faces + 1, 0)
+    only_parent_status = np.column_stack([only_parents, face_ix.new.faces])
+    only_parent_status = only_parent_status[np.lexsort(
+        (only_parent_status[:, 1], only_parent_status[:, 0])
+    )]
+    failed += _check(
+        "onlyFaces parent/status multiset",
+        np.array_equal(only_parent_status, ref["only_parent_face_status"]),
+    )
+    # MRST getIndices uses `cutFaceIx < nf_orig`, accidentally leaving the
+    # final original face true when that face is split. PyMRST uses the
+    # logically correct <= behavior, so every split parent is false here.
+    split_parents = np.unique(face_ix.parent.faces[face_ix.new.faces == 2])
+    failed += _check(
+        "onlyFaces old-face mask corrects MRST final-face off-by-one",
+        not np.any(face_ix.old.faces[split_parents]),
+    )
+
     print("\nsliceGrid cell-splitting matches MRST!" if failed == 0
           else f"\n{failed} checks FAILED")
     return 1 if failed else 0

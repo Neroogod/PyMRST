@@ -79,3 +79,41 @@ def test_slice_grid_empty_cut_returns_no_slice_grid():
     )
     unchanged.check()
     assert cross_section is None
+
+
+def test_slice_grid_only_faces_splits_faces_without_splitting_cells():
+    grid = cart_grid([1, 1, 1], [1.0, 1.0, 1.0])
+    sliced, gix, cross_section = slice_grid(
+        grid,
+        np.array([0.5, 0.0, 0.0]),
+        normal=np.array([1.0, 0.0, 0.0]),
+        only_faces=True,
+        return_mapping=True,
+        return_slice=True,
+    )
+    sliced.check()
+    assert sliced.cells.num == 1
+    assert sliced.faces.num == 10
+    assert sliced.nodes.num == 12
+    assert np.count_nonzero(gix.new.cells == 2) == 0
+    assert np.count_nonzero(gix.new.faces == 2) == 8
+    assert np.count_nonzero(gix.new.faces == 3) == 0
+    assert np.count_nonzero(gix.old.faces) == 2
+    assert cross_section is None
+
+
+def test_slice_grid_multiple_face_only_cuts_compose_mapping():
+    grid = cart_grid([1, 1, 1], [1.0, 1.0, 1.0])
+    sliced, gix = slice_grid(
+        grid,
+        [np.array([0.35, 0.0, 0.0]), np.array([0.0, 0.65, 0.0])],
+        normal=[np.array([1.0, 0.0, 0.0]), np.array([0.0, 1.0, 0.0])],
+        only_faces=True,
+        return_mapping=True,
+    )
+    sliced.check()
+    assert sliced.cells.num == 1
+    assert np.array_equal(gix.parent.cells, [0])
+    assert gix.old.cells.tolist() == [True]
+    assert np.count_nonzero(gix.new.faces == 3) == 0
+    assert np.all(gix.new.nodes[grid.nodes.num:] == 2)
