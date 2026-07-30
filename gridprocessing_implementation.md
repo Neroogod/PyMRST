@@ -785,3 +785,8 @@ maps and stores them on the returned grid as `cells.global`, `faces.global`,
 and `nodes.global` (with Python-friendly `global_` aliases). Logical masks,
 corner-point nodes, NNCs, geometry, and custom grid metadata are preserved and
 renumbered consistently.
+
+`split_disconnected_grid` accepts MRST's `verbose` option and includes both
+dictionary- and structure-style NNCs in its adjacency graph. Unlike MRST 2024a,
+which drops `nnc` while extracting components, PyMRST retains only each
+component's local connections and renumbers them with the subgrid.

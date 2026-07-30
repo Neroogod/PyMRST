@@ -24,8 +24,10 @@ def _adjacency(g) -> sp.csr_array:
     interior = neigh[np.all(neigh >= 0, axis=1)]
     pairs = [interior]
     nnc = getattr(g, "nnc", None)
-    if nnc is not None and "cells" in nnc:
-        pairs.append(np.asarray(nnc["cells"], dtype=np.int64))
+    if nnc is not None:
+        cells = nnc.get("cells") if isinstance(nnc, dict) else getattr(nnc, "cells", None)
+        if cells is not None:
+            pairs.append(np.asarray(cells, dtype=np.int64))
     n = np.vstack(pairs) if pairs else np.zeros((0, 2), dtype=np.int64)
 
     nc = g.cells.num
@@ -34,13 +36,15 @@ def _adjacency(g) -> sp.csr_array:
     return sp.csr_array((np.ones(i.size), (i, j)), shape=(nc, nc))
 
 
-def split_disconnected_grid(g) -> List[object]:
+def split_disconnected_grid(g, *, verbose: bool = False) -> List[object]:
     """Return the grid's connected components as subgrids, largest first.
 
     A connected grid returns `[g]`. Each subgrid keeps the parent's `cartDims`,
     as MRST does.
     """
     ncomp, labels = connected_components(_adjacency(g), directed=False)
+    if verbose and ncomp > 1:
+        print(f"Grid has {ncomp} disconnected components")
     if ncomp <= 1:
         return [g]
 

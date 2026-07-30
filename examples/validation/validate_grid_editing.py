@@ -44,6 +44,9 @@ def main() -> int:
         g, np.array([2]), return_mapping=True
     )
     parts = split_disconnected_grid(removed)
+    nnc_grid = remove_cells(cart_grid([5, 1, 1]), [1])
+    nnc_grid.nnc = {"cells": np.array([[0, 3]]), "trans": np.array([7.0])}
+    nnc_parts = split_disconnected_grid(nnc_grid)
 
     internal = np.flatnonzero(
         np.all(g.faces.neighbors >= 0, axis=1)
@@ -83,6 +86,12 @@ def main() -> int:
         ),
         "split positions": (split_pos, ref["split_pos"]),
         "split index maps": (split_maps + 1, ref["split_index_maps"]),
+        "NNC connected component count": (
+            len(nnc_parts), ref["nnc_connected_component_count"],
+        ),
+        "NNC connected cell count": (
+            nnc_parts[0].cells.num, ref["nnc_connected_cell_count"],
+        ),
         "roundtrip counts": (_counts(welded), ref["roundtrip_counts"]),
         "roundtrip neighbors": (
             _sorted_neighbors(welded), ref["roundtrip_neighbors"],
