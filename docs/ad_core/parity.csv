@@ -63,7 +63,7 @@ examples/book-ii/utils/Contents.m,Contents,examples,excluded-catalog,,MATLAB pac
 examples/book-ii/utils/TutorialAdd.m,TutorialAdd,examples,ported-consolidated,pymrst/modules/ad_core/examples/__init__.py; pymrst/modules/ad_core/examples/tutorial_state_functions.py,symbol-reference,validated-reference,tests/ad_core/examples/test_tutorial_state_functions.py,
 examples/book-ii/utils/TutorialNumber.m,TutorialNumber,examples,ported-consolidated,pymrst/modules/ad_core/examples/__init__.py; pymrst/modules/ad_core/examples/tutorial_state_functions.py,symbol-reference,validated-reference,tests/ad_core/examples/test_tutorial_state_functions.py,
 examples/book-ii/utils/TutorialProduct.m,TutorialProduct,examples,ported-consolidated,pymrst/modules/ad_core/examples/__init__.py; pymrst/modules/ad_core/examples/tutorial_state_functions.py,symbol-reference,validated-reference,tests/ad_core/examples/test_tutorial_state_functions.py,
-examples/book-ii/utils/assemblyBenchmarkAD.m,assemblyBenchmarkAD,examples,pending-review,,,unvalidated,,
+examples/book-ii/utils/assemblyBenchmarkAD.m,assemblyBenchmarkAD,examples,ported,pymrst/modules/ad_core/examples/assembly_benchmark_ad.py,filename,validated-reference,tests/ad_core/examples/test_assembly_benchmark_ad.py,
 examples/book-ii/utils/benchmarkAutoDiffBackends.m,benchmarkAutoDiffBackends,examples,ported,pymrst/modules/ad_core/examples/benchmark_auto_diff_backends.py,filename,validated-reference,tests/ad_core/examples/test_benchmark_auto_diff_backends.py,
 examples/compositeModelTutorial.m,compositeModelTutorial,examples,pending-review,,,unvalidated,,
 examples/demoPackedProblems.m,demoPackedProblems,examples,pending-review,,,unvalidated,,

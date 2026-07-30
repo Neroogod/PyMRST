@@ -8,6 +8,12 @@ from pymrst.modules.ad_core.examples.benchmark_auto_diff_backends import (
     benchmark_auto_diff_backends,
     benchmarkAutoDiffBackends,
 )
+from pymrst.modules.ad_core.examples.assembly_benchmark_ad import (
+    AssemblyBenchmarkCase,
+    AssemblyBenchmarkResult,
+    assembly_benchmark_ad,
+    assemblyBenchmarkAD,
+)
 from pymrst.modules.ad_core.examples.tutorial_state_functions import (
     TutorialAdd,
     TutorialNumber,
@@ -16,6 +22,10 @@ from pymrst.modules.ad_core.examples.tutorial_state_functions import (
 
 __all__ = [
     "run_ad_buckley_leverett_1d",
+    "AssemblyBenchmarkCase",
+    "AssemblyBenchmarkResult",
+    "assembly_benchmark_ad",
+    "assemblyBenchmarkAD",
     "BackendBenchmarkResult",
     "benchmark_auto_diff_backends",
     "benchmarkAutoDiffBackends",
