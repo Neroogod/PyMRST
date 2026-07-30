@@ -133,6 +133,12 @@ from pymrst.modules.ad_core.utils.reorder_for_ilu import (
     reorder_for_ilu,
     reorderForILU,
 )
+from pymrst.modules.ad_core.utils.multi_dim_interpolator import (
+    get_multi_dim_interpolator,
+    getMultiDimInterpolator,
+)
+from pymrst.modules.ad_core.utils.bc_to_ad_bc import bc_to_ad_bc, bc2ADbc
+from pymrst.modules.ad_core.utils.handle_struct import HandleStruct
 
 __all__ = [
     "Operators",
@@ -220,4 +226,9 @@ __all__ = [
     "convertReportToSchedule",
     "reorder_for_ilu",
     "reorderForILU",
+    "get_multi_dim_interpolator",
+    "getMultiDimInterpolator",
+    "bc_to_ad_bc",
+    "bc2ADbc",
+    "HandleStruct",
 ]
