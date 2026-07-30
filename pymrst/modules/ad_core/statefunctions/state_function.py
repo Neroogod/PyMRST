@@ -97,6 +97,21 @@ class StateFunction:
         self.dependencies: List[Dependency] = []
         self.label = label or type(self).__name__
         self.struct_name: Optional[str] = None
+        self.regions: Optional[Any] = None
+
+    def set_regions(self, regions: Any) -> "StateFunction":
+        """Set the cell-wise region map used by regional property functions."""
+        import numpy as np
+
+        values = np.asarray(regions, dtype=np.int64).ravel()
+        if values.size == 0:
+            raise ValueError("regions cannot be empty")
+        if np.any(values < 1):
+            raise ValueError("region numbers must be positive")
+        self.regions = values
+        return self
+
+    setRegions = set_regions
 
     def depends_on(self, names: Union[str, Sequence[str]],
                    grouping: str = SELF) -> "StateFunction":

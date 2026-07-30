@@ -31,6 +31,11 @@ from pymrst.modules.ad_core.examples.packed_problem_examples import (
     ensemble_packed_problems_example,
     ensemblePackedProblemsExample,
 )
+from pymrst.modules.ad_core.examples.different_region_functions_example import (
+    RegionalRelPermResult,
+    different_region_functions_example,
+    differentRegionFunctionsExample,
+)
 
 __all__ = [
     "run_ad_buckley_leverett_1d",
@@ -54,4 +59,7 @@ __all__ = [
     "demoPackedProblems",
     "ensemble_packed_problems_example",
     "ensemblePackedProblemsExample",
+    "RegionalRelPermResult",
+    "different_region_functions_example",
+    "differentRegionFunctionsExample",
 ]

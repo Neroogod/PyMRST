@@ -40,6 +40,22 @@ class RelativePermeability(StateFunction):
         self.depends_on("Saturations")
 
     def evaluate_on_domain(self, model, state):
+        if self.regions is not None:
+            from pymrst.modules.ad_core.statefunctions.flowprops.hysteresis import (
+                evaluate_function_cell_subset_reg,
+            )
+
+            saturations = self.get_evaluated(state, "Saturations")
+            raw = getattr(model, "raw_fluid", None)
+            if raw is not None and model.n_phases == 2:
+                functions = (raw.kr_w, raw.kr_o)
+                if any(isinstance(fn, (list, tuple)) for fn in functions):
+                    return [
+                        evaluate_function_cell_subset_reg(
+                            self, fn, self.regions, saturation
+                        )
+                        for fn, saturation in zip(functions, saturations)
+                    ]
         return model.fluid.kr(self.get_evaluated(state, "Saturations"))
 
 
@@ -150,8 +166,15 @@ class FlowPropertyFunctions(StateFunctionGrouping):
     def __init__(self, model):
         super().__init__("FlowProps")
         self.set_state_function("Saturations", Saturations(model))
-        self.set_state_function("RelativePermeability",
-                                RelativePermeability(model))
+        relative_permeability = RelativePermeability(model)
+        regions = getattr(model.rock, "regions", None)
+        if isinstance(regions, dict):
+            regions = regions.get("saturation")
+        elif regions is not None:
+            regions = getattr(regions, "saturation", None)
+        if regions is not None:
+            relative_permeability.set_regions(regions)
+        self.set_state_function("RelativePermeability", relative_permeability)
         self.set_state_function("Mobility", Mobility(model))
         if model.fluid.has_pc:
             self.set_state_function("CapillaryPressure",

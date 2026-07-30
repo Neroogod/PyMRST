@@ -56,6 +56,14 @@ class BaseRelativePermeability(StateFunction, SaturationProperty):
         unscaled saturation function.
         """
         fn = getattr(self._raw(model), f"kr_{phase.lower()}")
+        if self.regions is not None and isinstance(fn, (list, tuple)):
+            from pymrst.modules.ad_core.statefunctions.flowprops.hysteresis import (
+                evaluate_function_cell_subset_reg,
+            )
+
+            return evaluate_function_cell_subset_reg(
+                self, fn, self.regions, s
+            )
         return fn(s)
 
     def evaluate_gas_rel_perm(self, model: Any, sg: Any, state: Any) -> Any:

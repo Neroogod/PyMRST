@@ -67,7 +67,7 @@ examples/book-ii/utils/assemblyBenchmarkAD.m,assemblyBenchmarkAD,examples,ported
 examples/book-ii/utils/benchmarkAutoDiffBackends.m,benchmarkAutoDiffBackends,examples,ported,pymrst/modules/ad_core/examples/benchmark_auto_diff_backends.py,filename,validated-reference,tests/ad_core/examples/test_benchmark_auto_diff_backends.py,
 examples/compositeModelTutorial.m,compositeModelTutorial,examples,pending-review,,,unvalidated,,
 examples/demoPackedProblems.m,demoPackedProblems,examples,ported-consolidated,pymrst/modules/ad_core/examples/__init__.py; pymrst/modules/ad_core/examples/packed_problem_examples.py,symbol-reference,unvalidated,,
-examples/differentRegionFunctionsExample.m,differentRegionFunctionsExample,examples,pending-review,,,unvalidated,,
+examples/differentRegionFunctionsExample.m,differentRegionFunctionsExample,examples,ported,pymrst/modules/ad_core/examples/different_region_functions_example.py,filename,validated-reference,tests/ad_core/examples/test_different_region_functions_example.py,
 examples/ensemblePackedProblemsExample.m,ensemblePackedProblemsExample,examples,ported-consolidated,pymrst/modules/ad_core/examples/__init__.py; pymrst/modules/ad_core/examples/packed_problem_examples.py,symbol-reference,unvalidated,,
 examples/fluidInspectionExample.m,fluidInspectionExample,examples,pending-review,,,unvalidated,,
 examples/linearSolverExample.m,linearSolverExample,examples,pending-review,,,unvalidated,,
