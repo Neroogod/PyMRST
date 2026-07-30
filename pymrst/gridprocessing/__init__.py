@@ -50,6 +50,15 @@ from pymrst.gridprocessing.cell_nodes import cell_nodes
 from pymrst.gridprocessing.remove_pinch import remove_pinch
 from pymrst.gridprocessing.compute_grid_slice_polygons import compute_grid_slice_polygons
 from pymrst.gridprocessing.slice_grid import slice_grid
+from pymrst.gridprocessing.build_corner_pt_pillars import (
+    build_corner_pt_pillars,
+    buildCornerPtPillars,
+)
+from pymrst.gridprocessing.cart2active import cart2active, cart_to_active
+from pymrst.gridprocessing.check_and_repair_zcorn import (
+    check_and_repair_zcorn,
+    checkAndRepairZCORN,
+)
 
 __all__ = [
     "Grid", "Cells", "Faces", "Nodes",
@@ -64,6 +73,9 @@ __all__ = [
     "grdecl_xyz", "refine_grdecl", "get_2d_grid_from_faces", "glue_2d_grid",
     "repair_normals", "remove_short_edges", "cell_nodes", "remove_pinch",
     "compute_grid_slice_polygons", "slice_grid",
+    "build_corner_pt_pillars", "buildCornerPtPillars",
+    "cart2active", "cart_to_active",
+    "check_and_repair_zcorn", "checkAndRepairZCORN",
     "load_mrst_grid_mat", "mrst_grid_struct_to_grid",
     "WEST", "EAST", "SOUTH", "NORTH", "TOP", "BOTTOM",
 ]
