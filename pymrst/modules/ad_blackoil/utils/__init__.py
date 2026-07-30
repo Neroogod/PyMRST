@@ -16,6 +16,9 @@ from pymrst.modules.ad_blackoil.utils.get_flux_and_props_oil_bo import (
 from pymrst.modules.ad_blackoil.utils.get_flux_and_props_water_bo import (
     get_flux_and_props_water_bo, getFluxAndPropsWater_BO,
 )
+from pymrst.modules.ad_blackoil.utils.update_state_black_oil_generic import (
+    update_state_black_oil_generic, updateStateBlackOilGeneric,
+)
 
 from pymrst.modules.ad_blackoil.utils.get_cell_status_vo import (
     blackoil_status,
@@ -65,4 +68,6 @@ __all__ = [
     "getbG_BO",
     "getbO_BO",
     "j_function_ratio",
+    "update_state_black_oil_generic",
+    "updateStateBlackOilGeneric",
 ]

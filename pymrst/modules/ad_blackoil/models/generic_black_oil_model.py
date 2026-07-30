@@ -52,6 +52,9 @@ from pymrst.modules.ad_blackoil.utils.get_cell_status_vo import (
 from pymrst.modules.ad_blackoil.utils.calculate_hydrocarbons_from_status_bo import (
     calculate_hydrocarbons_from_status_bo,
 )
+from pymrst.modules.ad_blackoil.utils.update_state_black_oil_generic import (
+    update_state_black_oil_generic,
+)
 
 from pymrst.params.gravity_const import NORM_GRAVITY
 from pymrst.params.rock import Rock, pore_volume
@@ -535,73 +538,7 @@ class GenericBlackOilModel(GenericReservoirModel):
 
     # -- Newton update -------------------------------------------------------
     def update_state(self, st: State, increment: np.ndarray) -> State:
-        nc, nw = self.G.cells.num, self.facility.n_wells
-        nph = self.n_phases
-        new = st.copy()
-
-        # Cap the pressure step, in *every* branch. This was previously done
-        # only for the two-phase model, and the three-phase one took the raw
-        # Newton increment - which is MRST's `dpMaxRel` simply not being
-        # applied. It never showed up on SPE 1, whose pressure moves gently
-        # enough that a 20% limit never binds; it shows up at once on a
-        # nearly incompressible oil leg, where the first Newton step asks for a
-        # 70 bar drop, overshoots, and the iteration then oscillates rather
-        # than converging.
-        cap = self.dp_max_rel * np.abs(st["pressure"])
-        new["pressure"] = st["pressure"] + np.clip(increment[:nc], -cap, cap)
-        dsw = increment[nc:2 * nc]
-
-        if not self.disgas:
-            new["sW"] = np.clip(st["sW"] + np.clip(dsw, -self.ds_max,
-                                                   self.ds_max), 0.0, 1.0)
-            off = 2 * nc
-        else:
-            st1, st2, st3 = self._status_masks(st["status"])
-            dx = increment[2 * nc:3 * nc]
-
-            # The increment means a different thing in each status, so it lands
-            # on a different variable. In status 2 the gas saturation is not
-            # free - it is 1 - sW - so it moves only because the *water* did:
-            # dsG = -dsW.
-            dsg = np.where(st3, dx, 0.0) - np.where(st2, dsw, 0.0)
-            new["rs"] = np.maximum(st["rs"] + np.where(st1, dx, 0.0), 0.0)
-            if self.vapoil:
-                new["rv"] = np.maximum(st["rv"] + np.where(st2, dx, 0.0), 0.0)
-
-            ds = np.clip(np.column_stack([dsw, -(dsg + dsw), dsg]),
-                         -self.ds_max, self.ds_max)
-            s = np.column_stack([st["sW"], st["sO"], st["sG"]]) + ds
-            new["sW"], new["sO"], new["sG"] = s[:, 0], s[:, 1], s[:, 2]
-            off = 3 * nc
-
-        q_names = ["qWs", "qOs", "qGs"][:nph]
-        for i, q in enumerate(q_names):
-            new[q] = st[q] + increment[off + i * nw:off + (i + 1) * nw]
-        bhp_lo = off + nph * nw
-        bhp_hi = bhp_lo + nw
-        new["bhp"] = st["bhp"] + increment[bhp_lo:bhp_hi]
-        ms_off = bhp_hi
-        if self._ms_well_indices():
-            for name in ["ms_pN", *["ms_rW", "ms_rO", "ms_rG"][:nph],
-                         "ms_vmix"]:
-                n = len(st.get(name, []))
-                if n:
-                    val = st[name] + increment[ms_off:ms_off + n]
-                    if name in ("ms_rW", "ms_rO", "ms_rG"):
-                        val = np.clip(val, 0.0, 1.0)
-                    new[name] = val
-                    ms_off += n
-
-        if self.disgas:
-            self._flash(new, st)
-
-        # A well that has broken a limit switches control here, which changes
-        # the problem being solved - so `get_convergence` will refuse to call
-        # this iteration converged (MRST does the same).
-        self.facility.update_switched_controls(new, q_names)
-
-        new.clear_cache()
-        return new
+        return update_state_black_oil_generic(self, st, increment)
 
     def _flash(self, st: State, prev: State) -> None:
         """MRST's `computeFlashBlackOil`: which phases exist, and the capping.

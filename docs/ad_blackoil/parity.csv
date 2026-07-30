@@ -55,4 +55,4 @@ utils/getPolymerShearMultiplier.m,getPolymerShearMultiplier,utils,pending,,no re
 utils/getWellPolymer.m,getWellPolymer,utils,pending,,no reviewed Python owner,unvalidated,,
 utils/getbG_BO.m,getbG_BO,utils,ported,pymrst/modules/ad_blackoil/utils/get_b_g_bo.py,reviewed Python naming,unvalidated,,
 utils/getbO_BO.m,getbO_BO,utils,ported,pymrst/modules/ad_blackoil/utils/get_b_o_bo.py,reviewed Python naming,unvalidated,,
-utils/updateStateBlackOilGeneric.m,updateStateBlackOilGeneric,utils,pending,,no reviewed Python owner,unvalidated,,
+utils/updateStateBlackOilGeneric.m,updateStateBlackOilGeneric,utils,ported,pymrst/modules/ad_blackoil/utils/update_state_black_oil_generic.py,filename,validated-reference,examples/validation/validate_ad_blackoil_update_state.py,

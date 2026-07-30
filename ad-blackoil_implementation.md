@@ -99,7 +99,18 @@ The second implementation batch is also complete:
 - `ThreePhaseBlackOilModelAD` now consumes the shared phase kernels;
 - MATLAB comparisons cover all 24 phase return values and aquifer equilibrium.
 
-The generated baseline currently reports 34 ported, 3 partial, 11 pending,
+The third implementation batch is complete:
+
+- `update_state_black_oil_generic.py` is the public Newton-update owner;
+- `GenericBlackOilModel.update_state` delegates to that utility;
+- pressure limiting, row-wise coupled saturation limiting, switched `x`
+  routing, well/multisegment updates, flash, and cache invalidation are covered;
+- validation uses MRST's maintained `ThreePhaseBlackOilModel.updateState`
+  implementation because the orphaned 2024a utility still names obsolete
+  `dpMax`, `drsMax`, and `dsMax` properties and cannot execute unchanged;
+- limiting and phase-status results match MATLAB exactly.
+
+The generated baseline currently reports 35 ported, 3 partial, 10 pending,
 and 9 catalog entries. This is a progress measurement, not a completion claim.
 
 ## 4. Required final layout

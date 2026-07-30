@@ -6,12 +6,12 @@ The CSV ledger is authoritative; filename presence does not make a guarded examp
 ## Current scan
 
 - MRST MATLAB files inventoried: **57**
-- Ported: **34**
+- Ported: **35**
 - Partial: **3**
-- Pending: **11**
+- Pending: **10**
 - Catalogs excluded: **9**
-- Reference-validated entries: **20**
-- Unvalidated entries: **37**
+- Reference-validated entries: **21**
+- Unvalidated entries: **36**
 
 ## Incomplete executable entries
 
@@ -28,6 +28,5 @@ The CSV ledger is authoritative; filename presence does not make a guarded examp
 - `utils/equationsWaterThermal.m` — **pending**: no reviewed Python owner
 - `utils/getPolymerShearMultiplier.m` — **pending**: no reviewed Python owner
 - `utils/getWellPolymer.m` — **pending**: no reviewed Python owner
-- `utils/updateStateBlackOilGeneric.m` — **pending**: no reviewed Python owner
 
 See `docs/ad_blackoil/parity.csv` for per-file evidence.
