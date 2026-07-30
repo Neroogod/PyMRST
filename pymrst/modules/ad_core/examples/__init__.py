@@ -46,6 +46,11 @@ from pymrst.modules.ad_core.examples.mpfa_vs_tpfa_with_ad_example import (
     mpfa_vs_tpfa_with_ad_example,
     MPFAvsTPFAwithADExample,
 )
+from pymrst.modules.ad_core.examples.composite_model_tutorial import (
+    CompositeTutorialResult,
+    composite_model_tutorial,
+    compositeModelTutorial,
+)
 
 __all__ = [
     "run_ad_buckley_leverett_1d",
@@ -78,4 +83,7 @@ __all__ = [
     "MPFATPFAComparison",
     "mpfa_vs_tpfa_with_ad_example",
     "MPFAvsTPFAwithADExample",
+    "CompositeTutorialResult",
+    "composite_model_tutorial",
+    "compositeModelTutorial",
 ]
