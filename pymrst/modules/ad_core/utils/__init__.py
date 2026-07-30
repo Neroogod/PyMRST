@@ -121,6 +121,18 @@ from pymrst.modules.ad_core.utils.cross_flow_mixture_density import (
     cross_flow_mixture_density,
     crossFlowMixtureDensity,
 )
+from pymrst.modules.ad_core.utils.get_multipliers import (
+    get_multipliers,
+    getMultipliers,
+)
+from pymrst.modules.ad_core.utils.convert_report_to_schedule import (
+    convert_report_to_schedule,
+    convertReportToSchedule,
+)
+from pymrst.modules.ad_core.utils.reorder_for_ilu import (
+    reorder_for_ilu,
+    reorderForILU,
+)
 
 __all__ = [
     "Operators",
@@ -202,4 +214,10 @@ __all__ = [
     "structPropEvaluated",
     "cross_flow_mixture_density",
     "crossFlowMixtureDensity",
+    "get_multipliers",
+    "getMultipliers",
+    "convert_report_to_schedule",
+    "convertReportToSchedule",
+    "reorder_for_ilu",
+    "reorderForILU",
 ]
