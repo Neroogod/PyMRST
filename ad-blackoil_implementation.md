@@ -124,10 +124,10 @@ The fourth implementation batch completes the missing code utilities:
 - unsupported thermal source and well forces fail explicitly rather than being
   silently omitted by the shared geothermal kernel.
 
-The generated baseline currently reports 39 ported, 3 partial, 6 pending,
-and 9 catalog entries. The sector-model workflow is now runnable and directly
-validated against MRST; this remains a progress measurement, not a completion
-claim.
+The generated baseline currently reports 40 ported, 2 partial, 6 pending,
+and 9 catalog entries. The sector-model and full 13-node SPE1 multisegment
+workflows are runnable and directly validated against MRST; this remains a
+progress measurement, not a completion claim.
 
 ## 4. Required final layout
 
@@ -370,7 +370,7 @@ at the boundary.
 | `simulatorWorkflowExample` | Runnable | Verify hooks, reports, and restart behavior |
 | `blackoilTutorialPlotHook` | Runnable | Verify callback timing and state payload |
 | `blackoilTutorialMexAcceleration` | Python timing analogue | Document backend equivalence and compare residuals |
-| `multisegmentWellExample` | Reduced runnable case | Complete SPE1 multisegment topology and controls |
+| `multisegmentWellExample` | Full runnable SPE1 case, MRST-validated | Maintain the 13-node tubing/valve topology and conventional-well comparison in CI |
 | `blackoilTimeIntegrationExample` | FIM, CFL-controlled explicit, and AIM on SPE1 | Add the SPE9 path after its deck/VFP/schedule importer; extend direct MATLAB trajectory comparisons |
 | `eggExample` | Guarded | Dataset loader plus complete simulation |
 | `simulateSPE3` | Guarded | Deck/schedule import plus reference comparison |

@@ -31,9 +31,6 @@ PARTIAL = {
     "blackoilTimeIntegrationExample": (
         "FIM, CFL-controlled explicit, and AIM SPE1 exist; SPE9 path is absent"
     ),
-    "multisegmentWellExample": (
-        "reduced packing workflow exists; full SPE1 multisegment case remains"
-    ),
     "loadAquiferEclipseResult": "ECLIPSE result reader is not implemented",
 }
 

@@ -155,8 +155,28 @@ class GenericBlackOilModel(GenericReservoirModel):
             node_comp = self._initial_ms_node_comp(w, st, n_nodes)
             for ph in range(nph):
                 comp_parts[ph].append(node_comp[:, ph])
-            qtot = sum(abs(float(st[q][wi])) for q in ["qWs", "qOs", "qGs"][:nph])
-            v_parts.append(np.full(n_seg, qtot))
+            rates = np.array([
+                abs(float(st[q][wi]))
+                for q in ["qWs", "qOs", "qGs"][:nph]
+            ])
+            rho_s = np.asarray(self.fluid.rho_s[:nph], dtype=float)
+            total_mass_rate = float(np.dot(rates, rho_s))
+            # Segment flux is mass rate along parent -> child. Distribute the
+            # initial well mass rate evenly over completions and accumulate it
+            # along every completion-to-root path. This gives the correct sign
+            # and branch loading for both injectors and producers.
+            v0 = np.zeros(n_seg)
+            perf_nodes = np.asarray(
+                w.multisegment.perforation_segment, dtype=np.int64
+            )
+            if perf_nodes.size:
+                branch_rate = total_mass_rate / perf_nodes.size
+                direction = 1.0 if w.sign >= 0 else -1.0
+                for node in perf_nodes:
+                    for child in w.multisegment.path_to_root(int(node))[:-1]:
+                        if child > 0:
+                            v0[child - 1] += direction * branch_rate
+            v_parts.append(v0)
         if p_parts and "ms_pN" not in st:
             st["ms_pN"] = np.concatenate(p_parts)
         if v_parts and "ms_vmix" not in st:
@@ -170,7 +190,15 @@ class GenericBlackOilModel(GenericReservoirModel):
         """MRST-style initial non-root MS node component fractions."""
         nph = self.n_phases
         base = np.zeros(nph)
-        base[:min(nph, w.compi.size)] = np.asarray(w.compi[:nph], dtype=float)
+        wi = next((i for i, candidate in enumerate(self.wells) if candidate is w), None)
+        if wi is not None:
+            rates = np.array([
+                abs(float(st[name][wi]))
+                for name in ["qWs", "qOs", "qGs"][:nph]
+            ])
+            base = rates * np.asarray(self.fluid.rho_s[:nph], dtype=float)
+        if base.sum() <= 0.0:
+            base[:min(nph, w.compi.size)] = np.asarray(w.compi[:nph], dtype=float)
         if base.sum() <= 0.0:
             base[:] = 1.0 / nph
         else:
@@ -420,7 +448,8 @@ class GenericBlackOilModel(GenericReservoirModel):
                 node_pressure=st["ms_pN"][p_slice],
                 node_comp=[st[n][r_slice] for n in ["ms_rW", "ms_rO", "ms_rG"][:nph]],
                 segment_flux=st["ms_vmix"][v_slice],
-                res_props={"pressure": st["pressure"], "mob": mob, "b": b},
+                res_props={"pressure": st["pressure"], "mob": mob, "b": b,
+                           "rs": st.get("rs")},
                 dt=dt,
                 previous_node_comp=[
                     state0[n][r_slice]
