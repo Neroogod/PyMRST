@@ -170,6 +170,10 @@ from pymrst.modules.ad_core.utils.compute_cp_geometry import (
     computeCpGeometry,
 )
 from pymrst.modules.ad_core.utils.get_equil_pc import get_equil_pc, getEquilPC
+from pymrst.modules.ad_core.utils.set_time_discretization import (
+    set_time_discretization,
+    setTimeDiscretization,
+)
 
 __all__ = [
     "Operators",
@@ -280,4 +284,6 @@ __all__ = [
     "computeCpGeometry",
     "get_equil_pc",
     "getEquilPC",
+    "set_time_discretization",
+    "setTimeDiscretization",
 ]

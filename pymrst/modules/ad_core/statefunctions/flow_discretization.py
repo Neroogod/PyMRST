@@ -161,7 +161,14 @@ class FlowDiscretization(StateFunctionGrouping):
     """How mass moves between cells (MRST FlowDiscretization)."""
 
     def __init__(self, model):
+        # Local import avoids the flux package's compatibility exports
+        # circularly importing this grouping during module initialization.
+        from pymrst.modules.ad_core.statefunctions.flux.flow_state.flow_state_builder import (  # noqa: E501
+            ImplicitFlowStateBuilder,
+        )
+
         super().__init__("FluxDisc")
+        self.FlowStateBuilder = ImplicitFlowStateBuilder()
         self.set_state_function("Transmissibility", Transmissibility(model))
         self.set_state_function("PressureGradient", PressureGradient(model))
         self.set_state_function("GravityPotentialDifference",
@@ -174,12 +181,43 @@ class FlowDiscretization(StateFunctionGrouping):
         self.set_state_function("ComponentPhaseFlux", ComponentPhaseFlux(model))
         self.set_state_function("ComponentTotalFlux", ComponentTotalFlux(model))
 
+    def set_flow_state_builder(self, builder):
+        """Attach the FIM/AIM/IMPES flow-state policy."""
+        self.FlowStateBuilder = builder
+        return self
+
+    setFlowStateBuilder = set_flow_state_builder
+
+    def get_flow_state_builder(self):
+        return self.FlowStateBuilder
+
+    getFlowStateBuilder = get_flow_state_builder
+
+    def get_maximum_timestep(self, model, state, state0, dt, forces=None):
+        return self.FlowStateBuilder.get_maximum_timestep(
+            model, state, state0, dt, forces
+        )
+
+    getMaximumTimestep = get_maximum_timestep
+
+    def prepare_timestep(self, model, state, state0, dt, forces=None):
+        builder, state = self.FlowStateBuilder.prepare_timestep(
+            model, state, state0, dt, forces
+        )
+        self.FlowStateBuilder = builder
+        return self, state
+
+    prepareTimestep = prepare_timestep
+
     def component_conservation_equations(self, model, state: State,
                                          state0: State, dt: float) -> List[Any]:
         """(m_i - m_i^0)/dt + div(V_i) for every component."""
         mass = model.get_props(state, "ComponentTotalMass")
         mass0 = model.get_props(state0, "ComponentTotalMass")
-        flux = model.get_props(state, "ComponentTotalFlux")
+        flow_state = self.FlowStateBuilder.build(
+            model, state, state0, dt, fd=self
+        )
+        flux = model.get_props(flow_state, "ComponentTotalFlux")
         div = model.operators.div
         return [(mass[i] - mass0[i]) / dt + div(flux[i])
                 for i in range(len(mass))]
