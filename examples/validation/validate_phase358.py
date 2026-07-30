@@ -6,7 +6,7 @@ against MRST's own output (`dump_phase358_reference.m`), number for number:
 
 - `interpolate_idw`          - inverse-distance-weighted scattered interpolation,
 - `fast_interp_table`        - linear interpolation with linear extrapolation,
-- `phase_densities_to_bfactor` - reservoir densities to b-factors, dead and live,
+- `phase_densities_to_bfactor` - MRST `phaseDensitiesTobfactor`, dead and live,
 - `merge_ordered_arrays`     - the supported "insertion" merge cases.
 
 The `merge_ordered_arrays` cases that MRST itself errors on are covered by the
