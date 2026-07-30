@@ -21,6 +21,8 @@ class PackedSimulationStatus:
 
 
 def _timesteps(schedule) -> np.ndarray:
+    if hasattr(schedule, "step_val"):
+        return np.asarray(schedule.step_val, dtype=float).ravel()
     step = schedule["step"] if isinstance(schedule, dict) else schedule.step
     values = step["val"] if isinstance(step, dict) else step.val
     return np.asarray(values, dtype=float).ravel()

@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from pymrst.modules.ad_core.simulators.sim_runner import (
+    PackedProblemManager,
     clear_packed_simulator_output,
     copy_packed_problem,
     get_packed_simulator_output,
@@ -12,6 +13,7 @@ from pymrst.modules.ad_core.simulators.sim_runner import (
     simulate_packed_problem,
     simulate_packed_problem_background,
 )
+from pymrst.modules.ad_core.utils.schedule import simple_schedule
 
 
 class PickleModel:
@@ -182,3 +184,30 @@ def test_background_process_writes_output_and_releases_lock(tmp_path):
     assert not status["running"]
     assert "ok=True" in status["log"]
     assert len(problem.OutputHandlers.states) == 2
+
+
+def test_native_ad_core_schedule_is_accepted(tmp_path):
+    problem = pack_simulation_problem(
+        {"x": 0.0}, PickleModel(), simple_schedule([1.0, 2.0]),
+        "Case", directory=tmp_path, name="native-schedule",
+    )
+    ok, _ = simulate_packed_problem(problem)
+    assert ok
+    _, states, _, _ = get_packed_simulator_output(problem)
+    assert [state["x"] for state in states] == [1.0, 3.0]
+
+
+def test_problem_manager_tracks_direct_simulations(tmp_path):
+    schedule = simple_schedule([1.0, 1.0])
+    problems = [
+        pack_simulation_problem(
+            {"x": 0.0}, PickleModel(), schedule, "Case",
+            directory=tmp_path, name=f"m{i}",
+        )
+        for i in range(2)
+    ]
+    manager = PackedProblemManager(problems, max_simultaneous_simulations=1)
+    ok, _ = manager.simulate_problem()
+    assert ok.tolist() == [True, True]
+    assert manager.get_number_of_complete_steps().tolist() == [2, 2]
+    assert manager.monitor_progress()["background"] == []

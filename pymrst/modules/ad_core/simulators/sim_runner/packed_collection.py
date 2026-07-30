@@ -32,8 +32,12 @@ def get_multiple_packed_simulator_outputs(
         active.append(is_active)
         if not is_active:
             continue
-        step = problem.SimulatorSetup.schedule.step
-        dt = step["val"] if isinstance(step, dict) else step.val
+        schedule = problem.SimulatorSetup.schedule
+        if hasattr(schedule, "step_val"):
+            dt = schedule.step_val
+        else:
+            step = schedule["step"] if isinstance(schedule, dict) else schedule.step
+            dt = step["val"] if isinstance(step, dict) else step.val
         all_wells.append(wells)
         all_states.append(states)
         all_reports.append(reports)

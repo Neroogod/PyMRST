@@ -32,6 +32,13 @@ from pymrst.modules.ad_core.simulators.sim_runner.background import (
     simulatePackedProblemBackground,
     simulatePackedProblemStandalone,
 )
+from pymrst.modules.ad_core.simulators.sim_runner.init_eclipse_packed_problem_ad import (
+    init_eclipse_packed_problem_ad,
+    initEclipsePackedProblemAD,
+)
+from pymrst.modules.ad_core.simulators.sim_runner.packed_problem_manager import (
+    PackedProblemManager,
+)
 
 __all__ = [
     "PackedSimulationProblem",
@@ -56,4 +63,7 @@ __all__ = [
     "simulatePackedProblemBackground",
     "simulate_packed_problem_standalone",
     "simulatePackedProblemStandalone",
+    "init_eclipse_packed_problem_ad",
+    "initEclipsePackedProblemAD",
+    "PackedProblemManager",
 ]

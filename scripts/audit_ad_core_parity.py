@@ -71,7 +71,8 @@ def find_counterparts(
             [],
             "deprecated classic well stack; superseded by FacilityModel/SimpleWell",
         )
-    if symbol in {"plotRegionContacts", "terniaryWellPlot"}:
+    if symbol in {"plotRegionContacts", "terniaryWellPlot",
+                  "plotPackedProblem"}:
         return (
             "excluded-visualization",
             [],
