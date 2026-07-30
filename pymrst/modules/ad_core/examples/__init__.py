@@ -15,9 +15,14 @@ from pymrst.modules.ad_core.examples.assembly_benchmark_ad import (
     assemblyBenchmarkAD,
 )
 from pymrst.modules.ad_core.examples.tutorial_state_functions import (
+    ConceptualADResult,
     TutorialAdd,
     TutorialNumber,
     TutorialProduct,
+    build_tutorial_state_function_group,
+    exampleStateFunctionsBook,
+    run_conceptual_ad,
+    showConceptualAD,
 )
 
 __all__ = [
@@ -32,4 +37,9 @@ __all__ = [
     "TutorialAdd",
     "TutorialNumber",
     "TutorialProduct",
+    "ConceptualADResult",
+    "build_tutorial_state_function_group",
+    "run_conceptual_ad",
+    "showConceptualAD",
+    "exampleStateFunctionsBook",
 ]
