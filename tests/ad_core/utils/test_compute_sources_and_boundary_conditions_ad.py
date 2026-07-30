@@ -1,3 +1,9 @@
+"""Reference tests for consolidated MRST source/BC helpers.
+
+Exercises ``getSourceFluxesAD`` and ``getBoundaryConditionFluxesAD`` through
+PyMRST's combined ``compute_sources_and_boundary_conditions_ad`` entry point.
+"""
+
 from types import SimpleNamespace
 
 import numpy as np
