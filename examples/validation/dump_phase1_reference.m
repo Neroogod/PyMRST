@@ -26,4 +26,9 @@ save(fullfile(thisDir, 'ref_cart_2d_5x7.mat'), '-v7', 'G');
 G = computeGeometry(tensorGrid([0, 1, 2.5, 5]));
 save(fullfile(thisDir, 'ref_tensor_1d.mat'), '-v7', 'G');
 
-fprintf('Wrote 4 reference files to %s\n', thisDir);
+%% Case 5: independently truncated non-monotone tensor axes
+G = computeGeometry(tensorGrid( ...
+    [0, 2, 1, 3], [0, 1, 1, 4], [0, 5, 3, 8]));
+save(fullfile(thisDir, 'ref_tensor_nonmonotone.mat'), '-v7', 'G');
+
+fprintf('Wrote 5 reference files to %s\n', thisDir);

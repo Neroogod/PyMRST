@@ -7,6 +7,7 @@ mirrored with order='F'.
 """
 
 from typing import Optional, Sequence
+import warnings
 
 import numpy as np
 
@@ -94,10 +95,23 @@ def _cell_nodes_table(dims) -> np.ndarray:
 
 
 def _monotone(v: np.ndarray) -> np.ndarray:
-    """Return v as a float vector, requiring strictly increasing entries."""
+    """Apply MRST's repeated truncation of non-increasing coordinates."""
     v = np.asarray(v, dtype=np.float64).ravel()
+    if v.size < 2:
+        raise ValueError("coordinate vector must contain at least two entries")
     if not np.all(np.diff(v) > 0):
-        raise ValueError("coordinate vector must be strictly increasing")
+        warnings.warn(
+            "nonmonotone coordinate data, truncating",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        while not np.all(np.diff(v) > 0):
+            increasing = np.flatnonzero(np.diff(v) > 0)
+            v = v[np.concatenate([[0], increasing + 1])]
+            if v.size < 2:
+                raise ValueError(
+                    "coordinate truncation left fewer than two entries"
+                )
     return v
 
 
@@ -359,14 +373,11 @@ if __name__ == "__main__":
         g1.check()
         print("ok test_2d_and_1d_grids")
 
-    def test_nonmonotone_rejected():
-        """Non-increasing coordinate vectors raise ValueError."""
-        try:
-            tensor_grid(np.array([0.0, 2.0, 1.0]))
-            raise SystemExit("expected ValueError")
-        except ValueError:
-            pass
-        print("ok test_nonmonotone_rejected")
+    def test_nonmonotone_truncated():
+        """Non-increasing coordinate entries are truncated like MRST."""
+        g = tensor_grid(np.array([0.0, 2.0, 1.0, 3.0]))
+        assert np.array_equal(g.nodes.coords.ravel(), [0.0, 2.0, 3.0])
+        print("ok test_nonmonotone_truncated")
 
     test_cart_grid_3d_counts()
     test_boundary_face_count_3d()
@@ -374,5 +385,5 @@ if __name__ == "__main__":
     test_each_internal_face_shared_twice()
     test_depthz_shifts_pillars()
     test_2d_and_1d_grids()
-    test_nonmonotone_rejected()
+    test_nonmonotone_truncated()
     print("\nAll tests passed!")

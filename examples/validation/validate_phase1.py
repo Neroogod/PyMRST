@@ -36,6 +36,11 @@ def build_cases() -> Dict[str, Callable[[], Any]]:
             lambda: cart_grid([5, 7], [10.0, 21.0]),
         "ref_tensor_1d.mat":
             lambda: tensor_grid(np.array([0.0, 1.0, 2.5, 5.0])),
+        "ref_tensor_nonmonotone.mat": lambda: tensor_grid(
+            np.array([0.0, 2.0, 1.0, 3.0]),
+            np.array([0.0, 1.0, 1.0, 4.0]),
+            np.array([0.0, 5.0, 3.0, 8.0]),
+        ),
     }
 
 

@@ -800,3 +800,8 @@ retains its locally documented modified default of `False`.
 `tensor_grid(..., cellnodes=True)` and `cart_grid(..., cellnodes=True)` expose
 MRST's top-level `cellNodes` table with identical local-corner ordering in 1D,
 2D, and 3D.
+
+Non-monotone tensor-grid axes follow MRST's warning-and-truncation algorithm:
+non-increasing entries are repeatedly discarded until each retained axis is
+strictly increasing. An axis that cannot retain two coordinates raises a clear
+error instead of constructing a zero-cell grid.
