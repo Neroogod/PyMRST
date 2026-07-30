@@ -1,8 +1,12 @@
 from types import SimpleNamespace
 
+import numpy as np
+
 from pymrst.modules.ad_core.simulators.sim_runner import (
     clear_packed_simulator_output,
+    copy_packed_problem,
     get_packed_simulator_output,
+    get_multiple_packed_simulator_outputs,
     pack_simulation_problem,
     simulate_packed_problem,
 )
@@ -113,3 +117,41 @@ def test_explicit_restart_overwrites_tail(tmp_path):
     simulate_packed_problem(problem, restart_step=1)
     _, states, _, _ = get_packed_simulator_output(problem)
     assert [state["x"] for state in states] == [1.0, 3.0, 5.0]
+
+
+def test_collection_filters_incomplete_cases_and_copy_is_isolated(tmp_path):
+    class Model:
+        G = "grid"
+
+        def step(self, state, dt):
+            return {"x": state["x"] + dt}, True, 1
+
+    schedule = SimpleNamespace(step=SimpleNamespace(
+        val=[1.0, 2.0], control=[1, 1]
+    ))
+    complete = pack_simulation_problem(
+        {"x": 0.0}, Model(), schedule, "Case",
+        directory=tmp_path, name="complete",
+    )
+    empty = pack_simulation_problem(
+        {"x": 0.0}, Model(), schedule, "Case",
+        directory=tmp_path, name="empty",
+    )
+    simulate_packed_problem(complete)
+    wells, states, reports, names, times, grids, active = (
+        get_multiple_packed_simulator_outputs(
+            [complete, empty], min_steps=1
+        )
+    )
+    assert names == ["complete"]
+    assert active.tolist() == [True, False]
+    assert np.array_equal(times[0], [1.0, 3.0])
+    assert grids == ["grid"]
+    assert len(states[0]) == len(reports[0]) == 2
+
+    copied = copy_packed_problem(
+        complete, "Copied", directory=tmp_path / "copied"
+    )
+    assert copied.BaseName == "Copied" and copied.Name == "complete"
+    assert len(copied.OutputHandlers.states) == 0
+    assert len(complete.OutputHandlers.states) == 2

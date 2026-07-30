@@ -17,6 +17,12 @@ from pymrst.modules.ad_core.simulators.sim_runner.simulate_packed_problem import
     simulate_packed_problem,
     simulatePackedProblem,
 )
+from pymrst.modules.ad_core.simulators.sim_runner.packed_collection import (
+    copy_packed_problem,
+    copyPackedProblem,
+    get_multiple_packed_simulator_outputs,
+    getMultiplePackedSimulatorOutputs,
+)
 
 __all__ = [
     "PackedSimulationProblem",
@@ -30,4 +36,8 @@ __all__ = [
     "PackedSimulationStatus",
     "simulate_packed_problem",
     "simulatePackedProblem",
+    "copy_packed_problem",
+    "copyPackedProblem",
+    "get_multiple_packed_simulator_outputs",
+    "getMultiplePackedSimulatorOutputs",
 ]
