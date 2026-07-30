@@ -169,6 +169,7 @@ from pymrst.modules.ad_core.utils.compute_cp_geometry import (
     compute_cp_geometry,
     computeCpGeometry,
 )
+from pymrst.modules.ad_core.utils.get_equil_pc import get_equil_pc, getEquilPC
 
 __all__ = [
     "Operators",
@@ -277,4 +278,6 @@ __all__ = [
     "getReportOutput",
     "compute_cp_geometry",
     "computeCpGeometry",
+    "get_equil_pc",
+    "getEquilPC",
 ]
