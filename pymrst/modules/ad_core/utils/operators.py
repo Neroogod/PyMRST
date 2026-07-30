@@ -52,6 +52,25 @@ def setup_operators_tpfa(g: Grid, rock: Optional[Rock] = None,
     neighbors = g.faces.neighbors
     internal = np.all(neighbors >= 0, axis=1)
     n = neighbors[internal]
+    nnc = getattr(g, "nnc", None)
+    nnc_cells = np.zeros((0, 2), dtype=np.int64)
+    nnc_trans = np.zeros(0, dtype=float)
+    if nnc is not None:
+        if isinstance(nnc, dict):
+            nnc_cells = np.asarray(
+                nnc.get("cells", np.zeros((0, 2))), dtype=np.int64
+            ).reshape(-1, 2)
+            nnc_trans = np.asarray(
+                nnc.get("trans", np.zeros(nnc_cells.shape[0])), dtype=float
+            ).ravel()
+        else:
+            nnc_cells = np.asarray(nnc.cells, dtype=np.int64).reshape(-1, 2)
+            nnc_trans = np.asarray(nnc.trans, dtype=float).ravel()
+        if nnc_trans.size != nnc_cells.shape[0]:
+            raise ValueError("grid NNC cells/trans sizes do not agree")
+        if np.any(nnc_cells < 0) or np.any(nnc_cells >= g.cells.num):
+            raise IndexError("grid NNC references a cell outside the grid")
+        n = np.vstack([n, nnc_cells])
     n_if = n.shape[0]
 
     c = sp.csr_array(
@@ -71,7 +90,7 @@ def setup_operators_tpfa(g: Grid, rock: Optional[Rock] = None,
     with np.errstate(divide="ignore"):
         t_face = 1.0 / np.bincount(g.cells.faces, weights=1.0 / t_half,
                                    minlength=g.faces.num)
-    t = t_face[internal]
+    t = np.concatenate([t_face[internal], nnc_trans])
 
     c1, c2 = n[:, 0], n[:, 1]
 
