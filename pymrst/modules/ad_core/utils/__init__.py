@@ -149,6 +149,14 @@ from pymrst.modules.ad_core.utils.combine_equations import (
     combine_equations,
     combineEquations,
 )
+from pymrst.modules.ad_core.utils.cnv_mb_convergence_report import (
+    cnv_mb_convergence_report,
+    CNV_MBConvergence,
+)
+from pymrst.modules.ad_core.utils.get_grid_symrcm_ordering import (
+    get_grid_symrcm_ordering,
+    getGridSYMRCMOrdering,
+)
 
 __all__ = [
     "Operators",
@@ -247,4 +255,8 @@ __all__ = [
     "pressureBCContribADI",
     "combine_equations",
     "combineEquations",
+    "cnv_mb_convergence_report",
+    "CNV_MBConvergence",
+    "get_grid_symrcm_ordering",
+    "getGridSYMRCMOrdering",
 ]
