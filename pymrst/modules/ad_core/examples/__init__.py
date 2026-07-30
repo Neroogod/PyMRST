@@ -51,6 +51,11 @@ from pymrst.modules.ad_core.examples.composite_model_tutorial import (
     composite_model_tutorial,
     compositeModelTutorial,
 )
+from pymrst.modules.ad_core.examples.linear_solver_example import (
+    LinearSolverExampleResult,
+    linear_solver_example,
+    linearSolverExample,
+)
 
 __all__ = [
     "run_ad_buckley_leverett_1d",
@@ -86,4 +91,7 @@ __all__ = [
     "CompositeTutorialResult",
     "composite_model_tutorial",
     "compositeModelTutorial",
+    "LinearSolverExampleResult",
+    "linear_solver_example",
+    "linearSolverExample",
 ]
