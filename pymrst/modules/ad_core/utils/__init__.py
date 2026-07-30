@@ -139,6 +139,16 @@ from pymrst.modules.ad_core.utils.multi_dim_interpolator import (
 )
 from pymrst.modules.ad_core.utils.bc_to_ad_bc import bc_to_ad_bc, bc2ADbc
 from pymrst.modules.ad_core.utils.handle_struct import HandleStruct
+from pymrst.modules.ad_core.utils.pressure_bc_contrib import (
+    pressure_bc_contrib,
+    pressureBCContrib,
+    pressure_bc_contrib_adi,
+    pressureBCContribADI,
+)
+from pymrst.modules.ad_core.utils.combine_equations import (
+    combine_equations,
+    combineEquations,
+)
 
 __all__ = [
     "Operators",
@@ -231,4 +241,10 @@ __all__ = [
     "bc_to_ad_bc",
     "bc2ADbc",
     "HandleStruct",
+    "pressure_bc_contrib",
+    "pressureBCContrib",
+    "pressure_bc_contrib_adi",
+    "pressureBCContribADI",
+    "combine_equations",
+    "combineEquations",
 ]
