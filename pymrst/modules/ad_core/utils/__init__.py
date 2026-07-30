@@ -184,6 +184,10 @@ from pymrst.modules.ad_core.utils.read_summary_local import (
     read_summary_local,
     readSummaryLocal,
 )
+from pymrst.modules.ad_core.utils.convert_multi_segment_wells_deck import (
+    convert_multi_segment_wells_deck,
+    convertMultiSegmentWellsDeck,
+)
 
 __all__ = [
     "Operators",
@@ -302,4 +306,6 @@ __all__ = [
     "Summary",
     "read_summary_local",
     "readSummaryLocal",
+    "convert_multi_segment_wells_deck",
+    "convertMultiSegmentWellsDeck",
 ]

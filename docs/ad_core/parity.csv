@@ -282,7 +282,7 @@ utils/computeSourcesAndBoundaryConditionsAD.m,computeSourcesAndBoundaryCondition
 utils/convert2MSWell.m,convert2MSWell,utils,ported-consolidated,pymrst/modules/ad_core/utils/__init__.py; pymrst/modules/ad_core/utils/convert_to_ms_well.py,symbol-reference,validated-reference,examples/validation/validate_ad_core_convert_to_ms_well.py,
 utils/convertDeckScheduleToMRST.m,convertDeckScheduleToMRST,utils,ported,pymrst/modules/ad_core/utils/convert_deck_schedule_to_mrst.py,filename,validated-reference,examples/validation/validate_ad_core_convert_deck_schedule.py; examples/validation/validate_ad_core_raw_deck_schedule.py,
 utils/convertIncompWellSols.m,convertIncompWellSols,utils,ported,pymrst/modules/ad_core/utils/convert_incomp_well_sols.py,filename,validated-reference,examples/validation/validate_ad_core_well_report_mapping.py,
-utils/convertMultiSegmentWellsDeck.m,convertMultiSegmentWellsDeck,utils,pending-review,,,unvalidated,,
+utils/convertMultiSegmentWellsDeck.m,convertMultiSegmentWellsDeck,utils,ported,pymrst/modules/ad_core/utils/convert_multi_segment_wells_deck.py,filename,validated-reference,examples/validation/validate_phase432.py,
 utils/convertReportToSchedule.m,convertReportToSchedule,utils,ported,pymrst/modules/ad_core/utils/convert_report_to_schedule.py,filename,validated-reference,examples/validation/validate_ad_core_multipliers_report_ilu.py,
 utils/convertReservoirFluxesToSurface.m,convertReservoirFluxesToSurface,utils,ported,pymrst/modules/ad_core/utils/convert_reservoir_fluxes_to_surface.py,filename,unvalidated,,
 utils/criticalPointChop.m,criticalPointChop,utils,ported,pymrst/modules/ad_core/utils/critical_point_chop.py,filename,validated-reference,examples/validation/validate_ad_core_linear_algebra_utilities.py,
