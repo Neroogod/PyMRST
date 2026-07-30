@@ -59,6 +59,51 @@ def main() -> int:
     failed += _check("all intersection coordinates match", err < 1e-6,
                      f"max|dx| = {err:.3e}")
 
+    gm = compute_geometry(cart_grid([3, 3, 1], [3.0, 3.0, 1.0]))
+    multi = compute_grid_slice_polygons(
+        gm, np.array([[.5, 0, 0], [.5, 1.5, 0], [2.5, 1.5, 0]]),
+        cut_dir=np.array([0.0, 0.0, 1.0]),
+    )
+    multi_pairs = sorted(zip(
+        multi["cell_ix"].tolist(), np.diff(multi["node_pos"]).tolist()
+    ))
+    multi_ref_pairs = sorted(zip(
+        (ref["multi_cell_ix"].ravel().astype(int) - 1).tolist(),
+        ref["multi_nvert"].ravel().astype(int).tolist(),
+    ))
+    failed += _check(
+        "multi-segment cells and vertex counts",
+        multi_pairs == multi_ref_pairs,
+    )
+    multi_coords = np.round(multi["coords_3d"], 6)
+    multi_coords = multi_coords[np.lexsort(multi_coords.T[::-1])]
+    multi_ref_coords = np.asarray(ref["multi_coords3d"], dtype=float)
+    multi_err = (
+        np.max(np.abs(multi_coords - multi_ref_coords))
+        if multi_coords.shape == multi_ref_coords.shape else np.inf
+    )
+    failed += _check(
+        "multi-segment coordinates", multi_err < 1e-6,
+        f"max|dx| = {multi_err:.3e}",
+    )
+
+    gr = compute_geometry(cart_grid([1, 1, 1], [1.0, 1.0, 1.0]))
+    bounded = compute_grid_slice_polygons(
+        gr, np.array([[.5, 0, .5], [.5, 1, .5]]),
+        cut_dir=np.array([0.0, 0.0, 1.0]), radius=.2,
+    )
+    radius_coords = np.round(bounded["coords_3d"], 6)
+    radius_coords = radius_coords[np.lexsort(radius_coords.T[::-1])]
+    radius_ref_coords = np.asarray(ref["radius_coords3d"], dtype=float)
+    radius_err = (
+        np.max(np.abs(radius_coords - radius_ref_coords))
+        if radius_coords.shape == radius_ref_coords.shape else np.inf
+    )
+    failed += _check(
+        "bounded-radius coordinates", radius_err < 1e-6,
+        f"max|dx| = {radius_err:.3e}",
+    )
+
     print("\ncomputeGridSlicePolygons core matches MRST!" if failed == 0
           else f"\n{failed} checks FAILED")
     return 1 if failed else 0

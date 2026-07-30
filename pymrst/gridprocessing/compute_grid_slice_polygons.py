@@ -196,18 +196,41 @@ def _combine_piecewise(pieces):
     nonempty = [piece for piece in pieces if piece["cell_ix"].size]
     if not nonempty:
         return _empty()
-    counts = [np.diff(piece["node_pos"]) for piece in nonempty]
-    all_counts = np.concatenate(counts)
-    segment_ix = np.concatenate([
-        np.full(piece["cell_ix"].size, k, dtype=np.int64)
-        for k, piece in enumerate(pieces) if piece["cell_ix"].size
-    ])
+    entries = []
+    for segment, piece in enumerate(pieces):
+        for row, cell in enumerate(piece["cell_ix"]):
+            lo, hi = piece["node_pos"][row:row + 2]
+            entries.append((
+                int(cell), segment,
+                piece["coords_3d"][lo:hi],
+                piece["coords_2d"][lo:hi],
+            ))
+    combined = []
+    for cell in sorted({entry[0] for entry in entries}):
+        group = [entry for entry in entries if entry[0] == cell]
+        if len(group) == 1:
+            combined.append(group[0])
+            continue
+        xyz = np.vstack([entry[2] for entry in group])
+        uv = np.vstack([entry[3] for entry in group])
+        key = np.round(xyz, decimals=12)
+        _, inverse, counts = np.unique(
+            key, axis=0, return_inverse=True, return_counts=True
+        )
+        # At a polyline bend, the two segment-polygons share the clamped
+        # bend edge. MRST removes that internal edge and joins the remaining
+        # outer vertices into one polygon for the cell.
+        keep = counts[inverse] == 1
+        combined.append((cell, group[0][1], xyz[keep], uv[keep]))
+    all_counts = np.array([entry[2].shape[0] for entry in combined])
     return {
-        "cell_ix": np.concatenate([p["cell_ix"] for p in nonempty]),
+        "cell_ix": np.array([entry[0] for entry in combined], dtype=np.int64),
         "node_pos": np.concatenate([[0], np.cumsum(all_counts)]),
-        "coords_3d": np.vstack([p["coords_3d"] for p in nonempty]),
-        "coords_2d": np.vstack([p["coords_2d"] for p in nonempty]),
-        "segment_ix": segment_ix,
+        "coords_3d": np.vstack([entry[2] for entry in combined]),
+        "coords_2d": np.vstack([entry[3] for entry in combined]),
+        "segment_ix": np.array(
+            [entry[1] for entry in combined], dtype=np.int64
+        ),
     }
 
 
