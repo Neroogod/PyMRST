@@ -28,22 +28,25 @@ The target PyMRST package is:
 PyMRST/pymrst/gridprocessing
 ```
 
-## Current baseline
+## Current implementation status
 
-The initial audit found 50 non-catalog MRST MATLAB files outside the
-`testgrids/` fixture directory:
+The parity audit now inventories all 68 MATLAB files, including the complete
+`testgrids/` and `deprecated/` directory layout:
 
-- 27 have direct filename counterparts in PyMRST.
-- Approximately 11 are consolidated into another Python implementation or
-  live in another appropriate PyMRST subsystem.
-- 9 meaningful public APIs remain unimplemented.
-- 3 files are deprecated, documentation-only, or legacy MATLAB storage
-  compatibility and should normally be excluded.
-- All 36 current `pymrst/gridprocessing` module self-test scripts pass.
+- 50 have direct filename counterparts in PyMRST;
+- 12 are consolidated into another documented Python implementation;
+- all 15 named `testgrids` fixtures/examples have Python counterparts;
+- `computeGeometryOrig` is available through an explicitly deprecated
+  compatibility module backed by the maintained geometry kernel;
+- the catalog, documentation-only, and legacy MATLAB-storage entries remain
+  explicit exclusions;
+- no entry is pending and no ported entry is unvalidated;
+- 56 focused gridprocessing tests and 62 gridprocessing module self-tests
+  pass.
 
-This count measures file mapping, not semantic completeness. Some existing
-counterparts implement only the common numerical path and still lack MRST
-options, degenerate-case behavior, or direct MATLAB validation.
+This establishes file-layout, API, invariant, and saved-reference parity.
+The final system-level gate remains the realistic deck and downstream
+simulation comparison described in Phases 9 and 10.
 
 ## Definition of done
 

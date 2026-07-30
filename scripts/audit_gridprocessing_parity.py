@@ -135,14 +135,31 @@ def classify(
     if symbol == "Contents":
         return "excluded-catalog", "", "MATLAB package catalog"
     if rel.parts[0] == "testgrids":
+        stem = snake_case(symbol)
+        exact = [path for path in python_sources if path.stem == stem]
+        if exact:
+            return (
+                "ported",
+                _relative_list(exact, repo),
+                "ported deterministic test-grid fixture",
+            )
         return (
             "test-fixture",
             "",
-            "MATLAB deterministic grid fixture; port only when validation needs it",
+            "MATLAB test-grid fixture not yet ported",
         )
     if symbol in EXCLUSIONS:
         status, reason = EXCLUSIONS[symbol]
-        return status, "", reason
+        counterpart = ""
+        if symbol == "computeGeometryOrig":
+            counterpart = (
+                "pymrst/gridprocessing/deprecated/compute_geometry_orig.py"
+            )
+            if not (repo / counterpart).is_file():
+                raise FileNotFoundError(
+                    f"deprecated compatibility counterpart missing: {counterpart}"
+                )
+        return status, counterpart, reason
     if symbol in CONSOLIDATED:
         counterparts, reason = CONSOLIDATED[symbol]
         for value in counterparts.split("; "):

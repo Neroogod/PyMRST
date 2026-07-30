@@ -39,7 +39,10 @@ def _F(a: np.ndarray, shape) -> np.ndarray:
 def _index(i, j, k, sz) -> np.ndarray:
     """MATLAB index(): F-order linear indices of an ndgrid of ranges."""
     ii, jj, kk = np.meshgrid(i, j, k, indexing="ij")
-    return _flat(np.ravel_multi_index((ii, jj, kk), sz, order="F"))
+    # NumPy promotes empty ``meshgrid`` results to float for some mixtures of
+    # ranges. Thin corner-point fixtures legitimately produce an empty axis.
+    indices = tuple(np.asarray(v, dtype=np.int64) for v in (ii, jj, kk))
+    return _flat(np.ravel_multi_index(indices, sz, order="F"))
 
 
 def build_corner_pt_nodes(
