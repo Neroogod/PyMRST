@@ -1,4 +1,6 @@
 from types import SimpleNamespace
+import importlib
+import pickle
 
 import numpy as np
 
@@ -12,6 +14,8 @@ from pymrst.modules.ad_core.simulators.sim_runner import (
     pack_simulation_problem,
     simulate_packed_problem,
     simulate_packed_problem_background,
+    simulate_packed_problem_standalone,
+    init_eclipse_packed_problem_ad,
 )
 from pymrst.modules.ad_core.utils.schedule import simple_schedule
 
@@ -184,6 +188,54 @@ def test_background_process_writes_output_and_releases_lock(tmp_path):
     assert not status["running"]
     assert "ok=True" in status["log"]
     assert len(problem.OutputHandlers.states) == 2
+
+
+def test_standalone_worker_loads_payload_logs_and_releases_lock(tmp_path):
+    schedule = simple_schedule([1.0, 2.0])
+    problem = pack_simulation_problem(
+        {"x": 0.0}, PickleModel(), schedule, "Standalone",
+        directory=tmp_path / "results", name="worker",
+    )
+    work = tmp_path / "work"
+    work.mkdir()
+    with (work / "problem.pkl").open("wb") as stream:
+        pickle.dump(problem, stream)
+
+    ok, status = simulate_packed_problem_standalone(work)
+
+    assert ok and status.RestartIndex == 0
+    assert not (work / "lock.pymrst").exists()
+    assert "ok=True" in (work / "simulation.log").read_text()
+    assert len(problem.OutputHandlers.states) == 2
+
+
+def test_init_eclipse_packed_problem_preserves_initialized_setup(
+    tmp_path, monkeypatch
+):
+    module = importlib.import_module(
+        "pymrst.modules.ad_core.simulators.sim_runner."
+        "init_eclipse_packed_problem_ad"
+    )
+    state = {"pressure": [1.0]}
+    model = SimpleNamespace(inputdata={"RUNSPEC": {"TITLE": "Deck case"}})
+    schedule = simple_schedule([1.0])
+    nonlinear = SimpleNamespace(tag="solver")
+    monkeypatch.setattr(
+        module,
+        "init_eclipse_problem_ad",
+        lambda deck, **options: (state, model, schedule, nonlinear),
+    )
+
+    problem = init_eclipse_packed_problem_ad(
+        {"deck": True}, name="run", directory=tmp_path
+    )
+
+    assert problem.BaseName == "Deck case"
+    assert problem.Name == "run"
+    assert problem.SimulatorSetup.state0 is state
+    assert problem.SimulatorSetup.model is model
+    assert problem.SimulatorSetup.schedule is schedule
+    assert problem.SimulatorSetup.NonLinearSolver is nonlinear
 
 
 def test_native_ad_core_schedule_is_accepted(tmp_path):
