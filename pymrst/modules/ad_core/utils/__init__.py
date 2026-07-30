@@ -90,6 +90,18 @@ from pymrst.modules.ad_core.utils.get_cell_major_reordering import (
     get_cell_major_reordering,
     getCellMajorReordering,
 )
+from pymrst.modules.ad_core.utils.get_perforation_to_well_mapping import (
+    get_perforation_to_well_mapping,
+    getPerforationToWellMapping,
+)
+from pymrst.modules.ad_core.utils.convert_incomp_well_sols import (
+    convert_incomp_well_sols,
+    convertIncompWellSols,
+)
+from pymrst.modules.ad_core.utils.get_report_ministeps import (
+    get_report_ministeps,
+    getReportMinisteps,
+)
 
 __all__ = [
     "Operators",
@@ -151,4 +163,10 @@ __all__ = [
     "splitMatrixForReduction",
     "get_cell_major_reordering",
     "getCellMajorReordering",
+    "get_perforation_to_well_mapping",
+    "getPerforationToWellMapping",
+    "convert_incomp_well_sols",
+    "convertIncompWellSols",
+    "get_report_ministeps",
+    "getReportMinisteps",
 ]
