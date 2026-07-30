@@ -48,11 +48,16 @@ def find_counterparts(
             [],
             "MATLAB MEX build/runtime implementation; Python fallback required",
         )
-    if symbol == "getSparseBlocksFixedWidth":
+    if symbol in {
+        "ConservationLawJacobian",
+        "FixedWidthJacobian",
+        "blockCSRtoSparse",
+        "getSparseBlocksFixedWidth",
+    }:
         return (
             "excluded-platform",
             [],
-            "private converter for MRST FixedWidthJacobian/MEX storage",
+            "MRST FixedWidth/ConservationLaw MEX storage or its private converter",
         )
     if symbol == "getDeckOPMData":
         return (
@@ -130,7 +135,12 @@ def validation_matches(
     symbol: str,
     validation_sources: dict[Path, str],
 ) -> list[Path]:
-    token = re.compile(rf"(?<![A-Za-z0-9_]){re.escape(symbol)}(?![A-Za-z0-9_])", re.I)
+    spellings = {symbol, snake_case(symbol)}
+    alternatives = "|".join(re.escape(spelling) for spelling in sorted(spellings))
+    token = re.compile(
+        rf"(?<![A-Za-z0-9_])(?:{alternatives})(?![A-Za-z0-9_])",
+        re.I,
+    )
     return [path for path, text in validation_sources.items() if token.search(text)]
 
 
@@ -256,7 +266,8 @@ def main() -> int:
         "- `ported-consolidated`: the MATLAB symbol is explicitly referenced "
         "inside a consolidated Python module.\n"
         "- `validated-reference`: a test or validation script explicitly names "
-        "the MATLAB symbol. This does not yet grade validation depth.\n"
+        "the MATLAB symbol or its Python snake-case spelling. This does not yet "
+        "grade validation depth.\n"
         "- `excluded-catalog`: MATLAB `Contents.m` catalog only.\n"
         "- `excluded-platform`: MATLAB MEX build/runtime source; its numerical "
         "fallback must still be ported and validated.\n"
