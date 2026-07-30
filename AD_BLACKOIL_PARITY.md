@@ -6,12 +6,12 @@ The CSV ledger is authoritative; filename presence does not make a guarded examp
 ## Current scan
 
 - MRST MATLAB files inventoried: **57**
-- Ported: **30**
+- Ported: **34**
 - Partial: **3**
-- Pending: **15**
+- Pending: **11**
 - Catalogs excluded: **9**
-- Reference-validated entries: **17**
-- Unvalidated entries: **40**
+- Reference-validated entries: **20**
+- Unvalidated entries: **37**
 
 ## Incomplete executable entries
 
@@ -25,11 +25,7 @@ The CSV ledger is authoritative; filename presence does not make a guarded examp
 - `examples/spe9/blackoilTutorialSPE9.m` — **pending**: depends on the guarded SPE9 simulation
 - `examples/spe9/simulateSPE9.m` — **pending**: SPE9 deck, VFP, schedule, and summary import are absent
 - `examples/utils/loadAquiferEclipseResult.m` — **partial**: ECLIPSE result reader is not implemented
-- `utils/computeInitAquifer.m` — **pending**: no reviewed Python owner
 - `utils/equationsWaterThermal.m` — **pending**: no reviewed Python owner
-- `utils/getFluxAndPropsGas_BO.m` — **pending**: no reviewed Python owner
-- `utils/getFluxAndPropsOil_BO.m` — **pending**: no reviewed Python owner
-- `utils/getFluxAndPropsWater_BO.m` — **pending**: no reviewed Python owner
 - `utils/getPolymerShearMultiplier.m` — **pending**: no reviewed Python owner
 - `utils/getWellPolymer.m` — **pending**: no reviewed Python owner
 - `utils/updateStateBlackOilGeneric.m` — **pending**: no reviewed Python owner

@@ -88,7 +88,18 @@ The first implementation batch is complete:
   hydrocarbon status modes, and disabled dissolution;
 - the ad-blackoil parity auditor and its 57-row baseline ledger are present.
 
-The generated baseline currently reports 30 ported, 3 partial, 15 pending,
+The second implementation batch is also complete:
+
+- `compute_init_aquifer.py` ports the intended zero-flux initialization from
+  `computeInitAquifer.m` and explicitly corrects its undefined `V_aq` typo;
+- all three `getFluxAndProps*_BO` utilities now expose MRST's complete
+  eight-value phase-property and flux tuples;
+- the utilities preserve AD derivatives and support capillary pressure,
+  gravity, live-oil/wet-gas PVT, and packed face/cell property values;
+- `ThreePhaseBlackOilModelAD` now consumes the shared phase kernels;
+- MATLAB comparisons cover all 24 phase return values and aquifer equilibrium.
+
+The generated baseline currently reports 34 ported, 3 partial, 11 pending,
 and 9 catalog entries. This is a progress measurement, not a completion claim.
 
 ## 4. Required final layout

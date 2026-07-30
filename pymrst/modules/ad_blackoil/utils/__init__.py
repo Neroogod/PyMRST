@@ -4,6 +4,18 @@ from pymrst.modules.ad_blackoil.utils.calculate_hydrocarbons_from_status_bo impo
     calculate_hydrocarbons_from_status_bo,
     calculateHydrocarbonsFromStatusBO,
 )
+from pymrst.modules.ad_blackoil.utils.compute_init_aquifer import (
+    compute_init_aquifer, computeInitAquifer,
+)
+from pymrst.modules.ad_blackoil.utils.get_flux_and_props_gas_bo import (
+    get_flux_and_props_gas_bo, getFluxAndPropsGas_BO,
+)
+from pymrst.modules.ad_blackoil.utils.get_flux_and_props_oil_bo import (
+    get_flux_and_props_oil_bo, getFluxAndPropsOil_BO,
+)
+from pymrst.modules.ad_blackoil.utils.get_flux_and_props_water_bo import (
+    get_flux_and_props_water_bo, getFluxAndPropsWater_BO,
+)
 
 from pymrst.modules.ad_blackoil.utils.get_cell_status_vo import (
     blackoil_status,
@@ -34,6 +46,8 @@ __all__ = [
     "blackoil_status",
     "calculate_hydrocarbons_from_status_bo",
     "calculateHydrocarbonsFromStatusBO",
+    "compute_init_aquifer",
+    "computeInitAquifer",
     "compute_flash_black_oil",
     "equations_black_oil",
     "equations_oil_water",
@@ -42,6 +56,12 @@ __all__ = [
     "get_b_g_bo",
     "get_b_o_bo",
     "get_cell_status_vo",
+    "get_flux_and_props_gas_bo",
+    "get_flux_and_props_oil_bo",
+    "get_flux_and_props_water_bo",
+    "getFluxAndPropsGas_BO",
+    "getFluxAndPropsOil_BO",
+    "getFluxAndPropsWater_BO",
     "getbG_BO",
     "getbO_BO",
     "j_function_ratio",

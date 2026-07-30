@@ -26,8 +26,8 @@ def test_ledger_accounts_for_every_matlab_file_once():
 
 def test_missing_utilities_and_guarded_examples_remain_honestly_pending():
     rows = {row["symbol"]: row for row in generate_rows(REPO, MRST, PYTHON)}
-    assert rows["getFluxAndPropsOil_BO"]["port_status"] == "pending"
     assert rows["updateStateBlackOilGeneric"]["port_status"] == "pending"
+    assert rows["getPolymerShearMultiplier"]["port_status"] == "pending"
     assert rows["eggExample"]["port_status"] == "pending"
     assert rows["blackoilTimeIntegrationExample"]["port_status"] == "partial"
 
@@ -36,3 +36,5 @@ def test_new_shrinkage_helpers_are_direct_ports():
     rows = {row["symbol"]: row for row in generate_rows(REPO, MRST, PYTHON)}
     assert rows["getbO_BO"]["port_status"] == "ported"
     assert rows["getbG_BO"]["port_status"] == "ported"
+    assert rows["computeInitAquifer"]["port_status"] == "ported"
+    assert rows["getFluxAndPropsOil_BO"]["port_status"] == "ported"

@@ -25,6 +25,11 @@ from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
 from pymrst.modules.ad_core.utils.convergence import cnv_mb_convergence
 from pymrst.modules.ad_blackoil.utils.get_b_g_bo import get_b_g_bo
 from pymrst.modules.ad_blackoil.utils.get_b_o_bo import get_b_o_bo
+from pymrst.modules.ad_blackoil.utils.flux_and_props_bo import (
+    get_flux_and_props_gas_bo,
+    get_flux_and_props_oil_bo,
+    get_flux_and_props_water_bo,
+)
 from pymrst.utils.adi import (
     ad_sum,
     combine_equations,
@@ -79,6 +84,8 @@ class ThreePhaseBlackOilModelAD:
         self.vapoil = False
         self.wells = list(wells)
         self.ops = setup_operators_tpfa(g, rock)
+        self.operators = self.ops
+        self.G = g
         self.pv_ref = pore_volume(g, rock)
         self.gdz = gravity * self.ops.grad(g.cells.centroids[:, 2])
         self.ds_max = ds_max
@@ -100,27 +107,23 @@ class ThreePhaseBlackOilModelAD:
         sg = x * st3.astype(float)
         so = 1.0 - sw - sg
 
-        b_w = f.b_w(p)
-        b_o = get_b_o_bo(self, p, rs, st3)
-        b_g = get_b_g_bo(self, p)
-        mob_w = f.kr_w(sw) / f.mu_w(p)
-        mob_o = f.kr_o(sw, so, sg) / f.mu_o(p, rs, st3)
-        mob_g = f.kr_g(sg) / f.mu_g(p)
-
-        rho_ws, rho_os, rho_gs = f.rhoS
-        rho_w = b_w * rho_ws
-        rho_o = b_o * (rho_os + rs * rho_gs)
-        rho_g = b_g * rho_gs
-
-        fluxes = {}
-        for ph, (mob, rho, b) in {
-            "w": (mob_w, rho_w, b_w), "o": (mob_o, rho_o, b_o),
-            "g": (mob_g, rho_g, b_g),
-        }.items():
-            pot = ops.grad(p) - ops.avg(rho) * self.gdz
-            flag = value(pot) <= 0
-            v = -ops.T * ops.upw(flag, mob) * pot
-            fluxes[ph] = (flag, v, b)
+        water_props = get_flux_and_props_water_bo(
+            self, p, sw, f.kr_w(sw), ops.T, self.gdz,
+        )
+        oil_props = get_flux_and_props_oil_bo(
+            self, p, so, f.kr_o(sw, so, sg), ops.T, self.gdz, rs, st3,
+        )
+        gas_props = get_flux_and_props_gas_bo(
+            self, p, sg, f.kr_g(sg), ops.T, self.gdz,
+        )
+        fluxes = {
+            "w": (water_props[5], water_props[0], water_props[1]),
+            "o": (oil_props[5], oil_props[0], oil_props[1]),
+            "g": (gas_props[5], gas_props[0], gas_props[1]),
+        }
+        b_w, mob_w = water_props[1], water_props[2]
+        b_o, mob_o = oil_props[1], oil_props[2]
+        b_g, mob_g = gas_props[1], gas_props[2]
 
         bWvW = ops.upw(fluxes["w"][0], b_w) * fluxes["w"][1]
         bOvO = ops.upw(fluxes["o"][0], b_o) * fluxes["o"][1]
