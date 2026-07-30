@@ -59,6 +59,13 @@ from pymrst.gridprocessing.check_and_repair_zcorn import (
     check_and_repair_zcorn,
     checkAndRepairZCORN,
 )
+from pymrst.gridprocessing.process_faults import (
+    GridFault,
+    process_faults,
+    processFaults,
+    remove_fault_boundary_faces,
+    removeFaultBdryFaces,
+)
 
 __all__ = [
     "Grid", "Cells", "Faces", "Nodes",
@@ -76,6 +83,8 @@ __all__ = [
     "build_corner_pt_pillars", "buildCornerPtPillars",
     "cart2active", "cart_to_active",
     "check_and_repair_zcorn", "checkAndRepairZCORN",
+    "GridFault", "process_faults", "processFaults",
+    "remove_fault_boundary_faces", "removeFaultBdryFaces",
     "load_mrst_grid_mat", "mrst_grid_struct_to_grid",
     "WEST", "EAST", "SOUTH", "NORTH", "TOP", "BOTTOM",
 ]
