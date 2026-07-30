@@ -779,3 +779,9 @@ and follows MRST by assigning zero to the newly merged face tag.
 face, and node indices for every retained entity. Logical masks are accepted;
 preserved corner-point nodes are renumbered, and NNC rows touching removed
 cells are filtered while surviving connections are renumbered.
+
+`extract_subgrid(..., return_mapping=True)` provides the same original entity
+maps and stores them on the returned grid as `cells.global`, `faces.global`,
+and `nodes.global` (with Python-friendly `global_` aliases). Logical masks,
+corner-point nodes, NNCs, geometry, and custom grid metadata are preserved and
+renumbered consistently.

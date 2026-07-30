@@ -38,7 +38,8 @@ def main() -> int:
     ref = loadmat(path, squeeze_me=True)
 
     g = compute_geometry(cart_grid([5, 1, 1], [5.0, 1.0, 1.0]))
-    extracted = extract_subgrid(g, [0, 1, 3, 4])
+    extracted, extract_cell_map, extract_face_map, extract_node_map = \
+        extract_subgrid(g, [0, 1, 3, 4], return_mapping=True)
     removed, remove_cell_map, remove_face_map, remove_node_map = remove_cells(
         g, np.array([2]), return_mapping=True
     )
@@ -57,6 +58,9 @@ def main() -> int:
     checks = {
         "extract counts": (_counts(extracted), ref["extract_counts"]),
         "extract indexMap": (extracted.cells.indexMap + 1, ref["extract_index_map"]),
+        "extract cell map": (extract_cell_map + 1, ref["extract_cell_map"]),
+        "extract face map": (extract_face_map + 1, ref["extract_face_map"]),
+        "extract node map": (extract_node_map + 1, ref["extract_node_map"]),
         "extract volumes": (extracted.cells.volumes, ref["extract_volumes"]),
         "extract centroids": (extracted.cells.centroids, ref["extract_centroids"]),
         "extract face areas": (extracted.faces.areas, ref["extract_face_areas"]),

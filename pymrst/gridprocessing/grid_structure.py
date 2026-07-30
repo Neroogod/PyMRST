@@ -121,10 +121,22 @@ class Grid:
         assert not np.any(np.all(faces.neighbors == -1, axis=1)), "orphan face"
 
 
-def extract_subgrid(g: Grid, cells) -> Grid:
-    """Return the grid made of `cells` alone, ported from `extractSubgrid`."""
+def extract_subgrid(g: Grid, cells, *, return_mapping: bool = False):
+    """Return the grid made of ``cells`` alone.
+
+    Boolean masks are accepted. With ``return_mapping=True``, return
+    ``(subgrid, cells, faces, nodes)`` containing original entity indices,
+    matching MRST's optional outputs.
+    """
+    cells_in = np.asarray(cells)
+    if cells_in.dtype == bool:
+        if cells_in.size != g.cells.num:
+            raise ValueError("logical cell mask must have one entry per cell")
+        requested = np.flatnonzero(cells_in.ravel())
+    else:
+        requested = np.asarray(cells, dtype=np.int64).ravel()
     keep = np.zeros(g.cells.num, dtype=bool)
-    keep[np.asarray(cells, dtype=np.int64).ravel()] = True
+    keep[requested] = True
     cell_ids = np.flatnonzero(keep)
     new_cell = np.full(g.cells.num, -1, dtype=np.int64)
     new_cell[cell_ids] = np.arange(cell_ids.size)
@@ -144,7 +156,7 @@ def extract_subgrid(g: Grid, cells) -> Grid:
         -1,
     )
 
-    return Grid(
+    sub = Grid(
         cells=Cells(
             num=cell_ids.size,
             facePos=np.asarray(face_pos, dtype=np.int64),
@@ -187,6 +199,46 @@ def extract_subgrid(g: Grid, cells) -> Grid:
         griddim=g.griddim,
         type=list(g.type) + ["extractSubgrid"],
     )
+    sub.cells.global_ = cell_ids.copy()
+    sub.faces.global_ = face_ids.copy()
+    sub.nodes.global_ = node_ids.copy()
+    # `global` is an MRST field name but a Python keyword, so expose both the
+    # convenient global_ spelling and exact dynamic attribute.
+    setattr(sub.cells, "global", cell_ids.copy())
+    setattr(sub.faces, "global", face_ids.copy())
+    setattr(sub.nodes, "global", node_ids.copy())
+
+    if hasattr(g.cells, "cpnodes"):
+        sub.cells.cpnodes = new_node[np.asarray(g.cells.cpnodes)[cell_ids]]
+        if np.any(sub.cells.cpnodes < 0):
+            raise ValueError("too many nodes removed to preserve corner-point nodes")
+    extras = {
+        name: value for name, value in vars(g).items()
+        if name not in {"cells", "faces", "nodes", "griddim", "type",
+                        "cartDims", "edges", "nnc"}
+    }
+    for name, value in extras.items():
+        setattr(sub, name, value)
+    nnc = getattr(g, "nnc", None)
+    if nnc is not None:
+        is_dict = isinstance(nnc, dict)
+        pairs = np.asarray(nnc["cells"] if is_dict else nnc.cells,
+                           dtype=np.int64)
+        keep_nnc = np.all(new_cell[pairs] >= 0, axis=1)
+        values = dict(nnc) if is_dict else vars(nnc).copy()
+        values["cells"] = new_cell[pairs[keep_nnc]]
+        for name, value in list(values.items()):
+            arr = np.asarray(value)
+            if name != "cells" and arr.ndim and arr.shape[0] == pairs.shape[0]:
+                values[name] = arr[keep_nnc]
+        if is_dict:
+            sub.nnc = values
+        else:
+            from types import SimpleNamespace
+            sub.nnc = SimpleNamespace(**values)
+    if return_mapping:
+        return sub, cell_ids, face_ids, node_ids
+    return sub
 
 
 def _surviving_faces(g: Grid, keep: np.ndarray) -> np.ndarray:
