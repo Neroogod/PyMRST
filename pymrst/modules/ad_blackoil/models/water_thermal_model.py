@@ -55,8 +55,14 @@ class WaterThermalModel(GeothermalModel):
 
     def get_equations(self, state0: GeothermalState, state: GeothermalState,
                       dt: float):
-        p, t = state.pressure, state.T
-        return self.assemble(state0, p, t, dt)
+        from pymrst.modules.ad_blackoil.utils.equations_water_thermal import (
+            equations_water_thermal,
+        )
+
+        equations, _ = equations_water_thermal(
+            state0, state, self, dt, res_only=True,
+        )
+        return equations
 
     def get_surface_densities(self):
         return np.array([self.fluid.rho(np.array([0.0]), np.array([293.15]))[0]])

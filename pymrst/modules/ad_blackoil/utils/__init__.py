@@ -19,6 +19,15 @@ from pymrst.modules.ad_blackoil.utils.get_flux_and_props_water_bo import (
 from pymrst.modules.ad_blackoil.utils.update_state_black_oil_generic import (
     update_state_black_oil_generic, updateStateBlackOilGeneric,
 )
+from pymrst.modules.ad_blackoil.utils.equations_water_thermal import (
+    equations_water_thermal, equationsWaterThermal,
+)
+from pymrst.modules.ad_blackoil.utils.get_polymer_shear_multiplier import (
+    get_polymer_shear_multiplier, getPolymerShearMultiplier,
+)
+from pymrst.modules.ad_blackoil.utils.get_well_polymer import (
+    get_well_polymer, getWellPolymer,
+)
 
 from pymrst.modules.ad_blackoil.utils.get_cell_status_vo import (
     blackoil_status,
@@ -55,6 +64,8 @@ __all__ = [
     "equations_black_oil",
     "equations_oil_water",
     "equations_water",
+    "equations_water_thermal",
+    "equationsWaterThermal",
     "get_capillary_pressure_bo",
     "get_b_g_bo",
     "get_b_o_bo",
@@ -65,6 +76,10 @@ __all__ = [
     "getFluxAndPropsGas_BO",
     "getFluxAndPropsOil_BO",
     "getFluxAndPropsWater_BO",
+    "get_polymer_shear_multiplier",
+    "get_well_polymer",
+    "getPolymerShearMultiplier",
+    "getWellPolymer",
     "getbG_BO",
     "getbO_BO",
     "j_function_ratio",

@@ -110,7 +110,21 @@ The third implementation batch is complete:
   `dpMax`, `drsMax`, and `dsMax` properties and cannot execute unchanged;
 - limiting and phase-status results match MATLAB exactly.
 
-The generated baseline currently reports 35 ported, 3 partial, 10 pending,
+The fourth implementation batch completes the missing code utilities:
+
+- `equations_water_thermal.py` exposes the coupled water mass-energy assembly
+  through the MRST-shaped module path and preserves pressure/temperature AD
+  Jacobians;
+- `get_well_polymer.py` reproduces injector concentration expansion and
+  zero-based water-injection perforation mapping;
+- `get_polymer_shear_multiplier.py` ports MRST's local AD-Newton shear solve,
+  including its convergence report;
+- polymer multipliers, velocities, iteration counts, and well mappings match
+  direct MATLAB fixtures;
+- unsupported thermal source and well forces fail explicitly rather than being
+  silently omitted by the shared geothermal kernel.
+
+The generated baseline currently reports 38 ported, 3 partial, 7 pending,
 and 9 catalog entries. This is a progress measurement, not a completion claim.
 
 ## 4. Required final layout
