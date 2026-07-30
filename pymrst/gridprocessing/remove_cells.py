@@ -6,17 +6,79 @@ from pymrst.gridprocessing.grid_structure import Cells, Faces, Grid, Nodes
 from pymrst.gridprocessing.private.packed_data import map_excluding
 
 
-def remove_cells(g: Grid, cells: np.ndarray) -> Grid:
-    """Delete cells, faces that lose both neighbors, and orphan nodes."""
-    cells = np.asarray(cells, dtype=np.int64).ravel()
+def remove_cells(g: Grid, cells: np.ndarray, *, return_mapping: bool = False):
+    """Delete cells, faces that lose both neighbors, and orphan nodes.
+
+    Boolean cell masks are accepted. With ``return_mapping=True``, return
+    ``(grid, cellmap, facemap, nodemap)`` where each map contains the original
+    entity index for every retained entity, matching MRST's optional outputs.
+    """
+    cells_in = np.asarray(cells)
+    if cells_in.dtype == bool:
+        if cells_in.size != g.cells.num:
+            raise ValueError("logical cell mask must have one entry per cell")
+        cells = np.flatnonzero(cells_in.ravel())
+    else:
+        cells = np.asarray(cells, dtype=np.int64).ravel()
     if cells.size == 0:
+        if return_mapping:
+            return (g, np.arange(g.cells.num), np.arange(g.faces.num),
+                    np.arange(g.nodes.num))
         return g
     removed = np.zeros(g.cells.num, dtype=bool)
     removed[cells] = True
     cell_map = map_excluding(removed)
     cell_faces, face_pos = _kept_cell_faces(g, removed)
     neighbors = _renumber_neighbors(g.faces.neighbors, cell_map)
-    return _drop_orphan_faces_and_nodes(g, removed, cell_faces, face_pos, neighbors)
+    face_removed = np.all(neighbors == -1, axis=1)
+    facemap = np.flatnonzero(~face_removed)
+    counts = np.diff(g.faces.nodePos)
+    retained_face_nodes = g.faces.nodes[
+        ~np.repeat(face_removed, counts)
+    ]
+    nodemap = np.unique(retained_face_nodes)
+    cellmap = np.flatnonzero(~removed)
+    out = _drop_orphan_faces_and_nodes(
+        g, removed, cell_faces, face_pos, neighbors
+    )
+
+    # Preserve and consistently update optional corner-point/NNC metadata.
+    if hasattr(g.cells, "cpnodes"):
+        node_new = np.full(g.nodes.num, -1, dtype=np.int64)
+        node_new[nodemap] = np.arange(nodemap.size)
+        cpnodes = node_new[np.asarray(g.cells.cpnodes)[cellmap]]
+        if np.any(cpnodes < 0):
+            raise ValueError("too many nodes removed to preserve corner-point nodes")
+        out.cells.cpnodes = cpnodes
+    extras = {
+        name: value for name, value in vars(g).items()
+        if name not in {"cells", "faces", "nodes", "griddim", "type",
+                        "cartDims", "edges", "nnc"}
+    }
+    for name, value in extras.items():
+        setattr(out, name, value)
+    nnc = getattr(g, "nnc", None)
+    if nnc is not None:
+        is_dict = isinstance(nnc, dict)
+        pairs = np.asarray(nnc["cells"] if is_dict else nnc.cells,
+                           dtype=np.int64)
+        cell_new = np.full(g.cells.num, -1, dtype=np.int64)
+        cell_new[cellmap] = np.arange(cellmap.size)
+        keep_nnc = np.all(cell_new[pairs] >= 0, axis=1)
+        values = vars(nnc).copy() if not is_dict else dict(nnc)
+        values["cells"] = cell_new[pairs[keep_nnc]]
+        for name, value in list(values.items()):
+            arr = np.asarray(value)
+            if name != "cells" and arr.ndim and arr.shape[0] == pairs.shape[0]:
+                values[name] = arr[keep_nnc]
+        if is_dict:
+            out.nnc = values
+        else:
+            from types import SimpleNamespace
+            out.nnc = SimpleNamespace(**values)
+    if return_mapping:
+        return out, cellmap, facemap, nodemap
+    return out
 
 
 def _kept_cell_faces(g: Grid, removed: np.ndarray) -> tuple[np.ndarray, np.ndarray]:

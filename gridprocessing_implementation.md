@@ -774,3 +774,8 @@ the same replacement pair; already-exterior faces retain `NaN` mappings.
 The inverse `remove_internal_boundary` restores each side's directional
 half-face tag on the merged face, preserves Cartesian/cell/custom metadata,
 and follows MRST by assigning zero to the newly merged face tag.
+
+`remove_cells(..., return_mapping=True)` returns MRST-compatible original cell,
+face, and node indices for every retained entity. Logical masks are accepted;
+preserved corner-point nodes are renumbered, and NNC rows touching removed
+cells are filtered while surviving connections are renumbered.

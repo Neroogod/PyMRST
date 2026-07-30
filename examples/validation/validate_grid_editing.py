@@ -39,7 +39,9 @@ def main() -> int:
 
     g = compute_geometry(cart_grid([5, 1, 1], [5.0, 1.0, 1.0]))
     extracted = extract_subgrid(g, [0, 1, 3, 4])
-    removed = remove_cells(g, np.array([2]))
+    removed, remove_cell_map, remove_face_map, remove_node_map = remove_cells(
+        g, np.array([2]), return_mapping=True
+    )
     parts = split_disconnected_grid(removed)
 
     internal = np.flatnonzero(
@@ -63,6 +65,9 @@ def main() -> int:
         ),
         "remove counts": (_counts(removed), ref["remove_counts"]),
         "remove indexMap": (removed.cells.indexMap + 1, ref["remove_index_map"]),
+        "remove cell map": (remove_cell_map + 1, ref["remove_cell_map"]),
+        "remove face map": (remove_face_map + 1, ref["remove_face_map"]),
+        "remove node map": (remove_node_map + 1, ref["remove_node_map"]),
         "remove volumes": (removed.cells.volumes, ref["remove_volumes"]),
         "remove centroids": (removed.cells.centroids, ref["remove_centroids"]),
         "remove face areas": (removed.faces.areas, ref["remove_face_areas"]),
