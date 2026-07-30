@@ -18,8 +18,8 @@ logic on the *raw* fluid's individual saturation functions (`kr_w`, `kr_g`,
 That blend is what the fluid's own `kr_o` computes, so the class reproduces the
 validated `RelativePermeability` bit-for-bit (`validate_phase345.py`) while
 exposing the `evaluate_phase_relative_permeability` hook the relperm hierarchy
-is built on. Endpoint scaling (``rock.krscale``) is not ported - see
-`SaturationProperty`.
+is built on. When ``rock.krscale`` and ``fluid.krPts`` are present, the same
+hook applies MRST's two- or three-point endpoint scaling.
 """
 
 from __future__ import annotations
@@ -44,6 +44,8 @@ class BaseRelativePermeability(StateFunction, SaturationProperty):
         self.depends_on("Saturations")
         if model is not None:
             self.store_connate_water(model)
+            if self.scaling_active:
+                self.store_scalers(model)
 
     def _raw(self, model: Any) -> Any:
         return getattr(model, "raw_fluid", model.fluid)
@@ -56,6 +58,17 @@ class BaseRelativePermeability(StateFunction, SaturationProperty):
         unscaled saturation function.
         """
         fn = getattr(self._raw(model), f"kr_{phase.lower()}")
+        if self.scaling_active:
+            scaler_phase = phase.lower()
+            drainage = getattr(model.rock, "krscale", None)
+            if isinstance(drainage, dict):
+                drainage = drainage.get("drainage", {})
+            if scaler_phase == "o" and isinstance(drainage, dict):
+                scaler_phase = "ow" if "ow" in drainage else "og"
+            scaled, maximum_ratio = self.scale_saturation(
+                model, s, scaler_phase
+            )
+            return maximum_ratio * fn(scaled)
         if self.regions is not None and isinstance(fn, (list, tuple)):
             from pymrst.modules.ad_core.statefunctions.flowprops.hysteresis import (
                 evaluate_function_cell_subset_reg,
@@ -65,6 +78,45 @@ class BaseRelativePermeability(StateFunction, SaturationProperty):
                 self, fn, self.regions, s
             )
         return fn(s)
+
+    def scale_saturation(
+        self, model: Any, saturation: Any, phase: str,
+        cells: Any = None, type: str = "drainage",
+    ):
+        """Map scaled endpoints back to the table saturation coordinate."""
+        scaler = self.get_scalers(model, phase, cells=cells, type=type)
+        points, intercepts, slopes = (
+            scaler["p"], scaler["c"], scaler["m"]
+        )
+        saturation_value = np.asarray(value(saturation), dtype=float)
+        if len(points) == 2:
+            below = saturation_value < points[0]
+            above = saturation_value >= points[1]
+            middle = ~(below | above)
+            scaled = middle.astype(float) * slopes[0] * saturation
+            scaled = scaled + middle.astype(float) * intercepts[0]
+            scaled = scaled + above.astype(float)
+        elif len(points) == 3:
+            first = (
+                (saturation_value >= points[0])
+                & (saturation_value < points[1])
+            )
+            second = (
+                (saturation_value >= points[1])
+                & (saturation_value < points[2])
+            )
+            above = saturation_value >= points[2]
+            slope = (
+                first.astype(float) * slopes[0]
+                + second.astype(float) * slopes[1]
+            )
+            scaled = slope * saturation
+            scaled = scaled + first.astype(float) * intercepts[0]
+            scaled = scaled + second.astype(float) * intercepts[1]
+            scaled = scaled + above.astype(float)
+        else:
+            raise ValueError(f"unknown number of scaling points: {len(points)}")
+        return scaled, scaler["k_max_m"]
 
     def evaluate_gas_rel_perm(self, model: Any, sg: Any, state: Any) -> Any:
         """Gas relperm (MRST's `evaluateGasRelPerm`) - the hook where gas

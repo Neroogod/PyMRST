@@ -65,12 +65,6 @@ def find_counterparts(
             [],
             "optional opm-data/opm-tests repository and restart-output reader",
         )
-    if symbol == "SaturationProperty":
-        return (
-            "pending-review",
-            [],
-            "base connate-water behavior is ported; endpoint-scaling machinery remains",
-        )
     if symbol in {
         "plotStateFunctionGroupings",
         "printStateFunctionGroupingTikz",
