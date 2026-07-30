@@ -36,6 +36,11 @@ from pymrst.modules.ad_core.examples.different_region_functions_example import (
     different_region_functions_example,
     differentRegionFunctionsExample,
 )
+from pymrst.modules.ad_core.examples.state_function_tutorial import (
+    StateFunctionTutorialResult,
+    state_function_tutorial,
+    stateFunctionTutorial,
+)
 
 __all__ = [
     "run_ad_buckley_leverett_1d",
@@ -62,4 +67,7 @@ __all__ = [
     "RegionalRelPermResult",
     "different_region_functions_example",
     "differentRegionFunctionsExample",
+    "StateFunctionTutorialResult",
+    "state_function_tutorial",
+    "stateFunctionTutorial",
 ]
