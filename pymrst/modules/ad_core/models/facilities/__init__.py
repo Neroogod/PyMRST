@@ -47,6 +47,10 @@ from pymrst.modules.ad_core.models.facilities.perforation_properties import (
     unpackPerforationProperties,
     unpack_perforation_properties,
 )
+from pymrst.modules.ad_core.models.facilities.combine_ms_with_regular_wells import (
+    combine_ms_with_regular_wells,
+    combineMSwithRegularWells,
+)
 
 __all__ = [
     "FacilityLinearizedProblem",
@@ -76,4 +80,6 @@ __all__ = [
     "pack_perforation_properties",
     "unpackPerforationProperties",
     "unpack_perforation_properties",
+    "combine_ms_with_regular_wells",
+    "combineMSwithRegularWells",
 ]
