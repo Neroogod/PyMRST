@@ -796,3 +796,7 @@ repair ZCORN, round by tolerance, attach PINCH-generated NNCs, validate the
 grid, and split disconnected components by default. Set
 `split_disconnected=False` for a single grid. The OMO compatibility entry point
 retains its locally documented modified default of `False`.
+
+`tensor_grid(..., cellnodes=True)` and `cart_grid(..., cellnodes=True)` expose
+MRST's top-level `cellNodes` table with identical local-corner ordering in 1D,
+2D, and 3D.

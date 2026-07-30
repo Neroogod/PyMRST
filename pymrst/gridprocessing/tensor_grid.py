@@ -18,6 +18,7 @@ def tensor_grid(
     y: Optional[np.ndarray] = None,
     z: Optional[np.ndarray] = None,
     depthz: Optional[np.ndarray] = None,
+    cellnodes: bool = False,
 ) -> Grid:
     """Construct a Cartesian grid with variable cell sizes from vertex vectors.
 
@@ -34,6 +35,8 @@ def tensor_grid(
         g = _tensor_grid_1d(_monotone(x))
     g.type = ["tensorGrid"]
     g.griddim = len(g.cartDims)
+    if cellnodes:
+        g.cellNodes = _cell_nodes_table(g.cartDims)
     return g
 
 
@@ -41,6 +44,7 @@ def cart_grid(
     celldim: Sequence[int],
     physdims: Optional[Sequence[float]] = None,
     depthz: Optional[np.ndarray] = None,
+    cellnodes: bool = False,
 ) -> Grid:
     """Construct a uniform Cartesian grid: celldim cells over physdims meters.
 
@@ -53,9 +57,40 @@ def cart_grid(
     coords = [
         np.linspace(0.0, float(p), d + 1) for p, d in zip(physdims, celldim)
     ]
-    g = tensor_grid(*coords, depthz=depthz)
+    g = tensor_grid(*coords, depthz=depthz, cellnodes=cellnodes)
     g.type.append("cartGrid")
     return g
+
+
+def _cell_nodes_table(dims) -> np.ndarray:
+    """MRST ``cellnodes`` table in local-corner order (zero-based)."""
+    dims = tuple(int(value) for value in dims)
+    if len(dims) == 1:
+        # MRST's 1-D option stores one representative node per cell.
+        return np.arange(dims[0], dtype=np.int64)[:, None]
+    node_shape = tuple(value + 1 for value in dims)
+    nodes = np.arange(np.prod(node_shape), dtype=np.int64).reshape(
+        node_shape, order="F"
+    )
+    if len(dims) == 2:
+        sx, sy = dims
+        return np.column_stack([
+            nodes[:sx, :sy].ravel(order="F"),
+            nodes[1:, :sy].ravel(order="F"),
+            nodes[:sx, 1:].ravel(order="F"),
+            nodes[1:, 1:].ravel(order="F"),
+        ])
+    sx, sy, sz = dims
+    return np.column_stack([
+        nodes[:sx, :sy, :sz].ravel(order="F"),
+        nodes[1:, :sy, :sz].ravel(order="F"),
+        nodes[:sx, 1:, :sz].ravel(order="F"),
+        nodes[1:, 1:, :sz].ravel(order="F"),
+        nodes[:sx, :sy, 1:].ravel(order="F"),
+        nodes[1:, :sy, 1:].ravel(order="F"),
+        nodes[:sx, 1:, 1:].ravel(order="F"),
+        nodes[1:, 1:, 1:].ravel(order="F"),
+    ])
 
 
 def _monotone(v: np.ndarray) -> np.ndarray:

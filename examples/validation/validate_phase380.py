@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 from scipy.io import loadmat
 
-from pymrst.gridprocessing import cart_grid, compute_geometry
+from pymrst.gridprocessing import cart_grid, compute_geometry, tensor_grid
 from pymrst.gridprocessing.cell_nodes import cell_nodes
 
 REF = Path(__file__).with_name("ref_p380_cellnodes.mat")
@@ -38,6 +38,26 @@ def main() -> int:
                      s.shape[0] == s_ref.shape[0])
     failed += _check("full [cell, local-vertex, node] table matches",
                      s.shape == s_ref.shape and np.array_equal(s, s_ref))
+
+    constructors = {
+        "1-D tensorGrid cellNodes": tensor_grid(
+            np.array([0.0, 1.0, 3.0, 6.0]), cellnodes=True
+        ).cellNodes,
+        "2-D tensorGrid cellNodes": tensor_grid(
+            np.array([0.0, 1.0, 2.0]), np.array([0.0, 2.0, 5.0]),
+            cellnodes=True,
+        ).cellNodes,
+        "3-D tensorGrid cellNodes": tensor_grid(
+            np.array([0.0, 1.0, 2.0]), np.array([0.0, 2.0, 5.0]),
+            np.array([0.0, 4.0]), cellnodes=True,
+        ).cellNodes,
+    }
+    keys = ["tensor_cellnodes_1d", "tensor_cellnodes_2d", "tensor_cellnodes_3d"]
+    for (name, actual), key in zip(constructors.items(), keys):
+        failed += _check(
+            name,
+            np.array_equal(actual + 1, np.atleast_2d(ref[key]).reshape(actual.shape)),
+        )
 
     print("\ncellNodes matches MRST!" if failed == 0
           else f"\n{failed} checks FAILED")

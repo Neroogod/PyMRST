@@ -12,7 +12,15 @@ thisDir = fileparts(mfilename('fullpath'));
 G = computeGeometry(cartGrid([2, 2, 1], [2, 2, 1]));
 s = cellNodes(G);              % [cellNumber, localVertex(1..8), nodeNumber]
 
-save(fullfile(thisDir, 'ref_p380_cellnodes.mat'), '-v7', 's');
+G1 = tensorGrid([0, 1, 3, 6], 'cellnodes', true);
+G2 = tensorGrid([0, 1, 2], [0, 2, 5], 'cellnodes', true);
+G3 = tensorGrid([0, 1, 2], [0, 2, 5], [0, 4], 'cellnodes', true);
+tensor_cellnodes_1d = G1.cellNodes;
+tensor_cellnodes_2d = G2.cellNodes;
+tensor_cellnodes_3d = G3.cellNodes;
+
+save(fullfile(thisDir, 'ref_p380_cellnodes.mat'), '-v7', 's', ...
+     'tensor_cellnodes_1d', 'tensor_cellnodes_2d', 'tensor_cellnodes_3d');
 
 fprintf('Wrote ref_p380_cellnodes.mat to %s\n', thisDir);
 fprintf('  %d corner rows for %d cells\n', size(s, 1), G.cells.num);

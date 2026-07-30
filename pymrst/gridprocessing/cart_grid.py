@@ -12,9 +12,12 @@ def cart_grid(
     celldim: Sequence[int],
     physdims: Optional[Sequence[float]] = None,
     depthz: Optional[np.ndarray] = None,
+    cellnodes: bool = False,
 ) -> Grid:
     """Construct a uniform Cartesian grid."""
-    return _cart_grid(celldim, physdims=physdims, depthz=depthz)
+    return _cart_grid(
+        celldim, physdims=physdims, depthz=depthz, cellnodes=cellnodes
+    )
 
 
 if __name__ == "__main__":
@@ -30,4 +33,3 @@ if __name__ == "__main__":
 
     test_cart_grid_counts()
     print("\nAll tests passed!")
-
