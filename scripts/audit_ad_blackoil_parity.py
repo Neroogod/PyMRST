@@ -1,0 +1,183 @@
+#!/usr/bin/env python3
+"""Generate the MRST ``ad-blackoil`` to PyMRST parity ledger."""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import re
+from collections import Counter
+from pathlib import Path
+
+
+FIELDS = (
+    "mrst_path", "symbol", "subsystem", "port_status",
+    "python_counterpart", "port_evidence", "validation_status",
+    "validation_files", "notes",
+)
+
+# A matching filename is insufficient for these examples: the current Python
+# module explicitly refuses the workflow or implements only a reduced subset.
+PLACEHOLDERS = {
+    "eggExample": "EGG dataset importer is absent",
+    "simulateSPE3": "SPE3 deck and schedule import are absent",
+    "simulateSPE9": "SPE9 deck, VFP, schedule, and summary import are absent",
+    "blackoilTutorialSPE9": "depends on the guarded SPE9 simulation",
+    "tenthCSP_Model_I": "SPE10 property and setup import are absent",
+    "blackoilSectorModelExample": "sector deck and schedule import are absent",
+    "fieldModelNorneExample": "full Norne deck and schedule import are absent",
+}
+
+PARTIAL = {
+    "blackoilTimeIntegrationExample": (
+        "fully implicit SPE1 exists; explicit/AIM and SPE9 paths are absent"
+    ),
+    "multisegmentWellExample": (
+        "reduced packing workflow exists; full SPE1 multisegment case remains"
+    ),
+    "loadAquiferEclipseResult": "ECLIPSE result reader is not implemented",
+}
+
+REVIEWED_NAMES = {
+    "getbG_BO": "pymrst/modules/ad_blackoil/utils/get_b_g_bo.py",
+    "getbO_BO": "pymrst/modules/ad_blackoil/utils/get_b_o_bo.py",
+}
+
+
+def snake_case(name: str) -> str:
+    name = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", name)
+    name = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name)
+    return re.sub(r"[^A-Za-z0-9]+", "_", name).strip("_").lower()
+
+
+def token(symbol: str) -> re.Pattern:
+    variants = sorted({symbol, snake_case(symbol)})
+    return re.compile(
+        rf"(?<![A-Za-z0-9_])(?:{'|'.join(map(re.escape, variants))})(?![A-Za-z0-9_])",
+        re.I,
+    )
+
+
+def source_index(paths):
+    return {p: p.read_text(encoding="utf-8", errors="ignore") for p in paths}
+
+
+def relative_list(paths, root):
+    return "; ".join(str(p.relative_to(root)) for p in sorted(set(paths)))
+
+
+def classify(matlab_file, matlab_root, repo, python_sources):
+    rel = matlab_file.relative_to(matlab_root)
+    symbol = matlab_file.stem
+    if symbol == "Contents":
+        return "excluded-catalog", "", "MATLAB package catalog"
+
+    if symbol in REVIEWED_NAMES:
+        counterpart = REVIEWED_NAMES[symbol]
+        if not (repo / counterpart).is_file():
+            raise FileNotFoundError(f"reviewed counterpart is missing: {counterpart}")
+        return "ported", counterpart, "reviewed Python naming"
+
+    stem = snake_case(symbol)
+    exact = [path for path in python_sources if path.stem == stem]
+    counterpart = relative_list(exact, repo)
+    if symbol in PLACEHOLDERS:
+        return "pending", counterpart, PLACEHOLDERS[symbol]
+    if symbol in PARTIAL:
+        return "partial", counterpart, PARTIAL[symbol]
+    if exact:
+        return "ported", counterpart, "filename"
+    return "pending", "", "no reviewed Python owner"
+
+
+def generate_rows(repo: Path, matlab_root: Path, python_root: Path):
+    python_sources = source_index(sorted(python_root.rglob("*.py")))
+    validation_paths = sorted((repo / "tests").rglob("*.py"))
+    validation_paths += sorted((repo / "examples" / "validation").rglob("*.py"))
+    validation_paths = [p for p in validation_paths if "parity" not in p.stem]
+    validations = source_index(validation_paths)
+    rows = []
+    for matlab_file in sorted(matlab_root.rglob("*.m")):
+        rel = matlab_file.relative_to(matlab_root)
+        symbol = matlab_file.stem
+        status, counterpart, evidence = classify(
+            matlab_file, matlab_root, repo, python_sources
+        )
+        pattern = token(symbol)
+        validation_files = [p for p, text in validations.items() if pattern.search(text)]
+        rows.append({
+            "mrst_path": str(rel),
+            "symbol": symbol,
+            "subsystem": rel.parts[0] if len(rel.parts) > 1 else "root",
+            "port_status": status,
+            "python_counterpart": counterpart,
+            "port_evidence": evidence,
+            "validation_status": "validated-reference" if validation_files else "unvalidated",
+            "validation_files": relative_list(validation_files, repo),
+            "notes": "",
+        })
+    return rows
+
+
+def write_csv(rows, path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.DictWriter(stream, fieldnames=FIELDS, lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def write_markdown(rows, path):
+    counts = Counter(row["port_status"] for row in rows)
+    validation = Counter(row["validation_status"] for row in rows)
+    incomplete = [r for r in rows if r["port_status"] in {"pending", "partial"}]
+    lines = [
+        "# AD-blackoil parity ledger", "",
+        "Generated by `scripts/audit_ad_blackoil_parity.py` from the local MRST 2024a tree.",
+        "The CSV ledger is authoritative; filename presence does not make a guarded example complete.",
+        "", "## Current scan", "",
+        f"- MRST MATLAB files inventoried: **{len(rows)}**",
+        f"- Ported: **{counts['ported']}**",
+        f"- Partial: **{counts['partial']}**",
+        f"- Pending: **{counts['pending']}**",
+        f"- Catalogs excluded: **{counts['excluded-catalog']}**",
+        f"- Reference-validated entries: **{validation['validated-reference']}**",
+        f"- Unvalidated entries: **{validation['unvalidated']}**",
+        "", "## Incomplete executable entries", "",
+    ]
+    if incomplete:
+        lines += [
+            f"- `{row['mrst_path']}` — **{row['port_status']}**: {row['port_evidence']}"
+            for row in incomplete
+        ]
+    else:
+        lines.append("None.")
+    lines += ["", "See `docs/ad_blackoil/parity.csv` for per-file evidence.", ""]
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def default_mrst_root(repo):
+    return repo.parent / "mrst-2024a-Geomech" / "modules" / "ad-blackoil"
+
+
+def main(argv=None):
+    repo = Path(__file__).resolve().parents[1]
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mrst-root", type=Path, default=default_mrst_root(repo))
+    parser.add_argument("--check", action="store_true")
+    args = parser.parse_args(argv)
+    python_root = repo / "pymrst" / "modules" / "ad_blackoil"
+    rows = generate_rows(repo, args.mrst_root, python_root)
+    csv_path = repo / "docs" / "ad_blackoil" / "parity.csv"
+    md_path = repo / "AD_BLACKOIL_PARITY.md"
+    if args.check:
+        return int(any(r["port_status"] in {"pending", "partial"} for r in rows))
+    write_csv(rows, csv_path)
+    write_markdown(rows, md_path)
+    print(f"Wrote {csv_path.relative_to(repo)} ({len(rows)} rows)")
+    print(f"Wrote {md_path.relative_to(repo)}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -23,6 +23,8 @@ from pymrst.params.rock import Rock, pore_volume
 from pymrst.params.wells_and_bc import Well
 from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
 from pymrst.modules.ad_core.utils.convergence import cnv_mb_convergence
+from pymrst.modules.ad_blackoil.utils.get_b_g_bo import get_b_g_bo
+from pymrst.modules.ad_blackoil.utils.get_b_o_bo import get_b_o_bo
 from pymrst.utils.adi import (
     ad_sum,
     combine_equations,
@@ -72,6 +74,9 @@ class ThreePhaseBlackOilModelAD:
         self.g = g
         self.rock = rock
         self.fluid = fluid
+        self.raw_fluid = fluid
+        self.disgas = True
+        self.vapoil = False
         self.wells = list(wells)
         self.ops = setup_operators_tpfa(g, rock)
         self.pv_ref = pore_volume(g, rock)
@@ -95,7 +100,9 @@ class ThreePhaseBlackOilModelAD:
         sg = x * st3.astype(float)
         so = 1.0 - sw - sg
 
-        b_w, b_o, b_g = f.b_w(p), f.b_o(p, rs, st3), f.b_g(p)
+        b_w = f.b_w(p)
+        b_o = get_b_o_bo(self, p, rs, st3)
+        b_g = get_b_g_bo(self, p)
         mob_w = f.kr_w(sw) / f.mu_w(p)
         mob_o = f.kr_o(sw, so, sg) / f.mu_o(p, rs, st3)
         mob_g = f.kr_g(sg) / f.mu_g(p)
@@ -125,8 +132,8 @@ class ThreePhaseBlackOilModelAD:
         st3_0 = st0.status == 3
         pv0 = self.pv_ref * value(f.pv_mult(p0))
         b_w0 = value(f.b_w(p0))
-        b_o0 = value(f.b_o(p0, rs0, st3_0))
-        b_g0 = value(f.b_g(p0))
+        b_o0 = value(get_b_o_bo(self, p0, rs0, st3_0))
+        b_g0 = value(get_b_g_bo(self, p0))
 
         water = (1.0 / dt) * (pv * b_w * sw - pv0 * b_w0 * s0[:, 0])
         oil = (1.0 / dt) * (pv * b_o * so - pv0 * b_o0 * s0[:, 1])
@@ -292,7 +299,8 @@ class ThreePhaseBlackOilModelAD:
         """
         f = self.fluid
         p = st.pressure
-        b = [f.b_w(p), f.b_o(p, st.rs, st.status == 3), f.b_g(p)]
+        b = [f.b_w(p), get_b_o_bo(self, p, st.rs, st.status == 3),
+             get_b_g_bo(self, p)]
         b_avg = np.array([float(np.mean(1.0 / np.asarray(value(x), float)))
                           for x in b])
         pv = self.pv_ref * np.asarray(value(f.pv_mult(p)), dtype=float)
@@ -422,8 +430,8 @@ if __name__ == "__main__":
 
     def _surface_gas(model, st):
         f = model.fluid
-        b_g = value(f.b_g(st.pressure))
-        b_o = value(f.b_o(st.pressure, st.rs, st.status == 3))
+        b_g = value(get_b_g_bo(model, st.pressure))
+        b_o = value(get_b_o_bo(model, st.pressure, st.rs, st.status == 3))
         pv = model.pv_ref * value(f.pv_mult(st.pressure))
         return np.sum(pv * (b_g * st.s[:, 2] + st.rs * b_o * st.s[:, 1]))
 

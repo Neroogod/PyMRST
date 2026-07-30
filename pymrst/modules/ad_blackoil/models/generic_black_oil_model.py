@@ -49,6 +49,9 @@ from pymrst.modules.ad_blackoil.utils.compute_flash_black_oil import (
 from pymrst.modules.ad_blackoil.utils.get_cell_status_vo import (
     get_cell_status_vo,
 )
+from pymrst.modules.ad_blackoil.utils.calculate_hydrocarbons_from_status_bo import (
+    calculate_hydrocarbons_from_status_bo,
+)
 
 from pymrst.params.gravity_const import NORM_GRAVITY
 from pymrst.params.rock import Rock, pore_volume
@@ -180,7 +183,9 @@ class GenericBlackOilModel(GenericReservoirModel):
         sw = np.asarray(st["sW"], dtype=float)[wc]
         so = np.maximum(1.0 - sw, 0.0)
         bw = np.asarray(value(self.raw_fluid.b_w(p)), dtype=float)
-        bo = np.asarray(value(self.raw_fluid.b_o(p)), dtype=float)
+        from pymrst.modules.ad_blackoil.utils.get_b_o_bo import get_b_o_bo
+
+        bo = np.asarray(value(get_b_o_bo(self, p)), dtype=float)
         mw = np.asarray(value(self.raw_fluid.kr_w(sw)), dtype=float) / self.raw_fluid.mu[0]
         mo = np.asarray(value(self.raw_fluid.kr_o(so)), dtype=float) / self.raw_fluid.mu[1]
         weights = np.column_stack([
@@ -277,21 +282,16 @@ class GenericBlackOilModel(GenericReservoirModel):
                                   *[st[q] for q in q_names], st["bhp"],
                                   *[st[n] for n in ms_names])
         p, sw, x = prim[0], prim[1], prim[2]
-        f1, f2, f3 = (m.astype(float) for m in (st1, st2, st3))
-
-        # Where the oil phase is gone (status 2) *all* the hydrocarbon is gas,
-        # so sG is not a free variable at all - it is 1 - sW. MRST writes this
-        # as `sG = st2*(1-sW) + st3*x`, and the `1-sW` is easy to misread as
-        # `sO`; it is not.
-        sg = f2 * (1.0 - sw) + f3 * x
-        rs_sat = self.raw_fluid.rs_sat(p)
-        rs = x * f1 + rs_sat * (1.0 - f1)
+        sg, rs, rv, _, _ = calculate_hydrocarbons_from_status_bo(
+            self.raw_fluid, (st1, st2, st3), 1.0-sw, x,
+            st["rs"], st.get("rv", np.zeros_like(st["rs"])), p,
+            self.disgas, self.vapoil,
+        )
 
         out = State(pressure=p, sW=sw, sG=sg, rs=rs, status=st["status"],
                     bhp=prim[3 + nph])
         if self.vapoil:
-            rv_sat = self.raw_fluid.rv_sat(p)
-            out["rv"] = x * f2 + rv_sat * (1.0 - f2)
+            out["rv"] = rv
         for i, q in enumerate(q_names):
             out[q] = prim[3 + i]
         for i, name in enumerate(ms_names):
@@ -331,15 +331,17 @@ class GenericBlackOilModel(GenericReservoirModel):
 
         p0, sw0 = st0["pressure"], st0["sW"]
         st1, st2, st3 = self._status_masks(st0["status"])
-        f1, f2, f3 = (m.astype(float) for m in (st1, st2, st3))
-
-        sg0 = f2 * (1.0 - sw0) + f3 * st0["sG"]
-        rs0 = f1 * st0["rs"] + (1.0 - f1) * self.raw_fluid.rs_sat(p0)
+        x0 = np.where(st1, st0["rs"],
+                      np.where(st2, st0.get("rv", 0.0), st0["sG"]))
+        sg0, rs0, rv0, _, _ = calculate_hydrocarbons_from_status_bo(
+            self.raw_fluid, (st1, st2, st3), 1.0-sw0, x0,
+            st0["rs"], st0.get("rv", np.zeros_like(st0["rs"])), p0,
+            self.disgas, self.vapoil,
+        )
         out = State(pressure=p0, sW=sw0, sG=sg0, rs=rs0,
                     status=st0["status"])
         if self.vapoil:
-            out["rv"] = (f2 * st0["rv"]
-                         + (1.0 - f2) * self.raw_fluid.rv_sat(p0))
+            out["rv"] = rv0
         return _carry(out)
 
     # -- equations -----------------------------------------------------------

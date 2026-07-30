@@ -23,6 +23,7 @@ from pymrst.params.rock import Rock, pore_volume
 from pymrst.params.wells_and_bc import Well
 from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
 from pymrst.modules.ad_core.utils.convergence import cnv_mb_convergence
+from pymrst.modules.ad_blackoil.utils.get_b_o_bo import get_b_o_bo
 from pymrst.utils.adi import (
     ADI,
     ad_sum,
@@ -69,6 +70,9 @@ class TwoPhaseOilWaterModelAD:
         self.g = g
         self.rock = rock
         self.fluid = fluid
+        self.raw_fluid = fluid
+        self.disgas = False
+        self.vapoil = False
         self.wells = list(wells)
         self.ops = setup_operators_tpfa(g, rock)
         self.pv = pore_volume(g, rock)
@@ -168,7 +172,7 @@ class TwoPhaseOilWaterModelAD:
         ops = self.ops
         pv = self.pv
 
-        b_w, b_o = f.b_w(p), f.b_o(p)
+        b_w, b_o = f.b_w(p), get_b_o_bo(self, p)
         so = 1.0 - sw
         mob_w = f.kr_w(sw) / f.mu[0]
         mob_o = f.kr_o(so) / f.mu[1]
@@ -177,7 +181,7 @@ class TwoPhaseOilWaterModelAD:
         # *previous* state to get dR/dx0), these must keep their derivatives.
         # In the forward Newton st0 holds plain arrays and nothing changes.
         b_w0 = f.b_w(st0.pressure)
-        b_o0 = f.b_o(st0.pressure)
+        b_o0 = get_b_o_bo(self, st0.pressure)
 
         # Phase fluxes with potential upwinding (no gravity, no pc).
         pot = ops.grad(p)
@@ -214,7 +218,7 @@ class TwoPhaseOilWaterModelAD:
         # thing in every model or two of them stop at different places.
         f, pv = self.fluid, self.pv
         bw = np.mean(1.0 / np.asarray(value(f.b_w(st.pressure)), float))
-        bo = np.mean(1.0 / np.asarray(value(f.b_o(st.pressure)), float))
+        bo = np.mean(1.0 / np.asarray(value(get_b_o_bo(self, st.pressure)), float))
         cnv, mb = cnv_mb_convergence([water, oil], np.array([bw, bo]), pv, dt)
         q_ref = max(max(abs(w.val) for w in self.wells if w.type == "rate"),
                     1e-12) if any(w.type == "rate" for w in self.wells) else 1.0
