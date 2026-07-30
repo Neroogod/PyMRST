@@ -56,6 +56,10 @@ from pymrst.modules.ad_core.examples.linear_solver_example import (
     linear_solver_example,
     linearSolverExample,
 )
+from pymrst.modules.ad_core.examples.mrst_demo import (
+    MRSTDemoResult,
+    mrst_demo,
+)
 
 __all__ = [
     "run_ad_buckley_leverett_1d",
@@ -94,4 +98,6 @@ __all__ = [
     "LinearSolverExampleResult",
     "linear_solver_example",
     "linearSolverExample",
+    "MRSTDemoResult",
+    "mrst_demo",
 ]

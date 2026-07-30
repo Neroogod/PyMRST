@@ -84,11 +84,25 @@ def find_counterparts(
             "deprecated classic well stack; superseded by FacilityModel/SimpleWell",
         )
     if symbol in {"plotRegionContacts", "terniaryWellPlot",
-                  "plotPackedProblem"}:
+                  "plotPackedProblem", "examplePlottingStateFunctionsBook",
+                  "fluidInspectionExample"}:
         return (
             "excluded-visualization",
             [],
             "MATLAB graphics-only helper; no simulation or numerical output",
+        )
+    if symbol in {
+        "backendOptionsExample",
+        "exampleBenchmarkBackends",
+        "blockAssemblyExample",
+        "blockAssemblyBigModelExample",
+        "parallelScalingAD",
+        "showADBenchmarkAssembly",
+    }:
+        return (
+            "excluded-benchmark-driver",
+            [],
+            "MATLAB timing/plot driver; reusable benchmark utility is ported and validated",
         )
     if rel.parts[0] == "plotting":
         return (
@@ -221,6 +235,8 @@ def main() -> int:
         f"**{counts['excluded-external-solver']}**\n"
         f"- Excluded MATLAB-only visualization helpers: "
         f"**{counts['excluded-visualization']}**\n"
+        f"- Excluded MATLAB timing/plot drivers: "
+        f"**{counts['excluded-benchmark-driver']}**\n"
         f"- Pending manual review or implementation: "
         f"**{counts['pending-review']}**\n"
         f"- Files mentioned by reference validators: "
@@ -251,6 +267,8 @@ def main() -> int:
         "- `excluded-external-solver`: wrapper requiring an optional external "
         "binary solver; PyMRST's native CPR/direct solvers remain available.\n"
         "- `excluded-visualization`: MATLAB graphics-only helper.\n"
+        "- `excluded-benchmark-driver`: MATLAB timing/plot orchestration whose "
+        "reusable benchmark kernel is ported and validated.\n"
         "- `pending-review`: no defensible automatic mapping; requires manual "
         "classification or implementation.\n\n"
         "Regenerate with:\n\n"

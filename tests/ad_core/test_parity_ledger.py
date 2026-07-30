@@ -17,6 +17,7 @@ VALID_PORT_STATUSES = {
     "excluded-deprecated",
     "excluded-external-solver",
     "excluded-visualization",
+    "excluded-benchmark-driver",
     "pending-review",
 }
 VALID_VALIDATION_STATUSES = {"validated-reference", "unvalidated"}
