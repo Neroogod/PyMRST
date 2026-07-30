@@ -24,6 +24,13 @@ from pymrst.modules.ad_core.examples.tutorial_state_functions import (
     run_conceptual_ad,
     showConceptualAD,
 )
+from pymrst.modules.ad_core.examples.packed_problem_examples import (
+    PackedDemoResult,
+    demo_packed_problems,
+    demoPackedProblems,
+    ensemble_packed_problems_example,
+    ensemblePackedProblemsExample,
+)
 
 __all__ = [
     "run_ad_buckley_leverett_1d",
@@ -42,4 +49,9 @@ __all__ = [
     "run_conceptual_ad",
     "showConceptualAD",
     "exampleStateFunctionsBook",
+    "PackedDemoResult",
+    "demo_packed_problems",
+    "demoPackedProblems",
+    "ensemble_packed_problems_example",
+    "ensemblePackedProblemsExample",
 ]
