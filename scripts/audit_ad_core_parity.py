@@ -60,6 +60,17 @@ def find_counterparts(
             [],
             "optional opm-data/opm-tests repository and restart-output reader",
         )
+    if symbol in {
+        "WellModel",
+        "computeWellContributionsNew",
+        "setupWellControlEquations",
+        "updateConnectionDP",
+    } and rel.parts[:2] == ("models", "wells"):
+        return (
+            "excluded-deprecated",
+            [],
+            "deprecated classic well stack; superseded by FacilityModel/SimpleWell",
+        )
     if symbol in {"plotRegionContacts", "terniaryWellPlot"}:
         return (
             "excluded-visualization",
@@ -187,6 +198,8 @@ def main() -> int:
         f"**{counts['excluded-platform']}**\n"
         f"- Excluded optional external-data integrations: "
         f"**{counts['excluded-external']}**\n"
+        f"- Excluded deprecated legacy implementations: "
+        f"**{counts['excluded-deprecated']}**\n"
         f"- Excluded MATLAB-only visualization helpers: "
         f"**{counts['excluded-visualization']}**\n"
         f"- Pending manual review or implementation: "
@@ -214,6 +227,8 @@ def main() -> int:
         "fallback must still be ported and validated.\n"
         "- `excluded-external`: optional external repository/data integration, "
         "outside the self-contained numerical core.\n"
+        "- `excluded-deprecated`: MRST explicitly deprecated the implementation; "
+        "its active replacement behavior is provided by the facility layer.\n"
         "- `excluded-visualization`: MATLAB graphics-only helper.\n"
         "- `pending-review`: no defensible automatic mapping; requires manual "
         "classification or implementation.\n\n"
