@@ -34,13 +34,38 @@ def _copy_faces(g, faces: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarra
     return fnodes, nnodes, neigh
 
 
-def make_internal_boundary(g, faces) -> Tuple[object, np.ndarray]:
+def make_internal_boundary(g, faces, *, tag: int = -1,
+                           check: bool = False) -> Tuple[object, np.ndarray]:
     """Cut `g` along `faces`, returning `(grid, N)`.
 
     `N` has one row per input face: the two indices of the boundary faces that
     replaced it, or `NaN` for an input face that was already on the boundary and
     left unchanged.
+
+    ``tag`` is assigned to the two replacement faces when face/half-face tag
+    metadata is present, matching MRST. ``check`` accepts MRST's duplicate
+    diagnostic option; duplicates are always safely consolidated.
     """
+    del check  # NumPy unique below performs the safety check unconditionally.
+    source_grid = g
+    grid_extras = {
+        name: value for name, value in vars(g).items()
+        if name not in {"cells", "faces", "nodes", "griddim", "type",
+                        "cartDims", "edges"}
+    }
+    source_face_tag = (
+        np.asarray(g.faces.tag).copy() if g.faces.tag is not None else None
+    )
+    source_half_tags = None
+    source_half_tag_dtype = None
+    if g.cells.tags is not None:
+        source_half_tag_dtype = np.asarray(g.cells.tags).dtype
+        source_half_tags = {
+            (int(cell), int(face)): value
+            for cell, face, value in zip(
+                g.cell_no(), np.asarray(g.cells.faces), np.asarray(g.cells.tags)
+            )
+        }
     faces_u, iu = np.unique(np.asarray(faces, dtype=np.int64), return_inverse=True)
     neigh = np.asarray(g.faces.neighbors, dtype=np.int64)[faces_u]
     internal = ~np.any(neigh == -1, axis=1)
@@ -59,7 +84,7 @@ def make_internal_boundary(g, faces) -> Tuple[object, np.ndarray]:
     neigh_new[1::2, 0] = -1
     neigh_new[1::2, 1] = neigh_int[:, 1]
 
-    g, _ = remove_faces(g, faces_int)
+    g, face_map = remove_faces(g, faces_int)
 
     # duplicate each face's node list (the two replacements are coincident)
     offs = np.concatenate([[0], np.cumsum(nnodes)])
@@ -78,6 +103,44 @@ def make_internal_boundary(g, faces) -> Tuple[object, np.ndarray]:
     N = N[iu]
 
     g, _ = add_faces(g, fnodes_new, nnodes_new, neigh_new)
+
+    # Preserve metadata that is indexed by faces/half-faces. The low-level
+    # topology helpers intentionally operate on topology alone, whereas MRST's
+    # makeInternalBoundary copies these fields as part of the public operation.
+    retained = np.flatnonzero(face_map >= 0)
+    if source_face_tag is not None or source_half_tags is not None:
+        dtype = source_face_tag.dtype if source_face_tag is not None else np.int64
+        face_tags = np.zeros(g.faces.num, dtype=dtype)
+        if source_face_tag is not None:
+            face_tags[face_map[retained]] = source_face_tag[retained]
+        face_tags[base:] = tag
+        g.faces.tag = face_tags
+    if source_half_tags is not None:
+        inverse = np.full(base, -1, dtype=np.int64)
+        inverse[face_map[retained]] = retained
+        replacement_parent = {
+            int(new_face): int(parent)
+            for parent, pair in zip(faces_int, new_idx)
+            for new_face in pair
+        }
+        tags = []
+        for cell, face in zip(g.cell_no(), np.asarray(g.cells.faces)):
+            parent = inverse[face] if face < base else replacement_parent[int(face)]
+            tags.append(source_half_tags[(int(cell), int(parent))])
+        g.cells.tags = np.asarray(tags, dtype=source_half_tag_dtype)
+    # Cells and nodes are not geometrically changed. Preserve their optional
+    # data and grid-level deck metadata; face geometry is deliberately left
+    # unset because the face set changed and must be recomputed by the caller.
+    for name in ("indexMap", "volumes", "centroids", "nodes", "nodePos",
+                 "edges", "edgePos", "diameters"):
+        value = getattr(source_grid.cells, name, None)
+        if name != "indexMap":
+            setattr(g.cells, name, value.copy() if hasattr(value, "copy") else value)
+    g.cartDims = source_grid.cartDims
+    g.edges = source_grid.edges
+    for name, value in grid_extras.items():
+        setattr(g, name, value)
+    g.type = list(g.type) + ["makeInternalBoundary"]
     return g, N
 
 

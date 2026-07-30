@@ -61,6 +61,24 @@ def main() -> int:
     failed += _check("every cut face returned two replacements",
                      np.all(np.isfinite(N)) and N.shape[0] == cut.size)
 
+    tagged = cart_grid([2, 1, 1], [2.0, 1.0, 1.0])
+    tag_cut = np.flatnonzero(np.all(tagged.faces.neighbors >= 0, axis=1))[:1]
+    tagged, tag_N = make_internal_boundary(tagged, tag_cut, tag=77)
+    replacement = tag_N.astype(np.int64).ravel()
+    failed += _check(
+        "replacement face tags",
+        np.array_equal(tagged.faces.tag[replacement],
+                       ref["replacement_face_tags"].ravel()),
+    )
+    half_tags = np.column_stack([tagged.cells.faces + 1,
+                                 tagged.cells.tags + 1])
+    half_tags = half_tags[np.isin(half_tags[:, 0], replacement + 1)]
+    half_tags = half_tags[np.lexsort((half_tags[:, 1], half_tags[:, 0]))]
+    failed += _check(
+        "directional half-face tags preserved",
+        np.array_equal(half_tags, ref["replacement_half_tags"]),
+    )
+
     print("\nmakeInternalBoundary matches MRST!" if failed == 0
           else f"\n{failed} checks FAILED")
     return 1 if failed else 0

@@ -765,3 +765,8 @@ original face marked as retained when it was split.
 For staged workflows, pass a previous mapping through `gix_input`. The next
 single or multi-cut call composes `old`, `new`, and `parent` arrays back to the
 original grid, matching MRST's `gix_input` behavior.
+
+`make_internal_boundary(..., tag=value)` preserves corner-point directional
+half-face tags and existing retained face tags while applying `value` to both
+replacement boundary faces. Duplicate inputs remain supported and map back to
+the same replacement pair; already-exterior faces retain `NaN` mappings.

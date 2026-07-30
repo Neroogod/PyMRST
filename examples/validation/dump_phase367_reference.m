@@ -32,6 +32,17 @@ cut0 = cut - 1;                   % 0-based, for PyMRST to select the same faces
 save(fullfile(thisDir, 'ref_p367_intbnd.mat'), '-v7', ...
      'faces_num', 'cells_num', 'n_boundary', 'pairs', 'cut0');
 
+% Tagged two-cell case pins replacement face tags and directional half-face
+% tags copied from the original shared face.
+Gt = cartGrid([2, 1, 1], [2, 1, 1]);
+tag_cut = find(all(Gt.faces.neighbors ~= 0, 2), 1);
+[Gt, tag_N] = makeInternalBoundary(Gt, tag_cut, 'tag', 77);
+replacement_face_tags = Gt.faces.tag(tag_N(:));
+replacement_half_tags = sortrows(Gt.cells.faces( ...
+    ismember(Gt.cells.faces(:, 1), tag_N(:)), :));
+save(fullfile(thisDir, 'ref_p367_intbnd.mat'), '-append', ...
+     'replacement_face_tags', 'replacement_half_tags');
+
 fprintf('Wrote ref_p367_intbnd.mat to %s\n', thisDir);
 fprintf('  cut %d internal faces; faces %d -> %d, boundary faces = %d\n', ...
         numel(cut), G.faces.num, faces_num, n_boundary);
