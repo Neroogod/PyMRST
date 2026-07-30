@@ -111,6 +111,16 @@ from pymrst.modules.ad_core.utils.get_simulation_time import (
     get_simulation_time,
     getSimulationTime,
 )
+from pymrst.modules.ad_core.utils.double_to_adi import double_to_adi, double2ADI
+from pymrst.modules.ad_core.utils.get_sample_ad import get_sample_ad, getSampleAD
+from pymrst.modules.ad_core.utils.struct_prop_evaluated import (
+    struct_prop_evaluated,
+    structPropEvaluated,
+)
+from pymrst.modules.ad_core.utils.cross_flow_mixture_density import (
+    cross_flow_mixture_density,
+    crossFlowMixtureDensity,
+)
 
 __all__ = [
     "Operators",
@@ -184,4 +194,12 @@ __all__ = [
     "addPropertyDependence",
     "get_simulation_time",
     "getSimulationTime",
+    "double_to_adi",
+    "double2ADI",
+    "get_sample_ad",
+    "getSampleAD",
+    "struct_prop_evaluated",
+    "structPropEvaluated",
+    "cross_flow_mixture_density",
+    "crossFlowMixtureDensity",
 ]
