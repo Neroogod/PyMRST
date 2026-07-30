@@ -21,6 +21,10 @@ from pymrst.modules.ad_core.solvers.get_non_linear_solver import (
     get_non_linear_solver,
     getNonLinearSolver,
 )
+from pymrst.modules.ad_core.solvers.handle_linear_solver_ad import (
+    HandleLinearSolverAD,
+)
+from pymrst.modules.ad_core.solvers.cpr_solver_ad import CPRSolverAD
 
 __all__ = [
     "BackslashSolverAD",
@@ -35,5 +39,7 @@ __all__ = [
     "NoOpSolverAD",
     "get_non_linear_solver",
     "getNonLinearSolver",
+    "HandleLinearSolverAD",
+    "CPRSolverAD",
     "select_linear_solver",
 ]

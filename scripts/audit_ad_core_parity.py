@@ -61,6 +61,18 @@ def find_counterparts(
             "optional opm-data/opm-tests repository and restart-output reader",
         )
     if symbol in {
+        "AGMGSolverAD",
+        "AMGCLSolverAD",
+        "AMGCLSolverBlockAD",
+        "AMGCL_CPRSolverAD",
+        "AMGCL_CPRSolverBlockAD",
+    } and rel.parts[0] == "solvers":
+        return (
+            "excluded-external-solver",
+            [],
+            "wrapper for optional external AGMG/AMGCL binary backend",
+        )
+    if symbol in {
         "WellModel",
         "computeWellContributionsNew",
         "setupWellControlEquations",
@@ -201,6 +213,8 @@ def main() -> int:
         f"**{counts['excluded-external']}**\n"
         f"- Excluded deprecated legacy implementations: "
         f"**{counts['excluded-deprecated']}**\n"
+        f"- Excluded optional external solver wrappers: "
+        f"**{counts['excluded-external-solver']}**\n"
         f"- Excluded MATLAB-only visualization helpers: "
         f"**{counts['excluded-visualization']}**\n"
         f"- Pending manual review or implementation: "
@@ -230,6 +244,8 @@ def main() -> int:
         "outside the self-contained numerical core.\n"
         "- `excluded-deprecated`: MRST explicitly deprecated the implementation; "
         "its active replacement behavior is provided by the facility layer.\n"
+        "- `excluded-external-solver`: wrapper requiring an optional external "
+        "binary solver; PyMRST's native CPR/direct solvers remain available.\n"
         "- `excluded-visualization`: MATLAB graphics-only helper.\n"
         "- `pending-review`: no defensible automatic mapping; requires manual "
         "classification or implementation.\n\n"

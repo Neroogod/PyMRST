@@ -15,6 +15,7 @@ VALID_PORT_STATUSES = {
     "excluded-platform",
     "excluded-external",
     "excluded-deprecated",
+    "excluded-external-solver",
     "excluded-visualization",
     "pending-review",
 }
