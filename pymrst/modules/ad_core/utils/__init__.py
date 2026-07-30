@@ -179,6 +179,11 @@ from pymrst.modules.ad_core.utils.set_mpfa_discretization import (
     setMPFADiscretization,
 )
 from pymrst.modules.ad_core.utils.obj2hash import obj2hash
+from pymrst.modules.ad_core.utils.read_summary_local import (
+    Summary,
+    read_summary_local,
+    readSummaryLocal,
+)
 
 __all__ = [
     "Operators",
@@ -294,4 +299,7 @@ __all__ = [
     "set_mpfa_discretization",
     "setMPFADiscretization",
     "obj2hash",
+    "Summary",
+    "read_summary_local",
+    "readSummaryLocal",
 ]

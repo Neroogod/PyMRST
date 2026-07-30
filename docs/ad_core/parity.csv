@@ -324,7 +324,7 @@ utils/phaseDensitiesTobfactor.m,phaseDensitiesTobfactor,utils,ported-consolidate
 utils/pressureBCContrib.m,pressureBCContrib,utils,ported,pymrst/modules/ad_core/utils/pressure_bc_contrib.py,filename,validated-reference,examples/validation/validate_ad_core_pressure_bc_equations.py,
 utils/pressureBCContribADI.m,pressureBCContribADI,utils,ported-consolidated,pymrst/modules/ad_core/utils/__init__.py; pymrst/modules/ad_core/utils/pressure_bc_contrib.py,symbol-reference,validated-reference,examples/validation/validate_ad_core_pressure_bc_equations.py,
 utils/printConvergenceReport.m,printConvergenceReport,utils,ported-consolidated,pymrst/modules/ad_core/utils/convergence.py,symbol-reference,unvalidated,,
-utils/readSummaryLocal.m,readSummaryLocal,utils,pending-review,,,unvalidated,,
+utils/readSummaryLocal.m,readSummaryLocal,utils,ported,pymrst/modules/ad_core/utils/read_summary_local.py,filename,validated-reference,examples/validation/validate_phase431.py,
 utils/recoverVars.m,recoverVars,utils,ported,pymrst/modules/ad_core/utils/recover_vars.py,filename,validated-reference,examples/validation/validate_ad_core_well_vector_utilities.py,
 utils/refineSchedule.m,refineSchedule,utils,ported-consolidated,pymrst/modules/ad_core/utils/schedule.py,symbol-reference,unvalidated,,
 utils/reorderForILU.m,reorderForILU,utils,ported,pymrst/modules/ad_core/utils/reorder_for_ilu.py,filename,validated-reference,examples/validation/validate_ad_core_multipliers_report_ilu.py,
