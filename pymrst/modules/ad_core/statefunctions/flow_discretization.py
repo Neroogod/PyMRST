@@ -93,8 +93,9 @@ class PhaseUpwindFlag(StateFunction):
 class FaceMobility(StateFunction):
     """Upwinded phase mobility on each face."""
 
-    def __init__(self, model=None):
+    def __init__(self, model=None, upstream=None):
         super().__init__(model, label="\\lambda_\\alpha^f")
+        self.upstream = upstream
         self.depends_on("PhaseUpwindFlag")
         self.depends_on("Mobility", "FlowPropertyFunctions")
 
@@ -102,8 +103,13 @@ class FaceMobility(StateFunction):
         flag = self.get_evaluated(state, "PhaseUpwindFlag")
         mob = self.get_evaluated_external(model, state,
                                           "FlowPropertyFunctions", "Mobility")
-        upw = model.operators.upw
-        return [upw(flag[i], mob[i]) for i in range(len(mob))]
+        if self.upstream is None:
+            upw = model.operators.upw
+            return [upw(flag[i], mob[i]) for i in range(len(mob))]
+        return [
+            self.upstream.face_upstream(model, state, flag[i], mob[i])
+            for i in range(len(mob))
+        ]
 
 
 class PhaseFlux(StateFunction):

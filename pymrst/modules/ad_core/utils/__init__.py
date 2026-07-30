@@ -191,6 +191,10 @@ from pymrst.modules.ad_core.utils.convert_multi_segment_wells_deck import (
     convert_multi_segment_wells_deck,
     convertMultiSegmentWellsDeck,
 )
+from pymrst.modules.ad_core.utils.set_weno_discretization import (
+    set_weno_discretization,
+    setWENODiscretization,
+)
 
 __all__ = [
     "Operators",
@@ -201,6 +205,8 @@ __all__ = [
     "computeSourcesAndBoundaryConditionsAD",
     "setup_operators_tpfa",
     "source_reservoir_fluxes",
+    "set_weno_discretization",
+    "setWENODiscretization",
     "cnv_mb_convergence",
     "cnv_mb_values",
     "formation_volume_factor_avg",

@@ -26,6 +26,10 @@ from pymrst.modules.ad_core.utils.boundary_conditions import (
     computeSourcesAndBoundaryConditionsAD,
     source_reservoir_fluxes,
 )
+from pymrst.modules.ad_core.utils.set_weno_discretization import (
+    set_weno_discretization,
+    setWENODiscretization,
+)
 from pymrst.modules.ad_core.backends import (
     AutoDiffBackend,
     DiagonalAutoDiffBackend,
@@ -117,6 +121,7 @@ __all__ = [
     "ForceContributions", "add_bc_and_sources", "boundary_reservoir_fluxes",
     "compute_sources_and_boundary_conditions_ad",
     "computeSourcesAndBoundaryConditionsAD", "source_reservoir_fluxes",
+    "set_weno_discretization", "setWENODiscretization",
     "EquilibriumRegion", "init_state_equil",
     "init_eclipse_problem_ad", "initEclipseProblemAD",
     "initialize_equilibrium_pressures", "initialize_equilibrium_saturations",
