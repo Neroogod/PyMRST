@@ -102,6 +102,15 @@ from pymrst.modules.ad_core.utils.get_report_ministeps import (
     get_report_ministeps,
     getReportMinisteps,
 )
+from pymrst.modules.ad_core.utils.assign_value import assign_value, assignValue
+from pymrst.modules.ad_core.utils.add_property_dependence import (
+    add_property_dependence,
+    addPropertyDependence,
+)
+from pymrst.modules.ad_core.utils.get_simulation_time import (
+    get_simulation_time,
+    getSimulationTime,
+)
 
 __all__ = [
     "Operators",
@@ -169,4 +178,10 @@ __all__ = [
     "convertIncompWellSols",
     "get_report_ministeps",
     "getReportMinisteps",
+    "assign_value",
+    "assignValue",
+    "add_property_dependence",
+    "addPropertyDependence",
+    "get_simulation_time",
+    "getSimulationTime",
 ]
