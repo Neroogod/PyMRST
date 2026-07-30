@@ -350,9 +350,26 @@ def _find_faults(pre: _PreGrid, P, B, actnum_f, tags):
 
 def process_grdecl(grdecl: Dict, tolerance: float = 0.0,
                    check_grid: bool = True,
-                   preserve_cp_nodes: bool = False) -> Grid:
-    """Build an unstructured Grid from SPECGRID/COORD/ZCORN(/ACTNUM)."""
+                   preserve_cp_nodes: bool = False,
+                   repair_zcorn: bool = False,
+                   split_disconnected: bool = True,
+                   verbose: bool = False):
+    """Build an unstructured grid from SPECGRID/COORD/ZCORN(/ACTNUM).
+
+    The behavioral options mirror MRST ``processGRDECL``. By default,
+    disconnected grids are returned as a list of components; a connected grid
+    remains a single :class:`Grid`.
+    """
     grdecl = dict(grdecl)
+    if tolerance < 0:
+        raise ValueError("tolerance must be non-negative")
+    if repair_zcorn:
+        from pymrst.gridprocessing.check_and_repair_zcorn import (
+            check_and_repair_zcorn,
+        )
+        grdecl["ZCORN"] = check_and_repair_zcorn(
+            grdecl["ZCORN"], grdecl["cartDims"], active=grdecl.get("ACTNUM"),
+        )
     nx, ny, nz = grdecl["cartDims"]
     if tolerance > 0:
         grdecl["ZCORN"] = tolerance * np.round(
@@ -544,6 +561,17 @@ def process_grdecl(grdecl: Dict, tolerance: float = 0.0,
         assert np.all(np.diff(g.faces.nodePos) > 2), "face with < 3 nodes"
         assert not np.any(np.isinf(g.nodes.coords)), "inf node coordinates"
         g.check()
+    if "PINCH" in grdecl:
+        from pymrst.gridprocessing.process_pinch import process_pinch
+        nnc = process_pinch(grdecl, g)
+        if nnc is not None:
+            g.nnc = nnc
+    if split_disconnected:
+        from pymrst.gridprocessing.split_disconnected_grid import (
+            split_disconnected_grid,
+        )
+        components = split_disconnected_grid(g, verbose=verbose)
+        return components[0] if len(components) == 1 else components
     return g
 
 

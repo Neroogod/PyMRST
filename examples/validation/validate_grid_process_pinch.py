@@ -1,6 +1,7 @@
 """Validate processPINCH against MATLAB/MRST."""
 
 from pathlib import Path
+from copy import deepcopy
 
 import numpy as np
 from scipy.io import loadmat
@@ -46,6 +47,9 @@ def main() -> int:
     ref = loadmat(path, squeeze_me=True)
     grdecl = _grdecl()
     grid = process_grdecl(grdecl)
+    without_pinch = deepcopy(grdecl)
+    del without_pinch["PINCH"]
+    split = process_grdecl(without_pinch)
     top = process_pinch(grdecl, grid)
     grdecl["PINCH"][4] = "ALL"
     all_layers = process_pinch(grdecl, grid)
@@ -62,6 +66,19 @@ def main() -> int:
         "threshold exclusion": (
             np.array(excluded is None),
             np.array(ref["excluded_is_empty"]).astype(bool),
+        ),
+        "processed component count": (
+            np.array(1), ref["processed_component_count"],
+        ),
+        "attached NNC cells": (grid.nnc["cells"] + 1, ref["attached_cells"]),
+        "attached NNC faces": (grid.nnc["faces"] + 1, ref["attached_faces"]),
+        "attached NNC multipliers": (grid.nnc["mult"], ref["attached_mult"]),
+        "split component count": (
+            np.array(len(split)), ref["split_component_count"],
+        ),
+        "split component sizes": (
+            np.array([part.cells.num for part in split]),
+            ref["split_component_sizes"],
         ),
     }
     failed = False

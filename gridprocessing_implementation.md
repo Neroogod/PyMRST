@@ -790,3 +790,9 @@ renumbered consistently.
 dictionary- and structure-style NNCs in its adjacency graph. Unlike MRST 2024a,
 which drops `nnc` while extracting components, PyMRST retains only each
 component's local connections and renumbers them with the subgrid.
+
+The primary `process_grdecl` entry point follows MRST's option flow: it can
+repair ZCORN, round by tolerance, attach PINCH-generated NNCs, validate the
+grid, and split disconnected components by default. Set
+`split_disconnected=False` for a single grid. The OMO compatibility entry point
+retains its locally documented modified default of `False`.

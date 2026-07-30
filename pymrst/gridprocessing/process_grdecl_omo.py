@@ -53,6 +53,7 @@ def process_grdecl_omo(
         tolerance=0.0,
         check_grid=check_grid,
         preserve_cp_nodes=preserve_cp_nodes,
+        split_disconnected=False,
     )
     if "PINCH" in data and "ACTNUM" in data:
         nnc = process_pinch(data, grid)

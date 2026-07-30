@@ -31,7 +31,7 @@ def _regular_grdecl(nx=2, ny=2, nz=3):
 
 def test_process_pinch_connects_across_inactive_middle_layer():
     grdecl = _regular_grdecl()
-    grid = process_grdecl(grdecl)
+    grid = process_grdecl(grdecl, split_disconnected=False)
     nnc = process_pinch(grdecl, grid)
     assert nnc["cells"].tolist() == [[0, 4], [1, 5], [2, 6], [3, 7]]
     assert np.all(nnc["faces"][:, 0] != nnc["faces"][:, 1])
@@ -41,17 +41,23 @@ def test_process_pinch_connects_across_inactive_middle_layer():
 def test_all_multiplier_takes_minimum_over_gap():
     grdecl = _regular_grdecl()
     grdecl["PINCH"][4] = "ALL"
-    nnc = process_pinch(grdecl, process_grdecl(grdecl))
+    nnc = process_pinch(
+        grdecl, process_grdecl(grdecl, split_disconnected=False)
+    )
     assert np.allclose(nnc["mult"], [0.3, 0.4, 0.2, 0.1])
 
 
 def test_threshold_excludes_thick_gap():
     grdecl = _regular_grdecl()
     grdecl["PINCH"][0] = 4.99
-    assert process_pinch(grdecl, process_grdecl(grdecl)) is None
+    assert process_pinch(
+        grdecl, process_grdecl(grdecl, split_disconnected=False)
+    ) is None
 
 
 def test_no_inactive_cells_returns_none():
     grdecl = _regular_grdecl()
     grdecl["ACTNUM"][:] = 1
-    assert process_pinch(grdecl, process_grdecl(grdecl)) is None
+    assert process_pinch(
+        grdecl, process_grdecl(grdecl, split_disconnected=False)
+    ) is None
