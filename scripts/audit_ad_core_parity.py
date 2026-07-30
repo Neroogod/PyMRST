@@ -90,6 +90,12 @@ def find_counterparts(
             [],
             "MATLAB graphics-only helper; no simulation or numerical output",
         )
+    if rel.parts[0] == "plotting":
+        return (
+            "excluded-visualization",
+            [],
+            "MATLAB figure/UI helper; no simulation or numerical output",
+        )
 
     exact = [
         path for path in python_sources
@@ -103,8 +109,6 @@ def find_counterparts(
     if mentions:
         return "ported-consolidated", mentions, "symbol-reference"
 
-    if rel.parts[0] == "plotting":
-        return "pending-review", [], "plotting/API decision required"
     return "pending-review", [], ""
 
 
