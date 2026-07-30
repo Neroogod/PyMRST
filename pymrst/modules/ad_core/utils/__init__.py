@@ -174,6 +174,10 @@ from pymrst.modules.ad_core.utils.set_time_discretization import (
     set_time_discretization,
     setTimeDiscretization,
 )
+from pymrst.modules.ad_core.utils.set_mpfa_discretization import (
+    set_mpfa_discretization,
+    setMPFADiscretization,
+)
 
 __all__ = [
     "Operators",
@@ -286,4 +290,6 @@ __all__ = [
     "getEquilPC",
     "set_time_discretization",
     "setTimeDiscretization",
+    "set_mpfa_discretization",
+    "setMPFADiscretization",
 ]

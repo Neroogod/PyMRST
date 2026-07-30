@@ -31,13 +31,14 @@ class PressureGradient(StateFunction):
 
     def __init__(self, model=None):
         super().__init__(model, label="\\nabla p_\\alpha")
+        self.Grad = model.operators.grad if model is not None else None
         self.depends_on("pressure", STATE)
         self.has_pc = model is not None and model.fluid.has_pc
         if self.has_pc:
             self.depends_on("PhasePressures", "PVTPropertyFunctions")
 
     def evaluate_on_domain(self, model, state):
-        grad = model.operators.grad
+        grad = self.Grad if self.Grad is not None else model.operators.grad
         if not self.has_pc:
             return [grad(state["pressure"])] * model.n_phases
         p_phase = self.get_evaluated_external(
@@ -50,12 +51,18 @@ class GravityPotentialDifference(StateFunction):
 
     def __init__(self, model=None):
         super().__init__(model, label="\\rho g \\Delta z")
+        self.weight = None
         self.depends_on("Density", "PVTPropertyFunctions")
 
     def evaluate_on_domain(self, model, state):
         rho = self.get_evaluated_external(model, state,
                                           "PVTPropertyFunctions", "Density")
-        return [model.operators.avg(r) * model.gdz for r in rho]
+        out = [model.operators.avg(r) * model.gdz for r in rho]
+        if self.weight is not None:
+            from pymrst.utils.adi import ad_matmul
+
+            out = [ad_matmul(self.weight, value) for value in out]
+        return out
 
 
 class PhasePotentialDifference(StateFunction):

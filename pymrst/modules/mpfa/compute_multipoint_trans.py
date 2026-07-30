@@ -218,7 +218,7 @@ def compute_multipoint_trans(
 
     return {"cf_trans": cf_trans, "e_div": e_div, "cf_trans_g": cf_trans_g,
             "d1": d1, "R": R_vec, "cno": cno, "counts": counts, "sb": sb,
-            "neighbors": neigh}
+            "neighbors": neigh, "_iDoBDo": iDoBDo}
 
 
 if __name__ == "__main__":
