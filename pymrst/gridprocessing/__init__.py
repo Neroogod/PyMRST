@@ -68,6 +68,11 @@ from pymrst.gridprocessing.process_faults import (
 )
 from pymrst.gridprocessing.mark_cut_grids import mark_cut_grids, markCutGrids
 from pymrst.gridprocessing.process_pinch import process_pinch, processPINCH
+from pymrst.gridprocessing.refine_deck import refine_deck, refineDeck
+from pymrst.gridprocessing.process_grdecl_omo import (
+    process_grdecl_omo,
+    processGRDECLOMO,
+)
 
 __all__ = [
     "Grid", "Cells", "Faces", "Nodes",
@@ -89,6 +94,8 @@ __all__ = [
     "remove_fault_boundary_faces", "removeFaultBdryFaces",
     "mark_cut_grids", "markCutGrids",
     "process_pinch", "processPINCH",
+    "refine_deck", "refineDeck",
+    "process_grdecl_omo", "processGRDECLOMO",
     "load_mrst_grid_mat", "mrst_grid_struct_to_grid",
     "WEST", "EAST", "SOUTH", "NORTH", "TOP", "BOTTOM",
 ]
