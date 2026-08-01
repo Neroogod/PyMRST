@@ -109,10 +109,10 @@ map straight onto the Python code:
 
 ## Roadmap
 
-Phases 0-23 below are what has been **built**. `GAPS.md` records what has not,
-and `ROADMAP.md` plans the remaining phases (24-42) - the state-function graph,
-geomechanics, the discretization shelf, EOR, multiscale solvers - in dependency
-order, with the validation each one needs.
+Phases 0–434 below are what has been **built** (struck through when validated).
+`GAPS.md` records what has not, and `ROADMAP.md` tracks remaining module-level
+gaps - mesh generators, multiscale solvers, EOR, and full TEDFM/CMG workflows -
+in dependency order, with the validation each one needs.
 
 1. ~~Phase 0 — package scaffolding, units system~~
 2. ~~Phase 1 — grid kernel: `cart_grid`, `tensor_grid`, `compute_geometry`
@@ -133,7 +133,7 @@ order, with the validation each one needs.
 7. ~~Phase 6 — corner-point grids: `process_grdecl` with fault-face
    subdivision, ACTNUM, and pinch-outs; GRDECL reader (SPE1, faulted
    synthetic, and the full Johansen NPD5 field match MATLAB bit-exactly)~~
-8. Phase 7 — research modules:
+8. ~~Phase 7 — research modules:~~
    ~~7a geomechanics: vemmech VEM linear elasticity, including the 2D
    plane-strain operator path (`validate_phase61.py` matches MATLAB's
    `calculateQF`, `VEM2D_div`, `Enu2C`, and `VEM_assemble`), VEM stress
@@ -1296,12 +1296,393 @@ order, with the validation each one needs.
     EOS/partial-volume-weight mismatch seen in Phase 59, amplified through the
     pressure-only solve.~~
 
-There is also a first self-tested no-water/no-well `transport_step()` using
-MRST's temporary `sT` primary. It is not counted as MATLAB parity yet; the
-direct MRST transport reference still needs a reliable harness.
+### Phases 61–434 (completed and validated)
 
-**Still missing for full compositional parity:** MATLAB-validated transport for
-water/well cases and the full sequential pressure/transport wrapper.
+One line per MATLAB-backed validator under `examples/validation/`. Detail for
+vemmech / TEDFM kernels 61–108 also lives under Phase 7 above; the checklist
+here crosses out the full finished sequence through the current tip.
+
+61. ~~Phase 61 — 2D VEM operators, validated against MATLAB MRST~~
+62. ~~Phase 62 — MRST run2DCase oil-water fully coupled branch~~
+63. ~~Phase 63 — MRST run2DCase water fully coupled branch~~
+64. ~~Phase 64 — MRST run2DCase water fixed-stress branch~~
+65. ~~Phase 65 — MRST run2DCase oil-water fixed-stress branch~~
+66. ~~Phase 66 — MRST run2DCase black-oil fully coupled branch~~
+67. ~~Phase 67 — MRST run2DCase black-oil fixed-stress branch~~
+68. ~~Phase 68 — VEM stress utilities against MATLAB MRST~~
+69. ~~Phase 69 — TEDFM VEM wrappers, validated against MATLAB MRST~~
+70. ~~Phase 70 — VEM_linElastTEDFM solve wrapper vs MATLAB MRST~~
+71. ~~Phase 71 — vemmech grid utilities vs MATLAB MRST~~
+72. ~~Phase 72 — vemmech deformed plotting geometry vs MATLAB MRST~~
+73. ~~Phase 73 — vemmech AD tensor utilities vs MATLAB MRST~~
+74. ~~Phase 74 — vemmech calibration helpers vs MATLAB MRST~~
+75. ~~Phase 75 — vemmech calibration BC helper vs MATLAB MRST~~
+76. ~~Phase 76 — vemmech calibration calculate_stress vs MATLAB MRST~~
+77. ~~Phase 77 — vemmech calibration Gaussian objective vs MATLAB MRST~~
+78. ~~Phase 78 — numeric VEM_assemble_AD / VEM_linElast_AD path~~
+79. ~~Phase 79 — material AD derivatives for VEM ``Ax_derivs``~~
+80. ~~Phase 80 — natural-variable compositional model vs MATLAB MRST~~
+81. ~~Phase 81 — water/oil/gas natural variables vs MATLAB MRST~~
+82. ~~Phase 82 — compositional boundary-condition schedule vs MATLAB MRST~~
+83. ~~Phase 83 — natural-variable compositional boundary-condition schedule vs MATLAB MRST~~
+84. ~~Phase 84 — calibration adjoint uses AD material ``Ax_derivs`` columns~~
+85. ~~Phase 85 — calibration boundary-condition derivative columns~~
+86. ~~Phase 86 — calibration load/density derivative columns~~
+87. ~~Phase 87 — calibration objective displacement partials~~
+88. ~~Phase 88 — calibration objective control partials~~
+89. ~~Phase 89 — calibration stress-observation derivative bridge~~
+90. ~~Phase 90 — calibration eliminated-objective ADI2 Hessian output~~
+91. ~~Phase 91 — calibration workflow driver~~
+92. ~~Phase 92 — MRST-style SR1 trust-region optimizer for calibration~~
+93. ~~Phase 93 — calibration SR1 backup/resume and progress hooks~~
+94. ~~Phase 94 — ADI coefficient propagation in vemmech sparse tensors~~
+95. ~~Phase 95 — lazy tensor graph and exact second-order AD substrate~~
+96. ~~Phase 96 — calibration Hessians with material controls~~
+97. ~~Phase 97 — Validate MATLAB-style vemmech plotting handles~~
+98. ~~Phase 98 — Validate VEM mechanics on non-Cartesian polygonal/polyhedral grids~~
+99. ~~Phase 99 — Validate EDFM-to-TEDFM mechanics workflow coupling~~
+100. ~~Phase 100 — Validate small-strain von Mises plasticity helpers~~
+101. ~~Phase 101 — Validate MPSA-W style cell-centered stress recovery~~
+102. ~~Phase 102 — Validate global elastoplastic VEM Newton coupling~~
+103. ~~Phase 103 — Validate 3D EDFM projection and fracture propagation workflows~~
+104. ~~Phase 104 — Validate 3D global elastoplastic VEM coupling~~
+105. ~~Phase 105 — Validate MPSA-W interaction-region assembly surface~~
+106. ~~Phase 106 — Validate HFM v2/DFM/shale compatibility and toughness propagation~~
+107. ~~Phase 107 — Validate PyMRST 3D planar EDFM against an MRST HFM reference dump~~
+108. ~~Phase 108 — standalone vemmech LinearCompressibilityModel~~
+109. ~~Phase 109 — schedule-level multisegment well packing~~
+110. ~~Phase 110 — SPE1 black-oil to compositional deck conversion vs MATLAB MRST~~
+111. ~~Phase 111 — SPE1 ``convertRSRVtoKValue`` tables vs MATLAB MRST~~
+112. ~~Phase 112 — K-value EOS backend inside native compositional flow equations~~
+113. ~~Phase 113 — native SPE1 K-value compositional schedule solve~~
+114. ~~Phase 114 — native SPE1 K-value compositional solve vs MATLAB MRST~~
+115. ~~Phase 115 — compositional boundary-condition schedule vs MATLAB MRST~~
+116. ~~Phase 116 — EOS separator tree vs MATLAB MRST~~
+117. ~~Phase 117 — compositional performance benchmark structure vs MATLAB MRST~~
+118. ~~Phase 118 — compositional boundary-condition setup vs MATLAB MRST~~
+119. ~~Phase 119 — BasicSeparator mass mode vs MATLAB MRST~~
+120. ~~Phase 120 — MRST well-control fallback equations vs PyMRST~~
+121. ~~Phase 121 — compositional sequential transport step vs MATLAB~~
+122. ~~Phase 122 — water compositional sequential transport step vs MATLAB~~
+123. ~~Phase 123 — sequential no-water transport with wells vs MATLAB~~
+124. ~~Phase 124 — water sequential transport with wells vs MATLAB~~
+125. ~~Phase 125 — sequential compositional schedules with changing controls~~
+126. ~~Phase 126 — compositional facility group allocation modes~~
+127. ~~Phase 127 — schedule-level compositional facility control blocks~~
+128. ~~Phase 128 — mixed schedule facility controls clear stale blocks~~
+129. ~~Phase 129 — MRST-shaped separator example packed problems~~
+130. ~~Phase 130 — MRST-shaped VLE introduction example sections~~
+131. ~~Phase 131 — exact single-cell natural/overall example setup~~
+132. ~~Phase 132 — MRST-shaped 3D six-component example port~~
+133. ~~Phase 133 — compositionalValidationSimple packed-output parity~~
+134. ~~Phase 134 — larger compositional tutorial timing-table parity~~
+135. ~~Phase 135 — compositional accuracy example plotting-data parity~~
+136. ~~Phase 136 — compositional miscibility example section-data parity~~
+137. ~~Phase 137 — runCompositionalSPE1 plotting-data parity~~
+138. ~~Phase 138 — hierarchical compositional facility group controls~~
+139. ~~Phase 139 — deck-imported compositional facility group trees~~
+140. ~~Phase 140 — MRST-style compositional schedule report metadata~~
+141. ~~Phase 141 — deck-imported compositional well controls~~
+142. ~~Phase 142 — deck-imported compositional group economics metadata~~
+143. ~~Phase 143 — MRST well-control keyword aliases for compositional decks~~
+144. ~~Phase 144 — MRST deck controls become native compositional schedules~~
+145. ~~Phase 145 — conservative enforcement of imported GECON economics~~
+146. ~~Phase 146 — GRUPNET guide rates feed native group allocation~~
+147. ~~Phase 147 — MRST-like compositional boundary-control schedules~~
+148. ~~Phase 148 — MRST-like compositional source-control schedules~~
+149. ~~Phase 149 — mixed MRST-like boundary/source forcing controls~~
+150. ~~Phase 150 — exact compositional example catalog parity~~
+151. ~~Phase 151 — compositional facility switch diagnostics in reports~~
+152. ~~Phase 152 — WGRUPCON status and metadata parity~~
+153. ~~Phase 153 — GECON end-run request reporting~~
+154. ~~Phase 154 — WGRUPCON fifth-column guide multiplier parity~~
+155. ~~Phase 155 — MRST-style composition aliases for forcing controls~~
+156. ~~Phase 156 — MRST-style table boundary records for forcing controls~~
+157. ~~Phase 157 — GCONPROD/GCONINJE metadata preservation~~
+158. ~~Phase 158 — GCONPROD positional guide rate is not a total-rate limit~~
+159. ~~Phase 159 — GCONINJE duplicate replacement parity~~
+160. ~~Phase 160 — GCONPROD/GCONINJE mapping raw-row order parity~~
+161. ~~Phase 161 — GECON/GRUPNET/WGRUPCON mapping raw-row order parity~~
+162. ~~Phase 162 — GECON/GRUPNET duplicate replacement parity~~
+163. ~~Phase 163 — MRST-style well-control keyword table replacement~~
+164. ~~Phase 164 — MRST-style whole-well WELOPEN status updates~~
+165. ~~Phase 165 — MRST-style completion status (`cstatus`) support~~
+166. ~~Phase 166 — grid-aware positive-I/J/K WELOPEN completion matching~~
+167. ~~Phase 167 — schedule conversion forwards grid-aware WELOPEN matching~~
+168. ~~Phase 168 — MRST COMPDAT/WELSPECS well geometry import~~
+169. ~~Phase 169 — deck schedule conversion can import COMPDAT wells~~
+170. ~~Phase 170 — COMPDAT KH and completion metadata parity~~
+171. ~~Phase 171 — COMPDAT/WELOPEN completion status text parity~~
+172. ~~Phase 172 — MRST default COMPDAT insertion for WELSPECS-only wells~~
+173. ~~Phase 173 — MRST last-record-wins overlap handling for COMPDAT~~
+174. ~~Phase 174 — MRST default WCON producer/injector BHP targets~~
+175. ~~Phase 175 — MRST legacy WCONINJ column layout parity~~
+176. ~~Phase 176 — MRST WCONHIST BHP column layout parity~~
+177. ~~Phase 177 — MRST WCONHIST historical LRAT target parity~~
+178. ~~Phase 178 — MRST WCONINJH historical rate-control parity~~
+179. ~~Phase 179 — MRST WCONHIST RESV_HISTORY target parity~~
+180. ~~Phase 180 — MRST WCONHIST historical phase-composition parity~~
+181. ~~Phase 181 — MRST WCONPROD phase-composition parity~~
+182. ~~Phase 182 — MRST WCON VFP-index metadata parity~~
+183. ~~Phase 183 — VFP-index binding and compositional THP/VFP control parity~~
+184. ~~Phase 184 — deck VFP table conversion and schedule binding parity~~
+185. ~~Phase 185 — MRST-style selectFacilityFromDeck VFP table parity~~
+186. ~~Phase 186 — MRST-style separator intermediate stream diagnostics~~
+187. ~~Phase 187 — separator example exposes MRST-style stream diagnostics~~
+188. ~~Phase 188 — full MRST-like schedule mapping conversion~~
+189. ~~Phase 189 — GCONPROD shut-style exceed actions~~
+190. ~~Phase 190 — GCONINJE injection-limit diagnostics~~
+191. ~~Phase 191 — GCONPROD redistribution diagnostics~~
+192. ~~Phase 192 — MATLAB-struct-like compositional schedule conversion~~
+193. ~~Phase 193 — MATLAB-struct-like compositional facility deck conversion~~
+194. ~~Phase 194 — MRST GECON runtime diagnostic context~~
+195. ~~Phase 195 — GRUPNET allocation provenance reaches runtime diagnostics~~
+196. ~~Phase 196 — GCONPROD NRAT imports as a native group limit~~
+197. ~~Phase 197 — GCONPROD RESV imports as a native group VRAT limit~~
+198. ~~Phase 198 — GCONPROD late-column context is named and reported~~
+199. ~~Phase 199 — GCONINJE late-column context reaches diagnostics~~
+200. ~~Phase 200 — WGRUPCON allocation provenance reaches diagnostics~~
+201. ~~Phase 201 — native group-allocation diagnostics~~
+202. ~~Phase 202 — schedule facility-block change diagnostics~~
+203. ~~Phase 203 — schedule well/VFP facility-block change diagnostics~~
+204. ~~Phase 204 — schedule boundary/source forcing-change diagnostics~~
+205. ~~Phase 205 — fixed-step forcing report metadata~~
+206. ~~Phase 206 — fixed-step source forcing support~~
+207. ~~Phase 207 — fixed-step report schema parity~~
+208. ~~Phase 208 — packed-output fallback reports use the full MRST-like schema~~
+209. ~~Phase 209 — packed fallback reports recover schedule timestep/control metadata~~
+210. ~~Phase 210 — packed fallback reports infer schedule block-change flags~~
+211. ~~Phase 211 — MRST-style boundary type/value aliases for forcing controls~~
+212. ~~Phase 212 — MRST-style source rate aliases for forcing controls~~
+213. ~~Phase 213 — case-insensitive forcing metadata consumption~~
+214. ~~Phase 214 — case-insensitive forcing container keys~~
+215. ~~Phase 215 — case-insensitive native forcing object passthrough~~
+216. ~~Phase 216 — case-insensitive schedule side facility blocks~~
+217. ~~Phase 217 — native forcing aliases in generic and deck schedules~~
+218. ~~Phase 218 — case-insensitive generic/deck schedule metadata cleanup~~
+219. ~~Phase 219 — singular forcing container aliases~~
+220. ~~Phase 220 — MATLAB cell-array forcing record flattening~~
+221. ~~Phase 221 — forcing record field-name aliases~~
+222. ~~Phase 222 — boundary side-name aliases~~
+223. ~~Phase 223 — boundary typed-side aliases~~
+224. ~~Phase 224 — MRST pside boundary alias~~
+225. ~~Phase 225 — MRST psideh hydrostatic boundary-condition parity~~
+226. ~~Phase 226 — MRST-style psideh controls in compositional schedules~~
+227. ~~Phase 227 — PyMRST psideh against a direct MATLAB MRST dump~~
+228. ~~Phase 228 — compositional BC example MRST plotting-section parity~~
+229. ~~Phase 229 — 3D six-component example MRST plotting-frame parity~~
+230. ~~Phase 230 — VLE introduction SPE5 flash diagnostics parity~~
+231. ~~Phase 231 — MRST-shaped performance timing plot table~~
+232. ~~Phase 232 — larger-problem tutorial plotting-section parity~~
+233. ~~Phase 233 — showNaturalOverall2 runtime plot parity~~
+234. ~~Phase 234 — showNaturalOverall convergence-plot parity~~
+235. ~~Phase 235 — compositional accuracy example plot-section metadata parity~~
+236. ~~Phase 236 — miscibility example plot-section metadata parity~~
+237. ~~Phase 237 — runCompositionalSPE1 plot-section metadata parity~~
+238. ~~Phase 238 — setupSimpleCompositionalExample schedule/reference parity~~
+239. ~~Phase 239 — compositionalValidationSimple plot-section metadata parity~~
+240. ~~Phase 240 — exact compositional Contents.m catalog parity~~
+241. ~~Phase 241 — 3D six-component example plot-section metadata parity~~
+242. ~~Phase 242 — boundary-condition example full plot metadata parity~~
+243. ~~Phase 243 — compositional property Contents.m catalog parity~~
+244. ~~Phase 244 — EquationOfStateComponent MRST method-name parity~~
+245. ~~Phase 245 — separator facility Contents.m catalog parity~~
+246. ~~Phase 246 — MRST-style separator multi-output unpacking parity~~
+247. ~~Phase 247 — shared separator allocation diagnostics parity~~
+248. ~~Phase 248 — separator example exposes allocation diagnostics~~
+249. ~~Phase 249 — separator allocation diagnostics in schedule reports~~
+250. ~~Phase 250 — compact separator allocation summary in schedule reports~~
+251. ~~Phase 251 — MRST-style SeparatorGroup property/method aliases~~
+252. ~~Phase 252 — MRST-style separator constructor/property parity~~
+253. ~~Phase 253 — EOSSeparator uses its own EOSModel mixture when provided~~
+254. ~~Phase 254 — EquationOfStateComponent MRST property aliases~~
+255. ~~Phase 255 — Mixture MRST CompositionalMixture API aliases~~
+256. ~~Phase 256 — CompositionalPropertyModel MRST method surface~~
+257. ~~Phase 257 — EquationOfStateModel MRST object surface~~
+258. ~~Phase 258 — compositional fraction utility parity~~
+259. ~~Phase 259 — getComponentsTwoPhaseSimpleWater utility parity~~
+260. ~~Phase 260 — formatMassString utility parity~~
+261. ~~Phase 261 — MRST flash utility entry-point aliases~~
+262. ~~Phase 262 — MRST cubic utility parity~~
+263. ~~Phase 263 — getFlashTable utility parity~~
+264. ~~Phase 264 — getDefaultFlashNonLinearSolver utility parity~~
+265. ~~Phase 265 — phaseStabilityTest utility parity~~
+266. ~~Phase 266 — FastAD and initVariablesFastAD utility parity~~
+267. ~~Phase 267 — compositional fluids/models/utils Contents.m catalog parity~~
+268. ~~Phase 268 — table-backed compositional fluid constructor parity~~
+269. ~~Phase 269 — initDeckEOSModel utility parity~~
+270. ~~Phase 270 — getEOSComponent utility parity~~
+271. ~~Phase 271 — expandMatrixToCell utility parity~~
+272. ~~Phase 272 — validateCompositionalForces utility parity~~
+273. ~~Phase 273 — checkComponentMassBalance diagnostic parity~~
+274. ~~Phase 274 — newtonFugacityEquilibrium utility parity~~
+275. ~~Phase 275 — getPartialVolumes callable utility parity~~
+276. ~~Phase 276 — getImpesWeightsOverallComposition utility parity~~
+277. ~~Phase 277 — MRST-style setupSimpleCompositionalExample API~~
+278. ~~Phase 278 — MRST-style natural-variable model public surface~~
+279. ~~Phase 279 — MRST-style BlackOilPropertyModel parity~~
+280. ~~Phase 280 — public MRST-style facility-group inspection surface~~
+281. ~~Phase 281 — CompositionalFlowPropertyFunctions aggregate surface~~
+282. ~~Phase 282 — EOSSeparator mass-stream separation~~
+283. ~~Phase 283 — mass-input EOS separator trees~~
+284. ~~Phase 284 — getPartialVolumes analytical EOS-density fallback~~
+285. ~~Phase 285 — VLE introduction SSI-to-Newton diagnostics are active~~
+286. ~~Phase 286 — natural-variable flash bookkeeping fields~~
+287. ~~Phase 287 — native guide-rate group allocation parity~~
+288. ~~Phase 288 — generic FacilityModel group-control parity~~
+289. ~~Phase 289 — selectFacilityFromDeck imports group controls~~
+290. ~~Phase 290 — compositional states carry MRST-style wellSol.cdp~~
+291. ~~Phase 291 — BasicSeparator mole-stream split parity~~
+292. ~~Phase 292 — separator mode aliases~~
+293. ~~Phase 293 — MRST-layout EquilibriumConstantModel~~
+294. ~~Phase 294 — MRST-layout ThreePhaseCompositionalModel base surface~~
+295. ~~Phase 295 — compositional utils/units layout~~
+296. ~~Phase 296 — MRST fluids/PropertyModel base class~~
+297. ~~Phase 297 — MRST GenericOverallCompositionModel layout~~
+298. ~~Phase 298 — MRST-name compatibility modules~~
+299. ~~Phase 299 — natural-variable sequential compatibility layout~~
+300. ~~Phase 300 — natural-variable sequential utility helpers~~
+301. ~~Phase 301 — equationsNaturalVariables compatibility helper~~
+302. ~~Phase 302 — MRST-style facility group-tree diagnostics~~
+303. ~~Phase 303 — MRST subfolder Contents catalogs for compositional ports~~
+304. ~~Phase 304 — diagonal backend Numba-kernel report and row-major stacking~~
+305. ~~Phase 305 — MRST FacilityModel query helper parity~~
+306. ~~Phase 306 — MRST FacilityModel well-variable map parity~~
+307. ~~Phase 307 — MRST FacilityModel primary-variable extraction parity~~
+308. ~~Phase 308 — MRST repeated perforated-cell facility utility parity~~
+309. ~~Phase 309 — MRST FacilityModel convergence helper parity~~
+310. ~~Phase 310 — MRST FacilityModel valid driving-force keys~~
+311. ~~Phase 311 — MRST FacilityModel setWellSolStatistics parity~~
+312. ~~Phase 312 — MRST FacilityModel basic updateWellSol parity~~
+313. ~~Phase 313 — MRST FacilityModel after-step wellSol parity~~
+314. ~~Phase 314 — MRST FacilityModel getProp/getVariableField parity~~
+315. ~~Phase 315 — MRST FacilityModel setup/validation hooks parity~~
+316. ~~Phase 316 — MRST FacilityModel extra/all primary-variable parity~~
+317. ~~Phase 317 — MRST FacilityModel initStateAD/validateState/updateState parity~~
+318. ~~Phase 318 — setupWells harvests extra well-model metadata~~
+319. ~~Phase 319 — FacilityModel getWellContributions gateway parity~~
+320. ~~Phase 320 — base ReservoirModel MRST naming helper parity~~
+321. ~~Phase 321 — getWellContributions delegates to MRST-style well-model hooks~~
+322. ~~Phase 322 — standalone FacilityModel.getEquations parity~~
+323. ~~Phase 323 — EquationOfStateModel Z-factor helper parity~~
+324. ~~Phase 324 — cubic EOS getCompressibilityAndFugacity parity~~
+325. ~~Phase 325 — MRST EquationOfStateModel.validateState parity~~
+326. ~~Phase 326 — MRST EquationOfStateModel phase-flag/update helpers~~
+327. ~~Phase 327 — MRST EquationOfStateModel flow-property helper names~~
+328. ~~Phase 328 — base EquationOfStateModel equilibrium-constant hooks~~
+329. ~~Phase 329 — MRST EOS Rachford-Rice and stability method surface~~
+330. ~~Phase 330 — EquilibriumConstantModel uses the base MRST K-value evaluator~~
+331. ~~Phase 331 — MRST FacilityModel property alias parity~~
+332. ~~Phase 332 — FacilityModel setWellTargets update behavior~~
+333. ~~Phase 333 — MRST FacilityModel constructor overload parity~~
+334. ~~Phase 334 — MRST GenericFacilityModel/UniformFacilityModel surfaces~~
+335. ~~Phase 335 — MRST SimpleWell surface and facility integration~~
+336. ~~Phase 336 — MRST SimpleWell helper-method parity~~
+337. ~~Phase 337 — (AC1): the pluggable flux discretization state functions~~
+338. ~~Phase 338 — (AC2): the upwind discretization hierarchy~~
+339. ~~Phase 339 — (AC3): the flow-state builders (implicit / explicit / AIM)~~
+340. ~~Phase 340 — (AC4): black-oil PVT flow properties, on MRST's class hierarchy~~
+341. ~~Phase 341 — (AC5): pressure-reduction factors (true-IMPES weights)~~
+342. ~~Phase 342 — (AC6): component flow properties, and FaceComponentMobility~~
+343. ~~Phase 343 — (AC7): facility well-flux state functions~~
+344. ~~Phase 344 — (AC10): state-function graph introspection~~
+345. ~~Phase 345 — (relperm hierarchy + AC8 hysteresis)~~
+346. ~~Phase 346 — (AC11): GenericReservoirModel and WrapperModel~~
+347. ~~Phase 347 — (AC12 + AC9): CompositeModel and coupling terms~~
+348. ~~Phase 348 — (AC2 completion): WENO upwind reconstruction, vs MATLAB~~
+349. ~~Phase 349 — (AC12 coupled solve): the composite Newton system~~
+350. ~~Phase 350 — (AC13): well control equations and control switching~~
+351. ~~Phase 351 — (AC14): perforation depth ordering for multisegment wells~~
+352. ~~Phase 352 — (AC15): the linear-solver class hierarchy~~
+353. ~~Phase 353 — (AC16): equilibration regions~~
+354. ~~Phase 354 — live-oil equilibration density, against MATLAB ad-core (AC17)~~
+355. ~~Phase 355 — CNV / material-balance convergence, against MATLAB ad-core (AC19)~~
+356. ~~Phase 356 — structured schedules and time-varying controls (AC20)~~
+357. ~~Phase 357 — saturation CFL on a Buckley-Leverett column, against MRST (AC21)~~
+358. ~~Phase 358 — ad-core numeric utilities against MRST (AC22)~~
+359. ~~Phase 359 — selectModelFromDeck routing on SPE1, against MRST (AC23)~~
+360. ~~Phase 360 — adjoint gradient drivers homed under ad_core/simulators (AC18)~~
+361. ~~Phase 361 — diagonal AD backend equivalence and benchmark (AC24)~~
+362. ~~Phase 362 — AD-side upscaling against MRST (AC25)~~
+363. ~~Phase 363 — 1D Buckley-Leverett AD profile against MRST (ad-core example)~~
+364. ~~Phase 364 — flux<->velocity conversions against MRST (Phase 25 core leftovers)~~
+365. ~~Phase 365 — processNNC against MRST (Phase 25 core leftovers)~~
+366. ~~Phase 366 — grdecl2Rock against MRST (Phase 25 core leftovers)~~
+367. ~~Phase 367 — makeInternalBoundary against MRST (Phase 25 core leftovers)~~
+370. ~~Phase 370 — hexahedralGrid against MRST (Phase 25 core leftovers)~~
+371. ~~Phase 371 — tessellationGrid against MRST (Phase 25 core leftovers)~~
+372. ~~Phase 372 — triangulateFaces against MRST (Phase 25 core leftovers)~~
+373. ~~Phase 373 — findMatchingFaces against MRST (Phase 25 core leftovers)~~
+374. ~~Phase 374 — refineGrdecl against MRST (Phase 25 core leftovers)~~
+375. ~~Phase 375 — get2DGridFromFaces against MRST (Phase 25 core leftovers)~~
+376. ~~Phase 376 — accumulateCartesianMultipliers against MRST (Phase 25 leftovers)~~
+377. ~~Phase 377 — glue2DGrid against MRST (Phase 25 core leftovers)~~
+378. ~~Phase 378 — repairNormals against MRST (Phase 25 core leftovers)~~
+379. ~~Phase 379 — removeShortEdges against MRST (Phase 25 core leftovers)~~
+380. ~~Phase 380 — cellNodes against MRST (Phase 25 core leftovers)~~
+381. ~~Phase 381 — removePinch against MRST (Phase 25 core leftovers)~~
+382. ~~Phase 382 — computeGridSlicePolygons core against MRST (Phase 25)~~
+383. ~~Phase 383 — sliceGrid cell-splitting against MRST (Phase 25)~~
+384. ~~Phase 384 — sliceGrid node-snapped cut against MRST (Phase 25)~~
+385. ~~Phase 385 — sliceGrid partial cut against MRST (Phase 25)~~
+386. ~~Phase 386 — permeabilityConverter against MRST (Phase 25 core leftovers)~~
+387. ~~Phase 387 — MPFA-O assembly and the non-K-orthogonal linear patch test~~
+388. ~~Phase 388 — MPFA sources, mixed boundary conditions, mobility and fluxes~~
+389. ~~Phase 389 — MRST-layout MPFA entry points and rate/BHP wells~~
+390. ~~Phase 390 — MPFA tensor assembly for general 3-D cell corners~~
+391. ~~Phase 391 — NFVM harmonic points and runnable 2-D NTPFA flux chain~~
+392. ~~Phase 392 — NFVM HAP correction and 3-D NTPFA one-sided stencils~~
+393. ~~Phase 393 — MRST AvgMPFA arithmetic one-sided flux blend~~
+394. ~~Phase 394 — NFVM Hybrid, gravity setup, and model installation helpers~~
+395. ~~Phase 395 — fully implicit AD Jacobian through NTPFA convex weights~~
+396. ~~Phase 396 — fv-unsat hydraulic catalog and van Genuchten-Mualem curves~~
+397. ~~Phase 397 — fully implicit Richards step with conservative MPFA fluxes~~
+398. ~~Phase 398 — direct port of the complete re-mpfa/functions module~~
+399. ~~Phase 399 — MRST-layout mimetic inner-product assembly~~
+400. ~~Phase 400 — conservative mimetic pressure solve with mixed forcing~~
+401. ~~Phase 401 — mimetic gravity and rate/BHP well branches~~
+402. ~~Phase 402 — mimetic hybrid solver modes against MRST (mimetic/utils)~~
+403. ~~Phase 403 — VEM polygon integration against MRST (vem/utils)~~
+404. ~~Phase 404 — VEM polyhedron integration against MRST (vem/utils)~~
+405. ~~Phase 405 — mixed VEM inner product against MRST (computeVirtualIP)~~
+406. ~~Phase 406 — first-order incompVEM (k=1, 2D) against MRST (incompVEM)~~
+407. ~~Phase 407 — incompVEM standard-BC + Neumann (k=1, 2D) against MRST~~
+408. ~~Phase 408 — second-order (k=2) VEM inner product against MRST~~
+409. ~~Phase 409 — second-order incompVEM (k=2, 2D) against MRST (incompVEM)~~
+410. ~~Phase 410 — VEM grid geometry (edges/diameters) against MRST~~
+411. ~~Phase 411 — 3-D first-order VEM inner product against MRST~~
+412. ~~Phase 412 — 3-D first-order incompVEM against MRST (incompVEM)~~
+413. ~~Phase 413 — 3-D second-order VEM inner product against MRST~~
+414. ~~Phase 414 — 3-D second-order incompVEM (planar) against MRST (incompVEM)~~
+415. ~~Phase 415 — incompVEM with TPFA flux reconstruction against MRST~~
+416. ~~Phase 416 — 3-D k=2 incompVEM standard BC + Neumann against MRST~~
+417. ~~Phase 417 — DG basis functions against MRST (dgBasis)~~
+418. ~~Phase 418 — DG reference cubature rules against MRST~~
+419. ~~Phase 419 — DG element cubatures against MRST~~
+420. ~~Phase 420 — DG moment-fitting against MRST (fitMoments)~~
+421. ~~Phase 421 — DG cell dimensions against MRST (computeCellDimensions)~~
+422. ~~Phase 422 — 3-D k=1 incompVEM standard BC + Neumann against MRST~~
+423. ~~Phase 423 — VEM MPFA flux reconstruction (invariant, MRST path is broken)~~
+424. ~~Phase 424 — DG scalar transport against analytical ground truth~~
+425. ~~Phase 425 — degree-zero DG Buckley-Leverett transport against MRST~~
+426. ~~Phase 426 — compare computeCpGeometry with MRST on a tilted deck~~
+427. ~~Phase 427 — compare getEquilPC with MRST~~
+428. ~~Phase 428 — compare setTimeDiscretization choices with MRST~~
+429. ~~Phase 429 — compare setMPFADiscretization sparse operators with MRST~~
+430. ~~Phase 430 — compare obj2hash digests with MRST~~
+431. ~~Phase 431 — compare readSummaryLocal with MRST on SPE9 output~~
+432. ~~Phase 432 — compare convertMultiSegmentWellsDeck with MRST~~
+433. ~~Phase 433 — compare computeSourcesAndBoundaryConditionsAD with MRST~~
+434. ~~Phase 434 — compare combineMSwithRegularWells with MRST~~
+
+~~There is also a first self-tested no-water/no-well `transport_step()` using
+MRST's temporary `sT` primary. It is not counted as MATLAB parity yet; the
+direct MRST transport reference still needs a reliable harness.~~
+
+~~**Still missing for full compositional parity:** MATLAB-validated transport for
+water/well cases and the full sequential pressure/transport wrapper.~~
+Those transport and sequential-wrapper gaps closed in Phases 121–125 (MATLAB
+regressions for no-water/water, with and without wells, plus schedule isolation).
 
 **`ad-mechanics` is now complete**, Norne included.
 
@@ -1342,8 +1723,11 @@ Both boundaries must be picked by the face *normal* (which is what MRST's
 direction tags amount to). The mechanics itself was never wrong: with the base
 properly clamped, `div(u)` reproduces the closed form `dp/K` to three digits.
 
-Next: full TEDFM fracture workflows and the CMG-export pipeline. `ROADMAP.md` plans the rest
-(Phases 25-42) in dependency order.
+~~Next: full TEDFM fracture workflows and the CMG-export pipeline. `ROADMAP.md` plans the rest
+(Phases 25-42) in dependency order.~~
+Phases 61–434 below continue the validated port (VEM/TEDFM kernels, compositional
+depth, deckformat, discretization shelf, and API-surface parity). Remaining
+module-level gaps stay in `GAPS.md` / `ROADMAP.md`.
 
 ### A seventh finding: MRST's oil-water poromechanics drops a cell volume
 
