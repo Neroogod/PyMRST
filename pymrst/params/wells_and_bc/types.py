@@ -54,6 +54,10 @@ class Well:
     refDepth: float
     sign: int = 0
     status: bool = True
+    # Permit finite flow opposite to ``sign`` while retaining the scheduled
+    # control equation.  This mirrors SimpleWell.allowSignChange and is also
+    # useful for robust startup of tightly coupled BHP-controlled wells.
+    allow_sign_change: bool = False
     # MRST `W.cstatus`: one active/open flag per perforation. `None` means all
     # completions are active, matching legacy PyMRST wells.
     cstatus: Optional[np.ndarray] = None
@@ -75,6 +79,12 @@ class Well:
     # 'wrat', 'vrat', 'resv_history' for producers. Absent keys are never
     # violated.
     lims: Optional[Dict[str, float]] = None
+    # Additional MRST structure fields.  Keep these at the end so positional
+    # construction of the legacy PyMRST Well signature remains compatible.
+    rR: Optional[np.ndarray] = None
+    heel: Optional[Any] = None
+    defaulted: Any = field(default_factory=list)
+    cp: Optional[Any] = None
 
 
 if __name__ == "__main__":

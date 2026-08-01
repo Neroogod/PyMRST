@@ -34,7 +34,10 @@ def _fluid() -> PhaseFluid:
 def validate_reservoir_model_helpers() -> int:
     grid = SimpleNamespace(cells=SimpleNamespace(num=1))
     rock = SimpleNamespace()
-    operators = SimpleNamespace()
+    # `grad` is required by PressureGradient, which ReservoirModel now builds.
+    # This mock predates that and supplied no operators at all; the checks
+    # below only exercise name aliases, so the operator itself is never called.
+    operators = SimpleNamespace(grad=None)
     model = ReservoirModel(
         grid,
         rock,

@@ -59,7 +59,7 @@ if __name__ == "__main__":
         KilloughGasHysteresis,
     )
     from pymrst.modules.ad_core.statefunctions.state_function import State
-    from pymrst.modules.ad_props.blackoil_fluid import init_deck_blackoil_fluid
+    from pymrst.modules.ad_props.props.init_deck_adi_fluid import init_deck_blackoil_fluid
     from pymrst.modules.deckformat import read_spe1_deck
     from pymrst.params import NORM_GRAVITY, add_well, make_rock
 

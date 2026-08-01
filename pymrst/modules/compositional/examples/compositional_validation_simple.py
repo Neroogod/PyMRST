@@ -19,7 +19,10 @@ from pymrst.modules.compositional.examples._shared import (
     simple_schedule,
     simulate_packed_problem,
 )
-from pymrst.modules.compositional.examples.utils import setup_simple_compositional_example
+from pymrst.modules.compositional.examples.utils import (
+    load_simplecomp_references,
+    setup_simple_compositional_example,
+)
 from pymrst.utils.units import DAY
 
 
@@ -29,14 +32,24 @@ def setup_compositional_validation_simple_problem(
     full_schedule: bool = False,
     nstep: int = 3,
     dt: float = 20.0 * DAY,
+    load_external_references: bool = True,
+    reference_root=None,
+    max_report_steps: int | None = None,
 ):
     """Build MRST's packed simple-compositional validation problem."""
-    setup = setup_simple_compositional_example(use_natural=use_natural)
+    setup = setup_simple_compositional_example(
+        use_natural=use_natural, full_size=full_schedule
+    )
     if full_schedule:
-        timesteps = np.full(500, 200.0 * DAY / 500.0)
+        timesteps = setup.schedule.step.val.copy()
     else:
         timesteps = np.full(int(nstep), float(dt))
-    schedule = simple_schedule(timesteps, wells=setup.wells)
+    if max_report_steps is not None:
+        count = int(max_report_steps)
+        if count < 1:
+            raise ValueError("max_report_steps must be a positive integer")
+        timesteps = timesteps[:count]
+    schedule = simple_schedule(timesteps, wells=setup.schedule.control[0].wells)
     name = "Natural" if use_natural else "Overall"
     problem = pack_simulation_problem(
         setup.state,
@@ -45,15 +58,27 @@ def setup_compositional_validation_simple_problem(
         "simple_comp",
         name=name,
     )
+    references = {"E300": None, "AD-GPRS": None}
+    reference_metadata = None
+    if load_external_references:
+        try:
+            loaded = load_simplecomp_references(data_root=reference_root)
+        except FileNotFoundError:
+            pass
+        else:
+            references = {"E300": loaded["E300"], "AD-GPRS": loaded["AD-GPRS"]}
+            reference_metadata = {
+                "source": loaded["source"],
+                "report_steps": loaded["report_steps"],
+                "E300_initial": loaded["E300_initial"],
+            }
     return {
         "setup": setup,
         "schedule": schedule,
         "problem": problem,
         "name": name,
-        "external_references": {
-            "E300": None,
-            "AD-GPRS": None,
-        },
+        "external_references": references,
+        "external_reference_metadata": reference_metadata,
     }
 
 
@@ -63,23 +88,26 @@ def run_compositional_validation_simple(
     *,
     use_natural: bool = True,
     full_schedule: bool = False,
+    max_report_steps: int | None = None,
 ):
     """Run MRST's simple compositional validation case.
 
-    ``full_schedule=True`` mirrors the long MRST setup more closely: 500 report
-    steps over 200 days. The default remains a short smoke test for routine
-    validation.
+    ``full_schedule=True`` uses the official deck's 1000 cells, BHP controls,
+    component ordering, and 500 nonuniform report steps. The default remains a
+    short smoke test for routine validation. ``max_report_steps`` bounds an
+    engineering acceptance run without changing the official step sequence.
     """
     case = setup_compositional_validation_simple_problem(
         use_natural=use_natural,
         full_schedule=full_schedule,
         nstep=nstep,
         dt=dt,
+        max_report_steps=max_report_steps,
     )
     setup = case["setup"]
     schedule = case["schedule"]
     result = run_schedule(setup.model, setup.state, schedule)
-    return {
+    output = {
         "name": case["name"],
         "setup": setup,
         "schedule": schedule,
@@ -94,6 +122,8 @@ def run_compositional_validation_simple(
         "qGs": np.asarray([s.qGs for s in result.states]),
         "iterations": result.iterations,
     }
+    output["external_metrics"] = external_comparison_metrics(output)
+    return output
 
 
 def compare_natural_overall(nstep: int = 3, dt: float = 20.0 * DAY):
@@ -134,17 +164,103 @@ def validation_comparison_data(run_output):
     """Return the data tuple MRST plots: MRST, E300, and AD-GPRS slots."""
     result = run_output["result"]
     states = result.states
+    data = {
+        "MRST": states,
+        "E300": run_output["external_references"]["E300"],
+        "AD-GPRS": run_output["external_references"]["AD-GPRS"],
+    }
     return {
-        "data": {
-            "MRST": states,
-            "E300": run_output["external_references"]["E300"],
-            "AD-GPRS": run_output["external_references"]["AD-GPRS"],
-        },
+        "data": data,
         "names": ("MRST", "E300", "AD-GPRS"),
         "markers": ("-", "--", "--"),
         "component_names": run_output["setup"].mixture.names,
-        "available": ("MRST",),
+        "available": tuple(name for name, history in data.items() if history is not None),
     }
+
+
+def _state_components(state):
+    value = getattr(state, "z", None)
+    if value is None:
+        value = getattr(state, "components", None)
+    return None if value is None else np.asarray(value, dtype=float)
+
+
+def _state_gas_saturation(state):
+    value = getattr(state, "sT", None)
+    if value is None:
+        value = getattr(state, "sG", None)
+    if value is not None:
+        return np.asarray(value, dtype=float).reshape(-1)
+    value = getattr(state, "saturation", None)
+    if value is None:
+        return None
+    value = np.asarray(value, dtype=float)
+    return value[:, 1] if value.ndim == 2 and value.shape[1] > 1 else value.reshape(-1)
+
+
+def external_comparison_metrics(run_output):
+    """Compare available PyMRST report states with E300 and AD-GPRS.
+
+    Metrics are evaluated over the common report-step and cell range. Pressure
+    errors are reported in bar; composition and gas-saturation errors are
+    absolute fractions. A shape mismatch is explicit rather than silently
+    interpolated, which keeps quick 8-cell runs from being overclaimed.
+    """
+    simulation = list(run_output["result"].states)
+    out = {}
+    for name in ("E300", "AD-GPRS"):
+        reference = run_output["external_references"].get(name)
+        if reference is None:
+            out[name] = {"available": False, "reason": "reference dataset is not installed"}
+            continue
+        reference = list(reference)
+        count = min(len(simulation), len(reference))
+        if count == 0:
+            out[name] = {"available": False, "reason": "no common report steps"}
+            continue
+        if np.asarray(simulation[0].pressure).size != np.asarray(reference[0].pressure).size:
+            out[name] = {
+                "available": False,
+                "reason": "cell-count mismatch; run with full_schedule=True",
+                "simulation_cells": int(np.asarray(simulation[0].pressure).size),
+                "reference_cells": int(np.asarray(reference[0].pressure).size),
+            }
+            continue
+        p_error = []
+        z_error = []
+        s_error = []
+        for current, expected in zip(simulation[:count], reference[:count]):
+            p_error.append(
+                (np.asarray(current.pressure, dtype=float) - np.asarray(expected.pressure, dtype=float))
+                / 1.0e5
+            )
+            current_z, expected_z = _state_components(current), _state_components(expected)
+            if current_z is not None and expected_z is not None:
+                z_error.append(current_z - expected_z)
+            current_s, expected_s = _state_gas_saturation(current), _state_gas_saturation(expected)
+            if current_s is not None and expected_s is not None:
+                s_error.append(current_s - expected_s)
+        pressure_error = np.concatenate([item.reshape(-1) for item in p_error])
+        metrics = {
+            "available": True,
+            "report_steps": count,
+            "pressure_rmse_bar": float(np.sqrt(np.mean(pressure_error**2))),
+            "pressure_max_abs_bar": float(np.max(np.abs(pressure_error))),
+        }
+        if z_error:
+            composition_error = np.concatenate([item.reshape(-1) for item in z_error])
+            metrics.update({
+                "composition_mae": float(np.mean(np.abs(composition_error))),
+                "composition_max_abs": float(np.max(np.abs(composition_error))),
+            })
+        if s_error:
+            saturation_error = np.concatenate([item.reshape(-1) for item in s_error])
+            metrics.update({
+                "gas_saturation_mae": float(np.mean(np.abs(saturation_error))),
+                "gas_saturation_max_abs": float(np.max(np.abs(saturation_error))),
+            })
+        out[name] = metrics
+    return out
 
 
 def ternary_displacement_paths(states, every: int = 20):
@@ -204,6 +320,26 @@ def validation_plot_sections(run_output):
             },
             "E300": None,
         }
+        eclipse = comparison["data"]["E300"]
+        if eclipse is not None and detailed_step <= len(eclipse):
+            reference = eclipse[detailed_step - 1]
+            reference_pressure = np.asarray(reference.pressure, dtype=float)
+            reference_pressure_norm = (
+                reference_pressure / np.max(reference_pressure)
+                if reference_pressure.size and np.max(reference_pressure) != 0.0
+                else reference_pressure
+            )
+            reference_saturation = reference.saturation
+            detailed["E300"] = {
+                "gas_saturation": (
+                    None if reference_saturation is None
+                    else np.asarray(reference_saturation, dtype=float)[:, 1].copy()
+                ),
+                "normalized_pressure": reference_pressure_norm.copy(),
+                "components": np.asarray(reference.components, dtype=float).copy(),
+                "marker": "--",
+                "linewidth": 2.5,
+            }
     return {
         "component_comparison": {
             "figure_position_offset": (0, 0, 350, 0),
@@ -296,6 +432,7 @@ if __name__ == "__main__":
 
 __all__ = [
     "compare_natural_overall",
+    "external_comparison_metrics",
     "run_compositional_validation_packed",
     "run_compositional_validation_simple",
     "setup_compositional_validation_simple_problem",

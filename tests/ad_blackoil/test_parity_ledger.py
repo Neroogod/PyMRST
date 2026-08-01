@@ -26,7 +26,11 @@ def test_ledger_accounts_for_every_matlab_file_once():
 
 def test_missing_utilities_and_guarded_examples_remain_honestly_pending():
     rows = {row["symbol"]: row for row in generate_rows(REPO, MRST, PYTHON)}
-    assert rows["eggExample"]["port_status"] == "pending"
+    # eggExample was pending when this test was written. It is now
+    # ported and reference-validated - examples/validation/
+    # validate_ad_blackoil_egg.py reproduces the MRST setup and
+    # production regression - so the honest expectation is "ported".
+    assert rows["eggExample"]["port_status"] == "ported"
     assert rows["blackoilTimeIntegrationExample"]["port_status"] == "partial"
     assert rows["blackoilSectorModelExample"]["port_status"] == "ported"
     assert rows["multisegmentWellExample"]["port_status"] == "ported"

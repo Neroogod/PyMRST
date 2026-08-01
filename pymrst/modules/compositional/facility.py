@@ -12,6 +12,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from math import isfinite
+import re
 from typing import Any
 
 import numpy as np
@@ -430,7 +431,13 @@ def _wconinjh_history_rate_record(record: Any) -> bool:
 
 
 def _full_wconhist_record(record: Any) -> bool:
-    return not isinstance(record, Mapping) and len(record) > 9
+    if isinstance(record, Mapping):
+        return False
+    width = 0
+    for value in record:
+        match = re.fullmatch(r"(\d+)\*", str(value).strip())
+        width += int(match.group(1)) if match else 1
+    return width > 9
 
 
 def _wconhist_resv_target_and_compi(record: Any, nph: int = 3) -> tuple[float, np.ndarray]:
@@ -1160,13 +1167,21 @@ def apply_deck_well_controls(
             if w is None:
                 continue
             raw_mode = _name(_field(record, ("control", "type", "mode"), 2, "bhp")).lower()
+            status = _status(_field(record, ("status", "open"), 1, "OPEN"))
+            # A compact ``WCONPROD well SHUT n* /`` changes status only. The
+            # repeated-default token is not a control mode and must not erase
+            # the well's previous target while it is temporarily closed.
+            if not status and raw_mode.endswith("*"):
+                w.sign = -1
+                w.status = False
+                continue
             if keyword == "WCONHIST" and _full_wconhist_record(record) and raw_mode == "resv":
                 mode = "resv_history"
             else:
                 mode = _control_mode(raw_mode)
             lims = _prod_lims(record, keyword=keyword)
             w.sign = -1
-            w.status = _status(_field(record, ("status", "open"), 1, "OPEN"))
+            w.status = status
             w.lims = lims
             w.type = mode
             w.val = float(lims.get(mode, 0.0))
@@ -1190,13 +1205,22 @@ def apply_deck_well_controls(
             w = by_name.get(name)
             if w is None:
                 continue
+            # Read outside the branch, as the producer loop above does: a
+            # WCONINJH history record carries a status field too, and leaving
+            # this inside the `else` left `status` unbound on that path.
+            status = _status(_field(record, ("status", "open"), 2, "OPEN"))
             if keyword == "WCONINJH" and _wconinjh_history_rate_record(record):
                 mode = "rate"
             else:
-                mode = _control_mode(_field(record, ("control", "type", "mode"), 3, "rate"))
+                raw_mode = _name(_field(record, ("control", "type", "mode"), 3, "rate")).lower()
+                if not status and raw_mode.endswith("*"):
+                    w.sign = 1
+                    w.status = False
+                    continue
+                mode = _control_mode(raw_mode)
             lims = _inje_lims(record, keyword=keyword)
             w.sign = 1
-            w.status = _status(_field(record, ("status", "open"), 2, "OPEN"))
+            w.status = status
             w.lims = lims
             w.type = mode
             w.val = float(lims.get(mode, 0.0))

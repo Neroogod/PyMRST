@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Callable, Optional, Tuple
 
-from pymrst.modules.ad_props.simple_adi_fluid import ADFluid
+from pymrst.modules.ad_props.init_simple_adi_fluid import ADFluid
 from pymrst.modules.dual_porosity.shape_factors import ShapeFactor
 from pymrst.modules.dual_porosity.transfer import _upstream
 from pymrst.params.rock import Rock

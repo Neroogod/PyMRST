@@ -2378,6 +2378,14 @@ class FacilityModel:
         compi = w.compi[:nph]
 
         drawdown = -(bhp_k + cdp) + p[wc]
+        if not w.status:
+            # A shut well still owns q_alpha and bhp primary variables. Pin
+            # rates to zero and BHP to its completion pressure so the well
+            # block remains nonsingular and is ready for a later WELOPEN.
+            zeros = [0.0*drawdown for _ in range(nph)]
+            well_eqs = [q_s[i] for i in range(nph)]
+            reference = ad_sum(p[wc])/max(len(wc), 1)
+            return zeros, well_eqs, bhp_k - reference, zeros
         inj = value(drawdown) < 0
         prod = ~inj
         mob_c = [m[wc] for m in mob]
@@ -2482,10 +2490,18 @@ class FacilityModel:
         qt = total()
         if w.type == "bhp":
             qt_val = np.asarray(value(qt), dtype=float).ravel()
-            if w.sign != 0 and np.any(qt_val != 0.0) and np.any(np.sign(qt_val) != w.sign):
+            # Do not interpret Newton roundoff around a shut/initial well as a
+            # genuine sign reversal.  Doing so replaces the BHP equation by
+            # ``qt = 0`` and can trap a producer at zero rate indefinitely.
+            # Surface rates are SI m^3/s here; 1e-8 is many orders below any
+            # meaningful schedule target while retaining MRST's wrong-flow
+            # fallback for finite rates.
+            flowing = np.abs(qt_val) > 1.0e-8
+            if (not getattr(w, "allow_sign_change", False) and w.sign != 0
+                    and np.any(flowing & (np.sign(qt_val) != w.sign))):
                 return qt
             return bhp_k - w.val
-        if w.type in ("rate", "vrat"):
+        if w.type in ("rate", "vrat", "resv_history"):
             return qt - w.val
         if w.type == "resv":
             rho = FacilityModel._control_density(w, nph)
@@ -2621,7 +2637,7 @@ if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
     from pymrst.modules.ad_core.statefunctions.pvt_property_functions import simple_phase_fluid
-    from pymrst.modules.ad_props.simple_adi_fluid import init_simple_adi_fluid
+    from pymrst.modules.ad_props.init_simple_adi_fluid import init_simple_adi_fluid
     from pymrst.params.rock import make_rock, pore_volume
     from pymrst.params.wells_and_bc import add_well
     from pymrst.utils.adi import init_variables_adi

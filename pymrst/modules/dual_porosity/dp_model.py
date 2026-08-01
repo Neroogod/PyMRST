@@ -21,7 +21,7 @@ import scipy.sparse.linalg as spla
 
 from pymrst.gridprocessing.grid import Grid
 from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
-from pymrst.modules.ad_props.simple_adi_fluid import ADFluid
+from pymrst.modules.ad_props.init_simple_adi_fluid import ADFluid
 from pymrst.modules.dual_porosity.transfer import (
     KazemiSinglePhaseTransfer,
     KazemiTwoPhaseTransfer,
@@ -325,7 +325,7 @@ class TwoPhaseOilWaterModelDP:
 
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
-    from pymrst.modules.ad_props.simple_adi_fluid import init_simple_adi_fluid
+    from pymrst.modules.ad_props.init_simple_adi_fluid import init_simple_adi_fluid
     from pymrst.modules.dual_porosity.shape_factors import KazemiShapeFactor
     from pymrst.params.rock import make_rock
     from pymrst.params.wells_and_bc import add_bc, pside

@@ -9,18 +9,28 @@ cross-section needs.
 
 This implementation uses a global edge-crossing (marching) formulation. It
 handles clean planar cuts, cuts snapped to existing nodes, finite partial cuts,
-repeated cuts, and MRST's face-only mode. A plane coinciding with a face of a
-cell that is simultaneously split remains the same known zero-volume edge case
-that MRST warns about. The geometric core - which cells are cut and where - is
-`compute_grid_slice_polygons`.
+repeated cuts, MRST's face-only mode, and cells whose collapsed or in-plane
+faces make the cut degenerate. The geometric core - which cells are cut and
+where - is `compute_grid_slice_polygons`.
 """
 
+import warnings
 from types import SimpleNamespace
 from typing import Optional
 
 import numpy as np
 
 from pymrst.gridprocessing.grid_structure import Cells, Faces, Grid, Nodes
+
+# the 27 buckets around a point, so a coincidence test never misses a match
+# that quantisation pushed into an adjacent bucket; the point's own bucket is
+# first because it is nearly always the one that matches
+_BUCKET_NEIGHBOURS = np.array(
+    [[0, 0, 0]] + [[i, j, k]
+                   for i in (-1, 0, 1) for j in (-1, 0, 1) for k in (-1, 0, 1)
+                   if (i, j, k) != (0, 0, 0)],
+    dtype=np.int64,
+)
 
 
 def _plane(g, coord, normal, cut_dir):
@@ -45,15 +55,15 @@ def _plane(g, coord, normal, cut_dir):
 
 def _rebuild_cell_faces(num_cells, neighbors):
     """cells.faces / facePos from the face-neighbour incidence."""
-    cf, cell = [], []
-    for f, (a, b) in enumerate(neighbors):
-        for c in (a, b):
-            if c >= 0:
-                cf.append(f)
-                cell.append(c)
-    cell = np.asarray(cell, dtype=np.int64)
+    neighbors = np.asarray(neighbors, dtype=np.int64)
+    # row-major so each face contributes its left neighbour then its right,
+    # which is the order the equivalent Python loop produced
+    cell = neighbors.ravel()
+    face = np.repeat(np.arange(neighbors.shape[0], dtype=np.int64), 2)
+    attached = cell >= 0
+    cell, face = cell[attached], face[attached]
     order = np.argsort(cell, kind="stable")
-    faces = np.asarray(cf, dtype=np.int64)[order]
+    faces = face[order]
     counts = np.bincount(cell[order], minlength=num_cells)
     face_pos = np.concatenate([[0], np.cumsum(counts)]).astype(np.int64)
     return faces, face_pos
@@ -129,6 +139,19 @@ def _slice_grid_single(g, coord, normal=None, cut_dir=None, tol=1e-9,
     side[sd > tol] = 1
     side[sd < -tol] = -1                                 # 0 == on the plane
 
+    # which side(s) each face reaches, for every face at once - the passes
+    # below consult this per face, and doing it in Python dominated the cost
+    face_of_node = np.repeat(np.arange(g.faces.num, dtype=np.int64),
+                             np.diff(node_pos))
+    node_side = side[fnodes]
+    has_plus_of = np.bincount(face_of_node, weights=node_side > 0,
+                              minlength=g.faces.num) > 0
+    has_minus_of = np.bincount(face_of_node, weights=node_side < 0,
+                               minlength=g.faces.num) > 0
+    on_plane_of = ~(has_plus_of | has_minus_of)          # wholly in the plane
+    touches_plane_of = np.bincount(face_of_node, weights=node_side == 0,
+                                   minlength=g.faces.num) > 0
+
     # crossing node on every edge whose endpoints strictly straddle the plane
     cross = {}
     new_coords = []
@@ -148,13 +171,10 @@ def _slice_grid_single(g, coord, normal=None, cut_dir=None, tol=1e-9,
 
     # a cell is cut when it has nodes strictly on both sides of the plane
     cut_cell = np.zeros(nc0, dtype=bool)
-    for f in range(g.faces.num):
-        seg = fnodes[node_pos[f]:node_pos[f + 1]]
-        s = side[seg]
-        if (s > 0).any() and (s < 0).any():
-            for c in neigh[f]:
-                if c >= 0:
-                    cut_cell[c] = True
+    for f in np.flatnonzero(has_plus_of & has_minus_of):
+        for c in neigh[f]:
+            if c >= 0:
+                cut_cell[c] = True
 
     # with a finite cutting segment, keep only cells the segment fully traverses;
     # partially-reached cells are left whole (MRST's removePartialCuts)
@@ -185,7 +205,58 @@ def _slice_grid_single(g, coord, normal=None, cut_dir=None, tol=1e-9,
             if lo < -wtol or hi > L + wtol:
                 fully_cut[c] = False
 
-    cut_ids = np.flatnonzero(fully_cut)
+    # Faces are split for every cell the plane fully traverses, but MRST's
+    # splitCells only divides the cell itself when both halves keep at least
+    # `griddim` faces. Cells failing that are left whole; when the odd half is
+    # a single face lying in the plane, that face becomes a slice face instead
+    # - MRST's "cut along face" path.
+    split_cell = fully_cut.copy()
+    slice_only_faces = set()
+    if not only_faces:
+        halves = {int(c): ([], []) for c in np.flatnonzero(fully_cut)}
+        for f in range(g.faces.num):
+            has_plus, has_minus = has_plus_of[f], has_minus_of[f]
+            for c in neigh[f]:
+                if c < 0 or not fully_cut[c]:
+                    continue
+                minus, plus = halves[int(c)]
+                if has_plus and has_minus:                # duplicated by the cut
+                    minus.append(f)
+                    plus.append(f)
+                elif has_plus:
+                    plus.append(f)
+                else:                                     # also the all-on-plane case
+                    minus.append(f)
+        declined = 0
+        for c, (minus, plus) in halves.items():
+            small, large = (minus, plus) if len(minus) <= len(plus) else (plus, minus)
+            if len(small) >= g.griddim:
+                continue
+            split_cell[c] = False
+            if len(small) == 1 and small[0] not in large:
+                slice_only_faces.add(small[0])
+            else:
+                declined += 1
+        if declined:
+            warnings.warn(
+                f"cutting of {declined} out of {len(halves)} cells failed",
+                RuntimeWarning, stacklevel=3)
+
+        # a face lying wholly in the plane already *is* the slice there, so it
+        # is reported as one - this is what a cut snapped onto a column of
+        # existing faces produces, with no cell split at all
+        for f in np.flatnonzero(on_plane_of):
+            seg = fnodes[node_pos[f]:node_pos[f + 1]]
+            if any(c >= 0 and split_cell[c] for c in neigh[f]):
+                continue
+            if window is not None:
+                _, _, L = window
+                t = [boundary_t(p) for p in coords[seg]]
+                if min(t) < -1e-9 * max(L, 1.0) or max(t) > L + 1e-9 * max(L, 1.0):
+                    continue                             # outside the cut segment
+            slice_only_faces.add(f)
+
+    cut_ids = np.flatnonzero(split_cell)
     plus_id = np.full(nc0, -1, dtype=np.int64)
     if not only_faces:
         plus_id[cut_ids] = nc0 + np.arange(cut_ids.size)  # + half of cut cell
@@ -195,28 +266,59 @@ def _slice_grid_single(g, coord, normal=None, cut_dir=None, tol=1e-9,
             return -1
         if only_faces:
             return c
-        return plus_id[c] if (side_pos and fully_cut[c]) else c
+        return plus_id[c] if (side_pos and split_cell[c]) else c
 
     out_nodes, out_np, out_neigh = [], [0], []
     face_parent, face_status = [], []
     # per cut cell, the boundary edges (pairs of on-plane / crossing points) that
     # bound its cut polygon
     cell_cut_edges = {int(c): [] for c in cut_ids}
+    plane_rep = {}
+
+    def point_of(node):
+        return (coords[node] if node < coords.shape[0]
+                else new_coords[node - coords.shape[0]])
+
+    def rep(node):
+        """Canonical index for cut-plane points that coincide within `tol`.
+
+        A collapsed (pinched) cell carries several distinct node indices at the
+        same coordinate; the cut polygon has to see those as a single corner or
+        its boundary edges never close into a ring.
+        """
+        bucket = np.floor(point_of(node) / tol).astype(np.int64)
+        for offset in _BUCKET_NEIGHBOURS:
+            other = plane_rep.get(tuple(bucket + offset))
+            if other is not None and np.linalg.norm(
+                    point_of(other) - point_of(node)) <= tol:
+                return other
+        plane_rep[tuple(bucket)] = node
+        return node
 
     def record_edge(a, b, bnd):
-        if len(bnd) == 2 and bnd[0] != bnd[1]:
-            for c in (a, b):
-                if c >= 0 and fully_cut[c]:
-                    cell_cut_edges[int(c)].append((bnd[0], bnd[1]))
+        ring = []
+        for node in bnd:                                 # merge coincident corners
+            node = rep(node)
+            if node not in ring:
+                ring.append(node)
+        if len(ring) != 2:                               # not a single boundary edge
+            return
+        for c in (a, b):
+            if c >= 0 and split_cell[c]:
+                cell_cut_edges[int(c)].append((ring[0], ring[1]))
+
+    # which faces the cut actually divides, decided for all of them at once so
+    # the loop below can hand an untouched face straight through
+    left, right = neigh[:, 0], neigh[:, 1]
+    splitting_of = (((left >= 0) & fully_cut[np.maximum(left, 0)])
+                    | ((right >= 0) & fully_cut[np.maximum(right, 0)]))
+    divided_of = has_plus_of & has_minus_of & splitting_of
 
     for f in range(g.faces.num):
         seg = fnodes[node_pos[f]:node_pos[f + 1]]
-        s = side[seg]
         a, b = neigh[f]
-        has_plus, has_minus = (s > 0).any(), (s < 0).any()
-        splitting = ((a >= 0 and fully_cut[a]) or (b >= 0 and fully_cut[b]))
 
-        if has_plus and has_minus and splitting:         # face is truly split
+        if divided_of[f]:                                # face is truly split
             m = seg.size
             plus, minus, bnd = [], [], []
             for k in range(m):
@@ -233,32 +335,30 @@ def _slice_grid_single(g, coord, normal=None, cut_dir=None, tol=1e-9,
                     minus.append(x)
                     bnd.append(x)
             record_edge(a, b, bnd)
-            out_nodes.extend(minus)
+            out_nodes.append(np.asarray(minus, dtype=np.int64))
             out_np.append(out_np[-1] + len(minus))
             out_neigh.append([half(a, False), half(b, False)])
             face_parent.append(f)
             face_status.append(2)
-            out_nodes.extend(plus)
+            out_nodes.append(np.asarray(plus, dtype=np.int64))
             out_np.append(out_np[-1] + len(plus))
             out_neigh.append([half(a, True), half(b, True)])
             face_parent.append(f)
             face_status.append(2)
         else:                                            # face on one side
-            # all-on-plane faces (the plane coincides with an existing face) are
-            # kept as-is; only a *cut* cell with such a face would be the
-            # zero-volume degenerate MRST warns about
-            if not has_plus and not has_minus and (fully_cut[neigh[f]] & (neigh[f] >= 0)).any():
-                raise NotImplementedError(
-                    "the plane coincides with a face of a cut cell (zero volume)")
-            side_pos = has_plus                          # False also for all-0
-            out_nodes.extend(seg.tolist())
+            # an all-on-plane face keeps its nodes and joins the minus half;
+            # where it is the only face of that half the cell is not split at
+            # all and the face itself becomes the slice
+            side_pos = has_plus_of[f]                    # False also for all-0
+            out_nodes.append(seg)                        # kept as-is, in bulk
             out_np.append(out_np[-1] + seg.size)
             out_neigh.append([half(a, side_pos), half(b, side_pos)])
             face_parent.append(f)
-            face_status.append(1)
+            face_status.append(3 if f in slice_only_faces else 1)
             # a face touching the plane along an edge (two on-plane nodes)
             # still bounds the cut polygon of its cut cells
-            record_edge(a, b, [int(x) for x in seg[s == 0]])
+            if touches_plane_of[f]:
+                record_edge(a, b, [int(x) for x in seg[side[seg] == 0]])
 
     all_coords = np.vstack([coords, np.array(new_coords)]) if new_coords else coords
 
@@ -269,13 +369,14 @@ def _slice_grid_single(g, coord, normal=None, cut_dir=None, tol=1e-9,
         ring = _order_ring(cell_cut_edges[int(c)])
         if np.dot(_polygon_normal(all_coords[ring]), n) < 0:
             ring = ring[::-1]
-        out_nodes.extend(ring)
+        out_nodes.append(np.asarray(ring, dtype=np.int64))
         out_np.append(out_np[-1] + len(ring))
         out_neigh.append([int(c), int(plus_id[c])])
         face_parent.append(-1)
         face_status.append(3)
     neighbors = np.asarray(out_neigh, dtype=np.int64)
-    faces_nodes = np.asarray(out_nodes, dtype=np.int64)
+    faces_nodes = (np.concatenate(out_nodes) if out_nodes
+                   else np.zeros(0, dtype=np.int64)).astype(np.int64)
     faces_pos = np.asarray(out_np, dtype=np.int64)
     num_cells = nc0 + split_cell_ids.size
     cell_faces, cell_face_pos = _rebuild_cell_faces(num_cells, neighbors)

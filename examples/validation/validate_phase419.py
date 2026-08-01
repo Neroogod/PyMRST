@@ -18,7 +18,9 @@ from pymrst.modules.dg.cubatures.element_cubature import (
     TetrahedronCubature,
     TriangleCubature,
 )
-from pymrst.modules.vem.utils.vem_geometry import compute_vem_geometry
+from pymrst.modules.vem.utils.compute_vem_geometry import (
+    compute_vem_geometry,
+)
 
 REF = Path(__file__).with_name("ref_p419_dg_element_cubature.mat")
 

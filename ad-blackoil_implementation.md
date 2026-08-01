@@ -371,13 +371,35 @@ at the boundary.
 | `blackoilTutorialPlotHook` | Runnable | Verify callback timing and state payload |
 | `blackoilTutorialMexAcceleration` | Python timing analogue | Document backend equivalence and compare residuals |
 | `multisegmentWellExample` | Full runnable SPE1 case, MRST-validated | Maintain the 13-node tubing/valve topology and conventional-well comparison in CI |
-| `blackoilTimeIntegrationExample` | FIM, CFL-controlled explicit, and AIM on SPE1 | Add the SPE9 path after its deck/VFP/schedule importer; extend direct MATLAB trajectory comparisons |
-| `eggExample` | Guarded | Dataset loader plus complete simulation |
-| `simulateSPE3` | Guarded | Deck/schedule import plus reference comparison |
-| `simulateSPE9` / tutorial | Guarded | Deck, VFP, schedule, and summary comparison |
-| `tenthCSP_Model_I` | Guarded | SPE10 properties and complete setup |
+| `blackoilTimeIntegrationExample` | FIM, CFL-controlled explicit, and AIM on SPE1 | Extend cross-method SPE9 integration comparisons and reporting |
+| `eggExample` | Runnable, official dataset loader and MRST-validated | Maintain full 123-step production-history regression and realization coverage |
+| `simulateSPE3` | Runnable wet-gas deck workflow | Complete the full-schedule MATLAB trajectory regression |
+| `simulateSPE9` / tutorial | Runnable 9000-cell/26-well workflow, MRST setup and first-step validated | Maintain full 900-day regression and optional plotting/report presentation |
+| `tenthCSP_Model_I` | Runnable, official Model I loader and MRST-validated | Maintain full ten-year trajectory regression |
 | `blackoilSectorModelExample` | Runnable and MRST-validated | Full open-versus-closed pressure-boundary workflow; retain the reduced deterministic reference in CI |
-| `fieldModelNorneExample` | Guarded | Full Norne deck/schedule and field run |
+| `fieldModelNorneExample` | Full deck/output import; native 247-control/36-well schedule; decoded VFP tables; fault/NNC-aware reference operators; two-region PVT/SCAL fluid; native model/state initialization; checkpoint/resume; bounded-memory CPR runner; first four report periods converged through day 56; field-scale regression | Complete 247-step trajectory validation and regional surface-density support in facilities |
+
+The native Norne runner now treats iterative linear-solver failure as a
+recoverable ministep failure, rebinds VFP tables at control changes, seeds
+new injector rate unknowns from their prescribed composition, and combines
+line search with adaptive report-step subdivision.  A facility-only
+block-Jacobi tail that becomes rank deficient at a control switch is
+regularized inside the preconditioner only; the global Newton system is left
+unchanged.  The first report step is validated as one full step.  The large
+C-4H gas-injection change in report period two is validated over seventeen
+one-day ministeps: the transition converges and subsequent days take 1--2
+Newton iterations. CPR reuses the AMG hierarchy for memory efficiency but now rebuilds
+its coarse levels at a bounded interval; PyAMG's matrix-change operation only
+updates the fine level, so unbounded reuse degraded linear convergence across
+long histories.
+
+Report periods three and four are now validated as well. Period three advances
+B-2H production and completes 16 daily ministeps with two cuts. Period four
+more than doubles C-4H gas injection, increases B-2H production, opens D-2H,
+and completes 15 daily ministeps with seven automatic cuts. Compressed native
+checkpoints at the ends of periods three (day 41) and four (day 56) provide
+deterministic restart points for subsequent trajectory validation.
+Report period five is the current trajectory-validation frontier.
 
 Every example must provide a noninteractive CLI path suitable for CI. Plotting
 must be optional and must not change numerical execution.

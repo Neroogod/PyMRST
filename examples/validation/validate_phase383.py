@@ -5,9 +5,9 @@ vertical plane x=1.5 cutting a 3x2x2 grid (splitting the four middle-column
 cells). Cell renumbering differs, so the check uses the cell count, the total
 volume, and the sorted per-cell volumes - which pin the geometry of the split.
 
-Only the clean planar cut (through cell interiors, no node snapping) is ported;
-MRST's `topologicalCellSplit` handling of node-snapped / partial cuts is out of
-scope.
+This case is the clean planar cut, through cell interiors with no node
+snapping. Cuts that coincide with a face - snapped cuts and pinched cells - are
+covered by `validate_grid_slice_degeneracy.py`.
 """
 
 from pathlib import Path

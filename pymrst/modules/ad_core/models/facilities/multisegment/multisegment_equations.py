@@ -202,7 +202,13 @@ def _node_mix(model, pressure, alpha, q_abs, rho_s):
         root = q_abs[ph] / q_total
         mix_s.append(vertcat_adi(root, nonroot[1:]))
 
-    fluid = model.raw_fluid
+    # `raw_fluid` is optional throughout this codebase - flux_and_props_bo,
+    # get_b_o_bo and get_polymer_shear_multiplier all reach for it and fall
+    # back to `fluid`. Requiring it outright here made this function unusable
+    # with any model that defines only `fluid`, including its own self-test.
+    fluid = getattr(model, "raw_fluid", None) or getattr(model, "fluid", None)
+    if fluid is None:
+        raise AttributeError("model must define fluid or raw_fluid")
     bw = fluid.b_w(pressure)
     if hasattr(fluid, "mu_w"):
         muw = fluid.mu_w(pressure)
@@ -256,7 +262,29 @@ if __name__ == "__main__":
 
     @dataclass
     class Fluid:
+        """A constant-property two-phase fluid.
+
+        The stub used to carry only `rho_s`, which was enough until the node
+        mixture started asking for formation volume factors and viscosities;
+        after that this file's own tests could not run. Constants are the right
+        model here - what is under test is the *assembly* of the segment
+        equations, not the PVT - and the two phases are given different values
+        so that swapping them would show up rather than cancel.
+        """
+
         rho_s: np.ndarray
+
+        def b_w(self, p, *args):
+            return np.ones_like(np.asarray(p, dtype=float))
+
+        def mu_w(self, p, *args):
+            return np.full_like(np.asarray(p, dtype=float), 1e-3)
+
+        def b_o(self, p, *args):
+            return np.full_like(np.asarray(p, dtype=float), 1.1)
+
+        def mu_o(self, p, *args):
+            return np.full_like(np.asarray(p, dtype=float), 2e-3)
 
     @dataclass
     class Model:

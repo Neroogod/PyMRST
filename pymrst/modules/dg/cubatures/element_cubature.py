@@ -153,7 +153,9 @@ def LineCubature(g, precision: int) -> ElementCubature:
 
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
-    from pymrst.modules.vem.utils.vem_geometry import compute_vem_geometry
+    from pymrst.modules.vem.utils.compute_vem_geometry import (
+    compute_vem_geometry,
+)
 
     def _integral(cub, g, f, e):
         """Integral of scalar field `f` over element `e` from the cubature."""

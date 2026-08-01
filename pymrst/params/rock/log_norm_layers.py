@@ -19,14 +19,30 @@ def log_norm_layers(
     rng: Optional[np.random.Generator] = None,
     fields: Optional[Sequence[np.ndarray]] = None,
     shifts: Optional[Sequence[float]] = None,
-) -> np.ndarray:
+    return_indices: bool = False,
+) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
     """Return a layered log-normal permeability field in MRST cell order."""
     dims = tuple(int(d) for d in np.atleast_1d(dims))
-    assert len(dims) == 3, "log_norm_layers needs a 3D grid"
+    if len(dims) == 2:
+        dims += (1,)
+    if len(dims) != 3 or any(d <= 0 for d in dims):
+        raise ValueError("log_norm_layers needs two or three positive dimensions")
+    for name, value in (("sigma", sigma), ("a", a), ("b", b), ("std", std)):
+        if np.asarray(value).size != 1:
+            raise ValueError(f"{name} must be scalar")
+    if float(std) <= 0:
+        raise ValueError("std must be positive")
     nx, ny, nz = dims
     rng = np.random.default_rng() if rng is None else rng
-    bounds = _layer_bounds(nz, mean_perm, indices)
+    bounds = _layer_bounds(nz, mean_perm, indices, rng)
     layer_means = _layer_means(mean_perm)
+    count = bounds.size-1
+    if layer_means is not None and layer_means.size != count:
+        raise ValueError("one mean permeability is required per layer")
+    if fields is not None and len(fields) != count:
+        raise ValueError("fields must contain one draw per layer")
+    if shifts is not None and len(shifts) != count:
+        raise ValueError("shifts must contain one value per layer")
 
     perm = np.zeros((nx, ny, nz))
     for i in range(bounds.size - 1):
@@ -38,25 +54,45 @@ def log_norm_layers(
         if layer_means is not None:
             layer = layer_means[i] * layer / layer.mean()
         perm[:, :, bounds[i] : bounds[i + 1]] = layer
-    return perm.ravel(order="F")
+    result = perm.ravel(order="F")
+    return (result, bounds) if return_indices else result
 
 
 def _layer_bounds(
     nz: int,
     mean_perm: Optional[Sequence[float]],
     indices: Optional[Sequence[int]],
+    rng: np.random.Generator,
 ) -> np.ndarray:
     if indices is not None:
         bounds = np.asarray(indices, dtype=np.int64).ravel()
-    elif mean_perm is not None and np.ndim(mean_perm) > 0:
-        n_layers = len(mean_perm)
-        assert n_layers <= nz, f"{n_layers} layers asked for in {nz} model layers"
-        bounds = np.linspace(0, nz, n_layers + 1).astype(np.int64)
+    elif mean_perm is None:
+        # MRST's no-M call takes its nargin<2 branch: one permeability
+        # realization per model layer.
+        bounds = np.arange(nz+1, dtype=np.int64)
     else:
-        bounds = np.arange(nz + 1)
-    assert bounds[0] == 0 and bounds[-1] == nz, (
-        f"layer boundaries must run 0..{nz}, got {bounds}"
-    )
+        values = np.asarray(mean_perm)
+        if values.ndim == 0:
+            requested = int(values)
+            if float(values) != requested:
+                raise ValueError("number of layers must be an integer")
+            requested = 1 if requested < 0 else requested
+        else:
+            requested = values.size
+        if requested < 1 or requested > nz:
+            raise ValueError(f"{requested} layers requested for {nz} model layers")
+        if requested == 1:
+            bounds = np.array([0, nz], dtype=np.int64)
+        elif requested == nz:
+            bounds = np.arange(nz+1, dtype=np.int64)
+        else:
+            internal = np.sort(rng.choice(
+                np.arange(1, nz), size=requested-1, replace=False
+            ))
+            bounds = np.concatenate([[0], internal, [nz]])
+    if (bounds.size < 2 or bounds[0] != 0 or bounds[-1] != nz
+            or np.any(np.diff(bounds) <= 0)):
+        raise ValueError(f"layer boundaries must increase from 0 to {nz}")
     return bounds
 
 
@@ -75,7 +111,13 @@ def _layer_draw(
     fields: Optional[Sequence[np.ndarray]],
 ) -> np.ndarray:
     if fields is not None:
-        return np.asarray(fields[layer_index], float).reshape(nx, ny, n_layers + 2)
+        value = np.asarray(fields[layer_index], float)
+        expected = (nx, ny, n_layers+2)
+        if value.shape != expected:
+            raise ValueError(
+                f"field {layer_index} must have shape {expected}, got {value.shape}"
+            )
+        return value
     return rng.standard_normal((nx, ny, n_layers + 2))
 
 
@@ -106,4 +148,3 @@ if __name__ == "__main__":
     test_log_norm_layers_is_layered_and_lognormal()
     test_log_norm_layers_reuses_a_given_draw()
     print("\nAll tests passed!")
-

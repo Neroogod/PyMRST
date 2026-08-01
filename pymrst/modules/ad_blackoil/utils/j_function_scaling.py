@@ -55,7 +55,7 @@ __all__ = ["apply_j_function_scaling", "j_function_ratio"]
 
 
 if __name__ == "__main__":
-    from pymrst.modules.ad_props.blackoil_fluid import BlackOilFluid
+    from pymrst.modules.ad_props.props.init_deck_adi_fluid import BlackOilFluid
     from pymrst.params.rock import Rock
 
     def test_j_function_ratio_and_scaling():

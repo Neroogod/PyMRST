@@ -1,37 +1,25 @@
-"""Expand matrix columns to a cell/list layout (MRST ``expandMatrixToCell.m``)."""
+"""Moved to `pymrst.modules.ad_core.utils.expand_matrix_to_cell`.
 
-from __future__ import annotations
+MRST keeps `expandMatrixToCell.m` in `modules/ad-core/utils/`, not in
+`compositional`. PyMRST had it the other way round - the implementation here,
+with `ad_core` re-exporting it - which made a lower-level module import a
+higher-level one.
 
-from typing import Any
+That was not merely untidy. It closed an import cycle:
 
-import numpy as np
+    compositional/model -> ad_core/__init__ -> ad_core/utils/__init__
+      -> ad_core/utils/expand_matrix_to_cell -> compositional/utils/__init__
+      -> compositional/utils/equations_compositional
+      -> compositional/model   (still half-initialised)
 
+so `import pymrst.modules.compositional.model` raised ImportError and every
+validator that touches compositional failed. The implementation now lives at
+its MRST path and this re-exports it, which points the dependency downward.
+"""
 
-def expandMatrixToCell(matrix: Any, subset: Any = slice(None)) -> list[Any]:
-    """Return one column vector per matrix column.
+from pymrst.modules.ad_core.utils.expand_matrix_to_cell import (  # noqa: F401
+    expand_matrix_to_cell,
+    expandMatrixToCell,
+)
 
-    This mirrors MRST's small ``expandMatrixToCell`` utility. If ``matrix`` is
-    already a Python list/tuple (the closest analogue of a MATLAB cell array), it
-    is returned as a list unchanged. Otherwise, a 2-D array is split by columns;
-    a 1-D array is treated as one column.
-    """
-    if isinstance(matrix, (list, tuple)):
-        return list(matrix)
-    arr = np.asarray(matrix)
-    if subset == ":":
-        subset = slice(None)
-    if arr.ndim == 0:
-        arr = arr.reshape(1, 1)
-    elif arr.ndim == 1:
-        arr = arr.reshape(-1, 1)
-    if arr.ndim != 2:
-        raise ValueError("matrix must be one- or two-dimensional")
-    return [arr[subset, i] for i in range(arr.shape[1])]
-
-
-def expand_matrix_to_cell(matrix: Any, subset: Any = slice(None)) -> list[Any]:
-    """Pythonic alias for :func:`expandMatrixToCell`."""
-    return expandMatrixToCell(matrix, subset=subset)
-
-
-__all__ = ["expandMatrixToCell", "expand_matrix_to_cell"]
+__all__ = ["expand_matrix_to_cell", "expandMatrixToCell"]

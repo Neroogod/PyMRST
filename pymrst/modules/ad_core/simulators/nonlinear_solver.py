@@ -133,7 +133,18 @@ class NonLinearSolver:
                 relax = self._update_relaxation(relax, norm, prev_norm)
             prev_norm = norm
 
-            increment = self._solve_linear(eqs, model, st, dt)
+            try:
+                increment = self._solve_linear(eqs, model, st, dt)
+            except RuntimeError as error:
+                # Iterative field solvers can fail on an oversized ministep.
+                # That is a timestep failure, not a simulation crash: return
+                # control to `solve_timestep` / `_solve_adaptive`, which can
+                # cut dt and retry from the last converged state.
+                report.residuals[-1] = dict(report.residuals[-1])
+                report.residuals[-1]["linear_failure"] = float("inf")
+                if self.verbose:
+                    print(f"  linear solve failed at dt={dt:.3g} s: {error}")
+                return st, report
             st_new = model.update_state(st, relax * increment)
 
             if self.use_line_search:
@@ -184,15 +195,15 @@ class NonLinearSolver:
         return best, self.line_search_max
 
     # -- one timestep, with cutting -----------------------------------------
-    def solve_timestep(self, model, state0: State,
-                       dt: float) -> Tuple[State, StepReport]:
+    def solve_timestep(self, model, state0: State, dt: float,
+                       control=None) -> Tuple[State, StepReport]:
         """Take a step of dt, cutting it in half on failure and re-trying.
 
         A cut step is taken as several sub-steps that sum to dt, so the
         schedule's report times are still honoured.
         """
         if self.timestep_selector is not None:
-            return self._solve_adaptive(model, state0, dt)
+            return self._solve_adaptive(model, state0, dt, control)
 
         flow = getattr(model, "FlowDiscretization", None)
         if flow is not None:
@@ -366,9 +377,19 @@ class NonLinearSolver:
         for i in range(schedule.n_steps):
             c = int(schedule.step_control[i])
             if c != last_control:              # a new control period begins
+                old_wells = list(getattr(getattr(model, "facility", None),
+                                         "wells", ()))
                 self._apply_control(model, schedule.controls[c])
+                st = self._seed_injector_control_state(
+                    st, old_wells,
+                    list(getattr(getattr(model, "facility", None),
+                                 "wells", ())),
+                )
                 last_control = c
-            st, rep = self.solve_timestep(model, st, float(schedule.step_val[i]))
+            st, rep = self.solve_timestep(
+                model, st, float(schedule.step_val[i]),
+                schedule.controls[c],
+            )
             report.steps.append(rep)
             states.append(st)
             if not rep.converged:
@@ -417,6 +438,55 @@ class NonLinearSolver:
                 )
             model.facility.wells[:] = new_wells
             model.facility.within_limits = True
+            # VFP table bindings live on each well and must follow a schedule
+            # control replacement.  This is a no-op for ordinary wells.
+            bind_vfp = getattr(model.facility, "_bind_vfp_tables", None)
+            if bind_vfp is not None:
+                bind_vfp()
+
+    @staticmethod
+    def _seed_injector_control_state(state, old_wells, new_wells):
+        """Seed a newly changed injector's surface-rate unknowns.
+
+        Field schedules commonly open a high-rate gas or water injector in one
+        control jump.  Carrying the preceding zero rate into Newton gives the
+        well equations an unnecessarily violent initial residual.  Injector
+        composition is prescribed, so its target supplies an exact and safe
+        initial guess for the phase rates.  Producer phase splits are not
+        prescribed and are intentionally left untouched.
+        """
+        if not old_wells or len(old_wells) != len(new_wells):
+            return state
+        names = ("qWs", "qOs", "qGs")
+        if not all(name in state for name in names):
+            return state
+        seeded = state.copy()
+        changed = False
+        for index, (old, new) in enumerate(zip(old_wells, new_wells)):
+            target = float(getattr(new, "val", 0.0))
+            control = str(getattr(new, "type", "")).lower()
+            old_signature = (
+                bool(getattr(old, "status", False)),
+                str(getattr(old, "type", "")).lower(),
+                float(getattr(old, "val", 0.0)),
+            )
+            new_signature = (
+                bool(getattr(new, "status", False)), control, target
+            )
+            if (old_signature == new_signature or not new_signature[0]
+                    or target <= 0.0
+                    or control not in {
+                        "rate", "wrat", "orat", "grat", "lrat", "vrat",
+                        "nrat", "resv_history",
+                    }):
+                continue
+            compi = np.asarray(getattr(new, "compi", ()), dtype=float).ravel()
+            if compi.size < len(names):
+                compi = np.pad(compi, (0, len(names)-compi.size))
+            for phase, name in enumerate(names):
+                seeded[name][index] = target*compi[phase]
+            changed = True
+        return seeded if changed else state
 
 
 if __name__ == "__main__":

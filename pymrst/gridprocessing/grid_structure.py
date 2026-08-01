@@ -1,6 +1,6 @@
 """The unstructured grid structure, ported from MRST `grid_structure`."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import List, Optional, Tuple
 
 import numpy as np
@@ -119,6 +119,54 @@ class Grid:
         assert faces.nodes.min() >= 0 and faces.nodes.max() < nodes.num
         assert faces.neighbors.min() >= -1 and faces.neighbors.max() < cells.num
         assert not np.any(np.all(faces.neighbors == -1, axis=1)), "orphan face"
+
+
+def carry_custom_fields(source: Grid, target: Grid) -> None:
+    """Copy `source`'s undeclared attributes onto `target`.
+
+    Corner-point node maps (`cells.cpnodes`) and non-neighbor connections
+    (`g.nnc`) are attached to a grid dynamically rather than declared on the
+    dataclasses, so `dataclasses.replace` and any explicit rebuild drop them.
+    Attributes `target` already carries are left alone, which lets a caller
+    remap an index array first and still pick up everything else.
+    """
+    for part in ("cells", "faces", "nodes"):
+        _carry(getattr(source, part), getattr(target, part))
+    _carry(source, target)
+
+
+def _carry(source, target) -> None:
+    declared = {f.name for f in fields(source)}
+    for name, value in vars(source).items():
+        if name not in declared and not hasattr(target, name):
+            setattr(target, name, value)
+
+
+def remap_cp_nodes(g: Grid, node_map: np.ndarray) -> None:
+    """Point a corner-point node map at renumbered nodes.
+
+    `cells.cpnodes` holds node indices, so merging or renumbering nodes leaves
+    it addressing the old numbering - silently wrong, or out of range once the
+    node array shrinks.
+    """
+    cpnodes = getattr(g.cells, "cpnodes", None)
+    if cpnodes is not None:
+        g.cells.cpnodes = node_map[np.asarray(cpnodes, dtype=np.int64)]
+
+
+def invalidate_geometry(g: Grid) -> None:
+    """Drop geometry that moving or merging nodes has made wrong.
+
+    Collapse operations leave these arrays the right length but holding
+    pre-collapse values, which is worse than absent: nothing errors and the
+    stale numbers flow on. Rerun `compute_geometry`.
+    """
+    for name in ("areas", "normals", "centroids", "diameters",
+                 "edges", "edgePos", "edgeSign", "edgeNormals"):
+        setattr(g.faces, name, None)
+    for name in ("volumes", "centroids", "diameters", "nodes", "nodePos",
+                 "edges", "edgePos"):
+        setattr(g.cells, name, None)
 
 
 def extract_subgrid(g: Grid, cells, *, return_mapping: bool = False):

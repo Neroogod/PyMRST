@@ -17,11 +17,9 @@ import numpy as np
 from scipy.io import loadmat
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
-from pymrst.utils.flux_conversion import (
-    cell_flux_to_face_flux,
-    face_flux_to_cell_flux,
-    face_flux_to_cell_velocity,
-)
+from pymrst.utils.cell_flux_to_face_flux import cell_flux_to_face_flux
+from pymrst.utils.face_flux_to_cell_flux import face_flux_to_cell_flux
+from pymrst.utils.face_flux_to_cell_velocity import face_flux_to_cell_velocity
 
 REF = Path(__file__).with_name("ref_p364_flux.mat")
 

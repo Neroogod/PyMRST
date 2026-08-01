@@ -13,23 +13,30 @@ def add_source(
     src: Optional[Source],
     cells: np.ndarray,
     rates: Scalar,
-    sat: Scalar = 1.0,
+    sat: Optional[Scalar] = None,
     components: Optional[Scalar] = None,
 ) -> Source:
     """Append volumetric source terms in the given cells."""
-    if src is None:
-        src = Source()
     cells = np.asarray(cells, dtype=np.int64).ravel()
     rates_arr = _broadcast_rates(rates, cells.size)
-    assert not np.isin(cells, src.cell).any(), (
-        "new source terms conflict with existing source terms"
-    )
     sat_arr = _broadcast_saturation(sat, cells.size)
+    if src is None:
+        src = Source()
+    if src.sat.shape[1] and src.sat.shape[1] != sat_arr.shape[1]:
+        raise ValueError(
+            "number of saturation columns does not match existing sources"
+        )
+    if np.isin(cells, src.cell).any():
+        raise ValueError("new source terms conflict with existing source terms")
+    comp_arr = None
+    if components is not None:
+        comp_arr = _broadcast_saturation(components, cells.size)
+        if src.components is not None and src.components.shape[1] != comp_arr.shape[1]:
+            raise ValueError("component columns do not match existing sources")
     src.cell = np.concatenate([src.cell, cells])
     src.rate = np.concatenate([src.rate, rates_arr])
     src.sat = sat_arr if src.sat.size == 0 else np.vstack([src.sat, sat_arr])
-    if components is not None:
-        comp_arr = _broadcast_saturation(components, cells.size)
+    if comp_arr is not None:
         src.components = comp_arr if src.components is None else np.vstack([src.components, comp_arr])
     elif src.components is not None:
         src.components = np.vstack([src.components, np.zeros((cells.size, src.components.shape[1]))])
@@ -40,14 +47,19 @@ def _broadcast_rates(rates: Scalar, count: int) -> np.ndarray:
     arr = np.asarray(rates, dtype=np.float64).ravel()
     if arr.size == 1:
         return np.full(count, arr[0])
-    assert arr.size == count, "one rate per cell or one scalar rate required"
+    if arr.size != count:
+        raise ValueError("one rate per cell or one scalar rate required")
     return arr
 
 
-def _broadcast_saturation(sat: Scalar, count: int) -> np.ndarray:
+def _broadcast_saturation(sat: Optional[Scalar], count: int) -> np.ndarray:
+    if sat is None:
+        return np.empty((0, 0), dtype=float)
     arr = np.atleast_2d(np.asarray(sat, dtype=np.float64))
     if arr.shape[0] == 1:
         arr = np.repeat(arr, count, axis=0)
+    if arr.shape[0] not in (0, count):
+        raise ValueError("saturation must have one row or one row per cell")
     return arr
 
 

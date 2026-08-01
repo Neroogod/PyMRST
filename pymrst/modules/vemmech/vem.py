@@ -20,7 +20,8 @@ import scipy.sparse.linalg as spla
 
 from pymrst.gridprocessing.grid import Grid
 from pymrst.utils.eigs import multi_symm_eig
-from pymrst.utils.gridtools import mcolon, rldecode
+from pymrst.utils.mcolon import mcolon
+from pymrst.utils.rldecode import rldecode
 
 NLIN3 = 6
 NLIN2 = 3

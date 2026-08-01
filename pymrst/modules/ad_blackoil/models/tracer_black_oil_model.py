@@ -147,7 +147,7 @@ class TracerBlackOilModel(GenericBlackOilModel):
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
-    from pymrst.modules.ad_props.simple_adi_fluid import init_simple_adi_fluid
+    from pymrst.modules.ad_props.init_simple_adi_fluid import init_simple_adi_fluid
     from pymrst.params.rock import make_rock, pore_volume
     from pymrst.params.wells_and_bc import add_well
     from pymrst.utils.units import BARSA, CENTI, DARCY, DAY, MILLI, POISE

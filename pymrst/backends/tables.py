@@ -33,7 +33,7 @@ def interp_table_backend(x_tab, f_tab, x, backend: str | ArrayBackend = "torch")
     be = get_backend(backend) if not isinstance(backend, ArrayBackend) else backend
     if be.is_torch:
         return _torch_interp1(be, x_tab, f_tab, x)[0]
-    from pymrst.modules.ad_props.tables import interp_table
+    from pymrst.utils.interp_table import interp_table
 
     return interp_table(np.asarray(x_tab, dtype=float), np.asarray(f_tab, dtype=float), x)
 
@@ -48,7 +48,7 @@ def pvt_interp_backend(
     """Backend version of MRST/PyMRST PVTO `parallel` interpolation."""
     be = get_backend(backend) if not isinstance(backend, ArrayBackend) else backend
     if not be.is_torch:
-        from pymrst.modules.ad_props.tables import PVTTable, pvt_interp
+        from pymrst.modules.ad_props.utils.interp_pvt import PVTTable, pvt_interp
 
         np_tab = PVTTable(tab.key, tab.branches, tab.sat_x, tab.sat_f)
         return pvt_interp(np_tab, p, rs, sat_flag)

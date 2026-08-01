@@ -25,8 +25,8 @@ from pymrst.modules.ad_mechanics.poromech import (
     MechWaterModel,
     MechWaterWellModel,
 )
-from pymrst.modules.ad_props.blackoil_fluid import init_deck_blackoil_fluid
-from pymrst.modules.ad_props.simple_adi_fluid import init_simple_adi_fluid
+from pymrst.modules.ad_props.props.init_deck_adi_fluid import init_deck_blackoil_fluid
+from pymrst.modules.ad_props.init_simple_adi_fluid import init_simple_adi_fluid
 from pymrst.modules.deckformat import read_spe1_deck
 from pymrst.modules.vemmech.vem import ElasticBC, create_augmented_grid, enu2c_2d
 from pymrst.params.rock import make_rock

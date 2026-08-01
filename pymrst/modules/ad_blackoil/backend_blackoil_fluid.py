@@ -8,7 +8,7 @@ import numpy as np
 
 from pymrst.backends import ArrayBackend, BackendPVTTable, get_backend
 from pymrst.backends.tables import interp_table_backend, pvt_interp_backend
-from pymrst.modules.ad_props.tables import extend_tab, make_pvt_table
+from pymrst.modules.ad_props import extend_tab, make_pvt_table
 
 
 @dataclass

@@ -67,7 +67,7 @@ def water_phase_fluid(b, mu: float, rho: float) -> PhaseFluid:
 
 
 def simple_phase_fluid(fluid) -> PhaseFluid:
-    """Adapt the two-phase `ADFluid` of `ad_props.simple_adi_fluid`."""
+    """Adapt the two-phase `ADFluid` of `ad_props.init_simple_adi_fluid`."""
     pc_ow = getattr(fluid, "pc_ow", None)
     pc = None if pc_ow is None else (lambda s: [-pc_ow(s[0]), 0.0])
     return PhaseFluid(
@@ -80,11 +80,13 @@ def simple_phase_fluid(fluid) -> PhaseFluid:
         ],
         kr=lambda s, **kw: [fluid.kr_w(s[0]), fluid.kr_o(s[1])],
         rho_s=fluid.rhoS,
+        pv_mult=getattr(fluid, "pv_mult", None),
         pc=pc,
     )
 
 
-def blackoil_phase_fluid(fluid, vapoil: bool = False) -> PhaseFluid:
+def blackoil_phase_fluid(fluid, disgas: bool = True,
+                         vapoil: bool = False) -> PhaseFluid:
     """Adapt the three-phase live-oil / wet-gas `BlackOilFluid`."""
     pc_ow = getattr(fluid, "pc_ow", None)
     pc_og = getattr(fluid, "pc_og", None)
@@ -109,7 +111,7 @@ def blackoil_phase_fluid(fluid, vapoil: bool = False) -> PhaseFluid:
         rho_s=fluid.rhoS,
         pv_mult=fluid.pv_mult,
         rs_sat=fluid.rs_sat,
-        disgas=True,
+        disgas=disgas,
         rv_sat=fluid.rv_sat,
         vapoil=vapoil,
         pc=pc,

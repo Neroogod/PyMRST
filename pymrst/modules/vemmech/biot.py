@@ -72,7 +72,7 @@ class BiotModel:
         self.f_mech = np.zeros(ndof)
         if el_bc.force_faces is not None and el_bc.force_faces.size > 0:
             from pymrst.modules.vemmech.vem import calculate_qc
-            from pymrst.utils.gridtools import mcolon
+            from pymrst.utils.mcolon import mcolon
             _, qf_all, _ = calculate_qc(g)
             faces = el_bc.force_faces
             lnn = np.diff(g.faces.nodePos)[faces]
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.vemmech.vem import create_augmented_grid, enu2c
     from pymrst.params.rock import make_rock
-    from pymrst.utils.gridtools import mcolon
+    from pymrst.utils.mcolon import mcolon
     from pymrst.utils.units import DARCY
 
     def terzaghi_analytic(z_over_L, tau, nterms=200):

@@ -19,18 +19,21 @@ def fluxside(
     sat: Scalar = 1.0,
     i1: Optional[Union[int, list[int]]] = None,
     i2: Optional[Union[int, list[int]]] = None,
-) -> BoundaryCondition:
+    search_range: Optional[Union[int, list[int]]] = None,
+) -> Optional[BoundaryCondition]:
     """Apply a total flux across one logical side of the grid."""
     from pymrst.utils.gridtools import boundary_face_indices
 
-    faces = boundary_face_indices(g, side, i1, i2)
+    faces = boundary_face_indices(g, side, i1, i2, search_range)
     total = np.asarray(flux, dtype=np.float64).ravel()
-    if total.size == 1:
-        assert g.faces.areas is not None, "run compute_geometry first"
-        areas = g.faces.areas[faces]
-        values = float(total[0]) * areas / areas.sum()
-    else:
-        values = total
+    if faces.size == 0:
+        return add_bc(bc, faces, "flux", total, sat=sat)
+    if total.size not in (1, faces.size):
+        raise ValueError("flux must be scalar or contain one value per selected face")
+    if g.faces.areas is None:
+        raise ValueError("run compute_geometry before applying a flux side")
+    areas = g.faces.areas[faces]
+    values = total*areas/areas.sum()
     return add_bc(bc, faces, "flux", values, sat=sat)
 
 
@@ -47,4 +50,3 @@ if __name__ == "__main__":
 
     test_fluxside_splits_the_rate_by_area()
     print("\nAll tests passed!")
-

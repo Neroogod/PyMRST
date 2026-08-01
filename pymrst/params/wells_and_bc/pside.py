@@ -19,11 +19,12 @@ def pside(
     sat: Scalar = 1.0,
     i1: Optional[Union[int, list[int]]] = None,
     i2: Optional[Union[int, list[int]]] = None,
-) -> BoundaryCondition:
+    search_range: Optional[Union[int, list[int]]] = None,
+) -> Optional[BoundaryCondition]:
     """Apply a pressure boundary condition on one logical side."""
     from pymrst.utils.gridtools import boundary_face_indices
 
-    faces = boundary_face_indices(g, side, i1, i2)
+    faces = boundary_face_indices(g, side, i1, i2, search_range)
     return add_bc(bc, faces, "pressure", pressure, sat=sat)
 
 
@@ -52,4 +53,3 @@ if __name__ == "__main__":
     test_pside_picks_the_right_faces()
     test_pside_restricts_to_an_index_range()
     print("\nAll tests passed!")
-

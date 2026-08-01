@@ -19,6 +19,7 @@ from pymrst.params.rock import make_rock
 from pymrst.params.wells_and_bc import Well
 from pymrst.params.wells_and_bc import add_well
 from pymrst.utils.units import DARCY
+from pymrst.utils.units import BARSA
 from pymrst.utils.units import DAY
 from pymrst.utils.units import MILLI
 
@@ -46,17 +47,26 @@ def setup_simple_compositional_example(
     producer_bhp: float = 55.0e5,
     nstep: int = 1,
     timestep: float = 10.0 * DAY,
+    full_size: bool = False,
 ) -> SimpleCompositionalSetup:
     """Build MRST's `setupSimpleCompositionalExample` in native PyMRST form."""
-    grid = compute_geometry(cart_grid([nx, 1, 1], [length, 10.0, 10.0]))
-    rock = make_rock(grid, 100.0 * MILLI * DARCY, 0.25)
+    if full_size:
+        nx = 1000
+        length = 1000.0
+        domain = [length, 1.0, 0.1]
+        permeability = 10.0 * MILLI * DARCY
+    else:
+        domain = [length, 10.0, 10.0]
+        permeability = 100.0 * MILLI * DARCY
+    grid = compute_geometry(cart_grid([nx, 1, 1], domain))
+    rock = make_rock(grid, permeability, 0.25)
     mixture = Mixture(
-        names=("Methane", "CarbonDioxide", "n-Decane"),
-        Tcrit=np.array([190.5640, 304.1282, 617.7000]),
-        Pcrit=np.array([4599200.0, 7377300.0, 2103000.0]),
-        Vcrit=np.array([9.8628e-05, 9.4118e-05, 6.0976e-04]),
-        acentric=np.array([0.0114, 0.2239, 0.4884]),
-        molarMass=np.array([0.0160, 0.0440, 0.1423]),
+        names=("n-Decane", "CarbonDioxide", "Methane"),
+        Tcrit=np.array([617.7000, 304.1282, 190.5640]),
+        Pcrit=np.array([2103000.0, 7377300.0, 4599200.0]),
+        Vcrit=np.array([6.0980e-04, 9.4120e-05, 9.8630e-05]),
+        acentric=np.array([0.4884, 0.22394, 0.01142]),
+        molarMass=np.array([0.14228, 0.04400, 0.01604]),
         name="MRST SIMPLE_COMP native mixture",
     )
     info = FluidCaseInfo(
@@ -66,13 +76,16 @@ def setup_simple_compositional_example(
         T=150.0 + 273.15,
     )
 
+    injector_type = "bhp" if full_size else "rate"
+    injector_value = 100.0 * BARSA if full_size else well_rate
+    producer_value = 50.0 * BARSA if full_size else producer_bhp
     wells = add_well(
         None,
         grid,
         rock,
         np.array([0]),
-        well_type="rate",
-        val=well_rate,
+        well_type=injector_type,
+        val=injector_value,
         compi=np.array([0.0, 1.0]),
         sign=1,
         name="Injector",
@@ -84,7 +97,7 @@ def setup_simple_compositional_example(
         rock,
         np.array([nx - 1]),
         well_type="bhp",
-        val=producer_bhp,
+        val=producer_value,
         compi=np.array([0.0, 1.0]),
         sign=-1,
         name="Producer",
@@ -108,11 +121,20 @@ def setup_simple_compositional_example(
         well.components = info.injection.copy()
         well.compi = np.array([1.0, 0.0])
         well.lims = None
-    schedule = simple_schedule(np.full(int(nstep), float(timestep)), wells=schedule_wells)
+    if full_size:
+        deck_steps = np.asarray(
+            [0.01, 0.02, 0.04, 0.04, 0.08, 0.16, 0.32, 0.44, 0.88, 0.12,
+             1.0, 1.0, 1.0, 2.0, 3.0] + [5.0] * 12 + [15.0] * 473,
+            dtype=float,
+        ) * DAY
+        schedule = simple_schedule(deck_steps, wells=schedule_wells)
+    else:
+        schedule = simple_schedule(np.full(int(nstep), float(timestep)), wells=schedule_wells)
     reference = {
         "available": False,
-        "reason": "MRST simplecomp comparison.mat is not bundled with PyMRST",
+        "reason": "Load the optional official simplecomp comparison dataset separately",
         "mrst_file": "comparison.mat",
+        "full_size": bool(full_size),
     }
     return SimpleCompositionalSetup(grid, rock, mixture, info, wells, model, state, schedule, reference)
 

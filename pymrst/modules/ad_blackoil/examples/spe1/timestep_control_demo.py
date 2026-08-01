@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
-from pymrst.modules.ad_blackoil.examples.spe1.simulate_spe1 import build_spe1
+
+# `build_spe1` never existed; this imported it and failed at module load. The
+# setup step it wanted is `setup_spe1_tutorial`, which returns the same
+# (deck, model, state) triple and is MRST's `setupSPE1` section.
+from pymrst.modules.ad_blackoil.examples.spe1.blackoil_tutorial_spe1 import (
+    setup_spe1_tutorial,
+)
 from pymrst.modules.ad_blackoil.examples.utils.schedule import ExampleResult, collect_history
 from pymrst.modules.ad_core import IterationCountTimeStepSelector, NonLinearSolver, SimulationReport
 
 
 def run_timestep_control_demo(total_steps: int = 10) -> ExampleResult:
-    deck, model, state = build_spe1()
+    deck, model, state = setup_spe1_tutorial()
     selector = IterationCountTimeStepSelector(target_iteration_count=5)
     solver = NonLinearSolver(max_iterations=30, timestep_selector=selector)
     report = SimulationReport()

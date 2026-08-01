@@ -447,7 +447,7 @@ def init_state_equil(model, region: EquilibriumRegion,
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import GenericBlackOilModel
-    from pymrst.modules.ad_props.simple_adi_fluid import init_simple_adi_fluid
+    from pymrst.modules.ad_props.init_simple_adi_fluid import init_simple_adi_fluid
     from pymrst.params.gravity_const import NORM_GRAVITY
     from pymrst.params.rock import make_rock
     from pymrst.utils.units import BARSA, CENTI, DARCY, MILLI, POISE

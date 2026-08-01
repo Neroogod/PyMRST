@@ -1,15 +1,22 @@
 """Grid geometry, ported from MRST `computeGeometry`."""
 
+import time
 import warnings
+from typing import List, Optional, Tuple
 
 import numpy as np
 
 from pymrst.gridprocessing.grid_structure import Grid
-from pymrst.utils.gridtools import mcolon
+from pymrst.utils.mcolon import mcolon
+
+# MRST's default cell-block size; large enough that small grids run in one pass
+MAX_BLOCK_SIZE: int = 20_000
 
 
 def compute_geometry(g: Grid, *, cp_geometry: bool = False,
-                     find_neighbors: bool = False, hinge_nodes=None) -> Grid:
+                     find_neighbors: bool = False, hinge_nodes=None,
+                     max_block_size: Optional[int] = MAX_BLOCK_SIZE,
+                     verbose: bool = False) -> Grid:
     """Fill face and cell geometry fields on ``g``.
 
     With ``cp_geometry=True``, additionally derive MRST's nominal corner-point
@@ -17,6 +24,12 @@ def compute_geometry(g: Grid, *, cp_geometry: bool = False,
     ``hinge_nodes`` may be a mapping or object with ``faces`` and ``nodes``
     members. Its zero-based face indices and corresponding 3D coordinates
     replace the triangulation centers of non-planar faces.
+
+    ``max_block_size`` caps how many cells the 3D cell-volume pass handles at
+    once, bounding peak memory on large grids at the cost of a Python-level
+    loop. ``None`` or a negative value processes every cell in one pass. It
+    changes memory use and nothing else: the result is identical either way.
+    ``verbose=True`` reports per-block progress and timings, as MRST does.
     """
     hinges = _normalize_hinge_nodes(g, hinge_nodes)
     if find_neighbors or g.faces.neighbors is None:
@@ -27,9 +40,9 @@ def compute_geometry(g: Grid, *, cp_geometry: bool = False,
         _geom_1d(g)
     elif g.griddim == 2:
         assert g.spatial_dim in (2, 3), "2D grids live in 2 or 3 dimensions"
-        _geom_2d(g)
+        _geom_2d(g, verbose=verbose)
     elif g.griddim == 3:
-        _geom_3d(g, hinges)
+        _geom_3d(g, hinges, max_block_size=max_block_size, verbose=verbose)
     else:
         raise ValueError(f"unsupported grid dimension {g.griddim}")
     if cp_geometry:
@@ -43,6 +56,31 @@ def compute_geometry(g: Grid, *, cp_geometry: bool = False,
             )
     g.type = g.type + ["computeGeometry"]
     return g
+
+
+def _partition_cells(num_cells: int,
+                     max_block_size: Optional[int]) -> List[Tuple[int, int]]:
+    """Split ``num_cells`` into MRST's balanced blocks of ``[start, stop)``.
+
+    Port of MRST's private ``partition_cells``: the requested size is first
+    reduced to the largest that divides the work evenly, then the remainder is
+    spread one cell at a time over the leading blocks, so no block is more than
+    one cell larger than any other.
+    """
+    if num_cells == 0:
+        return []
+    size = max_block_size
+    if size is None or size < 0:
+        size = num_cells
+    size = min(size, num_cells)
+    if size == 0:
+        raise ValueError("max_block_size must be positive, negative or None")
+    size = min(size, num_cells // -(-num_cells // size))  # even out the split
+    count, remainder = divmod(num_cells, size)
+    sizes = np.full(count, size, dtype=np.int64)
+    sizes[:remainder] += 1
+    bounds = np.concatenate([[0], np.cumsum(sizes)])
+    return [(int(lo), int(hi)) for lo, hi in zip(bounds[:-1], bounds[1:])]
 
 
 def _normalize_hinge_nodes(g: Grid, hinge_nodes):
@@ -92,12 +130,16 @@ def _find_and_orient_neighbors(g: Grid) -> None:
     order = np.argsort(cell_faces, kind="stable")
     sorted_faces = cell_faces[order]
     sorted_cells = cell_no[order]
+    # scatter each half-face into its face's free slot. Scanning for a face's
+    # incident cells one face at a time made this quadratic in the face count.
+    counts = np.bincount(sorted_faces, minlength=g.faces.num)
+    crowded = np.flatnonzero(counts > 2)
+    if crowded.size:
+        raise ValueError(f"face {crowded[0]} has more than two incident cells")
+    starts = np.concatenate([[0], np.cumsum(counts)]).astype(np.int64)
+    slot = np.arange(sorted_faces.size, dtype=np.int64) - starts[sorted_faces]
     neighbors = np.full((g.faces.num, 2), -1, dtype=np.int64)
-    for face in range(g.faces.num):
-        cells = sorted_cells[sorted_faces == face]
-        if cells.size > 2:
-            raise ValueError(f"face {face} has more than two incident cells")
-        neighbors[face, :cells.size] = cells
+    neighbors[sorted_faces, slot] = sorted_cells
     g.faces.neighbors = neighbors
 
     counts = np.diff(g.faces.nodePos)
@@ -166,7 +208,9 @@ def _accum(index: np.ndarray, values: np.ndarray, size: int) -> np.ndarray:
     )
 
 
-def _geom_3d(g: Grid, hinge_nodes=None) -> None:
+def _geom_3d(g: Grid, hinge_nodes=None, *,
+             max_block_size: Optional[int] = MAX_BLOCK_SIZE,
+             verbose: bool = False) -> None:
     coords = g.nodes.coords
     node_pos = g.faces.nodePos
     face_nodes = g.faces.nodes
@@ -193,31 +237,75 @@ def _geom_3d(g: Grid, hinge_nodes=None) -> None:
     face_areas = _accum(face_no, sub_areas, nf)
     face_centroids = _face_centroids(face_areas, sub_areas, sub_centroids, face_no, p_centers, nf)
 
-    cell_no = g.cell_no()
-    cell_faces = g.cells.faces
-    n_half_faces = np.diff(g.cells.facePos)
-    c_centers = _accum(cell_no, face_centroids[cell_faces], nc) / n_half_faces[:, None]
-
-    tri_ix = mcolon(node_pos[cell_faces], node_pos[cell_faces + 1])
-    half_face_no = np.repeat(np.arange(cell_faces.size, dtype=np.int64), num_nodes[cell_faces])
-    cell_no_tri = cell_no[half_face_no]
-    rel_sub_centroids = sub_centroids[tri_ix] - c_centers[cell_no_tri]
-    cell_face_sign = np.where(g.faces.neighbors[cell_faces, 0] == cell_no, 1.0, -1.0)
-    out_normals = sub_normals[tri_ix] * (
-        sub_signs[tri_ix] * cell_face_sign[half_face_no]
-    )[:, None]
-
-    tet_volumes = np.sum(rel_sub_centroids * out_normals, axis=1) / 3.0
-    tet_centroids = 0.75 * rel_sub_centroids
-    volumes = _accum(cell_no_tri, tet_volumes, nc)
-    rel_centroids = _accum(cell_no_tri, tet_volumes[:, None] * tet_centroids, nc)
-    rel_centroids /= volumes[:, None]
+    # the cell pass allocates one row per cell-face triangle, which is where a
+    # large grid actually costs memory, so it runs a block of cells at a time
+    face_pos = np.asarray(g.cells.facePos, dtype=np.int64)
+    volumes = np.zeros(nc)
+    centroids = np.zeros((nc, 3))
+    started = time.perf_counter()
+    blocks = _partition_cells(nc, max_block_size)
+    if verbose:
+        width = len(str(max(nc - 1, 0)))
+    for lo, hi in blocks:
+        block_started = time.perf_counter()
+        _cell_geometry_3d_block(
+            g, lo, hi, face_pos, num_nodes, node_pos,
+            face_centroids, sub_centroids, sub_normals, sub_signs,
+            volumes, centroids,
+        )
+        if verbose:
+            elapsed = time.perf_counter() - block_started
+            rate = (hi - lo) / elapsed if elapsed > 0 else float("inf")
+            print(f"Processing Cells {lo:{width}d} : {hi - 1:{width}d} "
+                  f"of {nc - 1:{width}d} ... done "
+                  f"({elapsed:.2f} [s], {rate:.2e} cells/second)")
+    if verbose:
+        print("Total 3D Geometry Processing Time = "
+              f"{time.perf_counter() - started:.3f} [s]")
 
     g.faces.areas = face_areas
     g.faces.normals = face_normals
     g.faces.centroids = face_centroids
     g.cells.volumes = volumes
-    g.cells.centroids = rel_centroids + c_centers
+    g.cells.centroids = centroids
+
+
+def _cell_geometry_3d_block(
+    g: Grid, lo: int, hi: int,
+    face_pos: np.ndarray, num_nodes: np.ndarray, node_pos: np.ndarray,
+    face_centroids: np.ndarray, sub_centroids: np.ndarray,
+    sub_normals: np.ndarray, sub_signs: np.ndarray,
+    volumes: np.ndarray, centroids: np.ndarray,
+) -> None:
+    """Fill volumes/centroids for cells ``[lo, hi)`` from the face geometry."""
+    size = hi - lo
+    half_faces = slice(int(face_pos[lo]), int(face_pos[hi]))
+    cell_faces = np.asarray(g.cells.faces, dtype=np.int64)[half_faces]
+    cell_no = np.repeat(np.arange(size, dtype=np.int64),
+                        np.diff(face_pos[lo:hi + 1]))
+    c_centers = (_accum(cell_no, face_centroids[cell_faces], size)
+                 / np.diff(face_pos[lo:hi + 1])[:, None])
+
+    tri_ix = mcolon(node_pos[cell_faces], node_pos[cell_faces + 1])
+    half_face_no = np.repeat(np.arange(cell_faces.size, dtype=np.int64),
+                             num_nodes[cell_faces])
+    cell_no_tri = cell_no[half_face_no]
+    rel_sub_centroids = sub_centroids[tri_ix] - c_centers[cell_no_tri]
+    cell_face_sign = np.where(
+        g.faces.neighbors[cell_faces, 0] == cell_no + lo, 1.0, -1.0
+    )
+    out_normals = sub_normals[tri_ix] * (
+        sub_signs[tri_ix] * cell_face_sign[half_face_no]
+    )[:, None]
+
+    tet_volumes = np.sum(rel_sub_centroids * out_normals, axis=1) / 3.0
+    block_volumes = _accum(cell_no_tri, tet_volumes, size)
+    rel_centroids = _accum(
+        cell_no_tri, tet_volumes[:, None] * (0.75 * rel_sub_centroids), size
+    )
+    rel_centroids /= block_volumes[:, None]
+    volumes[lo:hi] = block_volumes
+    centroids[lo:hi] = rel_centroids + c_centers
 
 
 def _face_centroids(
@@ -237,7 +325,7 @@ def _face_centroids(
     return centroids
 
 
-def _geom_2d(g: Grid) -> None:
+def _geom_2d(g: Grid, *, verbose: bool = False) -> None:
     coords = g.nodes.coords
     nf, nc = g.faces.num, g.cells.num
     dim = coords.shape[1]
@@ -245,9 +333,14 @@ def _geom_2d(g: Grid) -> None:
     n1, n2 = coords[edges[:, 0]], coords[edges[:, 1]]
     lengths = n2 - n1
 
+    started = time.perf_counter()
     face_areas = np.sqrt(np.sum(lengths**2, axis=1))
     face_centroids = (n1 + n2) / 2.0
     face_normals = _face_normals_2d(lengths, nf, dim)
+    if verbose:
+        print("Computing normals, areas, and centroids...\t"
+              f"{time.perf_counter() - started:.3f} [s]")
+    started = time.perf_counter()
     cell_no = g.cell_no()
     cell_faces = g.cells.faces
     n_half_faces = np.diff(g.cells.facePos)
@@ -265,6 +358,9 @@ def _geom_2d(g: Grid) -> None:
     volumes = _accum(cell_no, sub_areas, nc)
     centroids = _accum(cell_no, sub_areas[:, None] * sub_centroids, nc)
     centroids /= volumes[:, None]
+    if verbose:
+        print("Computing cell volumes and centroids...\t\t"
+              f"{time.perf_counter() - started:.3f} [s]")
     g.faces.areas = face_areas
     g.faces.normals = face_normals
     g.faces.centroids = face_centroids
@@ -357,10 +453,38 @@ if __name__ == "__main__":
         assert np.allclose(grid.cells.centroids.ravel(), [0.5, 1.75, 3.75])
         print("ok test_1d_geometry")
 
+    def test_block_size_does_not_change_the_answer() -> None:
+        rng = np.random.default_rng(11)
+        points = cart_grid([4, 4, 4], [4.0, 4.0, 4.0]).nodes.coords
+        interior = np.all((points > 1e-12) & (points < 4.0 - 1e-12), axis=1)
+        points[interior] += 0.2 * (rng.random((int(interior.sum()), 3)) - 0.5)
+
+        def build(block):
+            grid = cart_grid([4, 4, 4], [4.0, 4.0, 4.0])
+            grid.nodes.coords[:] = points
+            return compute_geometry(grid, max_block_size=block)
+
+        reference = build(None)
+        for block in (1, 5, 63, 64, 65):
+            other = build(block)
+            assert np.array_equal(other.cells.volumes, reference.cells.volumes)
+            assert np.array_equal(other.cells.centroids, reference.cells.centroids)
+            assert np.array_equal(other.faces.areas, reference.faces.areas)
+        print("ok test_block_size_does_not_change_the_answer")
+
+    def test_partition_tiles_the_cells() -> None:
+        assert _partition_cells(10, 3) == [(0, 2), (2, 4), (4, 6), (6, 8), (8, 10)]
+        assert _partition_cells(10, 4) == [(0, 4), (4, 7), (7, 10)]
+        assert _partition_cells(50, None) == [(0, 50)]
+        assert _partition_cells(0, 10) == []
+        print("ok test_partition_tiles_the_cells")
+
     test_cart_grid_exact_geometry()
     test_tensor_grid_volumes()
     test_perturbed_grid_is_consistent()
     test_normal_orientation()
     test_2d_geometry()
     test_1d_geometry()
+    test_block_size_does_not_change_the_answer()
+    test_partition_tiles_the_cells()
     print("\nAll tests passed!")

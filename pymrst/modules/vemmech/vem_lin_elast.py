@@ -6,12 +6,15 @@ import numpy as np
 import scipy.sparse.linalg as spla
 
 from pymrst.gridprocessing.grid import Grid
+from pymrst.modules.vemmech.utils.add_fluid_contrib_mech_vem import (
+    add_fluid_contrib_mech_vem,
+)
 from pymrst.modules.vemmech.utils.calculate_qc import calculate_qc
 from pymrst.modules.vemmech.utils.calculate_qf import calculate_qf
 from pymrst.modules.vemmech.utils.vem_div import vem_div
 from pymrst.modules.vemmech.vem import ElasticBC
 from pymrst.modules.vemmech.vem_assemble import vem_assemble
-from pymrst.utils.gridtools import mcolon
+from pymrst.utils.mcolon import mcolon
 
 
 def vem_lin_elast(
@@ -21,8 +24,16 @@ def vem_lin_elast(
     load: Callable[[np.ndarray], np.ndarray],
     pressure: Optional[np.ndarray] = None,
     alpha_scaling: float = 1.0,
+    fluid_bc=None,
+    rock=None,
 ):
-    """Solve linear elasticity with VEM and return displacement plus operators."""
+    """Solve linear elasticity with VEM and return displacement plus operators.
+
+    Poroelasticity enters through two independent terms, and a coupled model
+    needs both. ``pressure`` supplies the interior volumetric load ``div' p``.
+    ``fluid_bc`` with ``rock`` supplies the boundary traction ``alpha p n`` on
+    pressurized boundary faces, which is MRST's ``addFluidContribMechVEM``.
+    """
     dim = g.griddim
     S = vem_assemble(g, C, alpha_scaling=alpha_scaling)
     if dim == 3:
@@ -73,20 +84,42 @@ def vem_lin_elast(
     free = ~isdir
     A = S[free][:, free]
     A = (A + A.T) / 2.0
-    x = spla.spsolve(A.tocsc(), rhs[free])
+    reduced_rhs = rhs[free]
+    if fluid_bc is not None:
+        if rock is None:
+            raise ValueError("fluid_bc needs rock to supply the Biot alpha")
+        reduced_rhs = reduced_rhs + add_fluid_contrib_mech_vem(
+            g, fluid_bc, rock, isdir
+        )
+    x = spla.spsolve(A.tocsc(), reduced_rhs)
 
     u = np.zeros(ndof)
     u[isdir] = v_dir[isdir]
     u[free] = x
     uu = u.reshape(-1, dim)
 
+    # `disc` mirrors MRST's extra.disc: the operators a coupled poroelastic
+    # solve needs, restricted to the free degrees of freedom. `div` here maps
+    # free displacements to cell dilation and `gradP` is its dual, so the
+    # monolithic system is [A, -gradP; div, flow].
+    reduced_div = div[:, free]
     extra = {
         "S": S,
         "A": A,
         "isdirdofs": isdir,
         "V_dir": v_dir,
         "div": div,
-        "rhs": rhs[free],
+        "rhs": reduced_rhs,
+        "free": free,
+        "disc": {
+            "A": A,
+            "div": reduced_div,
+            "gradP": reduced_div.T,
+            "ovol_div": div,
+            "isdirdofs": isdir,
+            "V_dir": v_dir,
+            "rhs": reduced_rhs,
+        },
     }
     return uu, extra
 

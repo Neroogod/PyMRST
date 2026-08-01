@@ -703,14 +703,14 @@ pymrst/plotting/
   plot_grid.py
   plot_cell_data.py
   plot_well.py
-  plot_streamlines.py
-  mrst_gui/
+  extensions/
     __init__.py
-    plot_toolbar.py
-  co2lab/
-    __init__.py
-    plot_ve.py
+    browser.py
     plot_inventory.py
+    plot_saved_states.py
+    plot_streamlines.py
+    plot_toolbar.py
+    plot_ve.py
 ```
 
 Validation:

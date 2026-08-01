@@ -10,7 +10,7 @@ import numpy as np
 import scipy.io
 
 from pymrst.gridprocessing import compute_geometry, tensor_grid
-from pymrst.modules.ad_props.blackoil_fluid import init_deck_blackoil_fluid
+from pymrst.modules.ad_props.props.init_deck_adi_fluid import init_deck_blackoil_fluid
 from pymrst.modules.ad_blackoil.models.three_phase_black_oil_model import (
     ThreePhaseBlackOilModelAD,
     initial_state_spe1,

@@ -16,6 +16,7 @@ class CoarseGrid:
     g: Grid
     partition: np.ndarray
     n_blocks: int
+    parent: Grid | None = None
 
     def blocks(self):
         order = np.argsort(self.partition, kind="stable")
@@ -52,7 +53,14 @@ def generate_coarse_grid(g: Grid, partition: np.ndarray) -> CoarseGrid:
         f"partition implies {n_blocks} blocks but the coarse grid has "
         f"{cg.cells.num}; only rectangular Cartesian partitions are supported"
     )
-    return CoarseGrid(g=cg, partition=partition, n_blocks=n_blocks)
+    # Keep the fine parent: MRST coarse-grid plotting expands a coarse face
+    # into its contributing fine faces, which is impossible if generation
+    # discards the source grid.
+    cg.parent = g
+    cg.partition = partition
+    return CoarseGrid(
+        g=cg, partition=partition, n_blocks=n_blocks, parent=g
+    )
 
 
 __all__ = ["CoarseGrid", "generate_coarse_grid"]

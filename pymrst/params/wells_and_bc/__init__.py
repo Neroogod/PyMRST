@@ -3,7 +3,7 @@
 from pymrst.params.wells_and_bc.add_bc import add_bc
 from pymrst.params.wells_and_bc.add_source import add_source
 from pymrst.params.wells_and_bc.add_well import add_well
-from pymrst.params.wells_and_bc.compute_well_index import (
+from pymrst.utils.compute_well_index import (
     PEACEMAN_TPF_CONSTANT,
     cell_dims,
     compute_well_index,

@@ -18,7 +18,7 @@ import numpy as np
 import scipy.sparse.linalg as spla
 
 from pymrst.gridprocessing.grid import Grid
-from pymrst.modules.ad_props.simple_adi_fluid import ADFluid
+from pymrst.modules.ad_props.init_simple_adi_fluid import ADFluid
 from pymrst.params.rock import Rock, pore_volume
 from pymrst.params.wells_and_bc import Well
 from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
@@ -268,7 +268,7 @@ class TwoPhaseOilWaterModelAD:
 
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
-    from pymrst.modules.ad_props.simple_adi_fluid import init_simple_adi_fluid
+    from pymrst.modules.ad_props.init_simple_adi_fluid import init_simple_adi_fluid
     from pymrst.params.rock import make_rock
     from pymrst.params.wells_and_bc import add_well
     from pymrst.utils.units import CENTI, DARCY, DAY, MILLI, POISE

@@ -16,8 +16,8 @@ import numpy as np
 
 from pymrst.gridprocessing.private.add_faces import add_faces
 from pymrst.gridprocessing.private.empty_grid import empty_grid
-from pymrst.utils.gridtools.rldecode import rldecode
-from pymrst.utils.gridtools.rlencode import rlencode
+from pymrst.utils.rldecode import rldecode
+from pymrst.utils.rlencode import rlencode
 
 # the six quad faces of a hex, as columns into the 8 corner nodes (0-based;
 # MRST's Wst/Est/Sth/Nth/Bot/Top stacking order is preserved for the tags)

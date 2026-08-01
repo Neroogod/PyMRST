@@ -34,7 +34,7 @@ from pymrst.modules.ad_core.initialization.equilibrium import (
     EquilibriumRegion,
     init_state_equil,
 )
-from pymrst.modules.ad_props.blackoil_fluid import init_deck_blackoil_fluid
+from pymrst.modules.ad_props.props.init_deck_adi_fluid import init_deck_blackoil_fluid
 from pymrst.modules.deckformat import read_spe1_deck
 from pymrst.params import NORM_GRAVITY, make_rock
 from pymrst.utils.units import BARSA, DARCY, MILLI

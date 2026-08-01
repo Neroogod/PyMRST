@@ -85,15 +85,14 @@ class GenericBlackOilModel(GenericReservoirModel):
         vapoil: bool = False,
         aquifer=None,
         mass_basis: bool = False,
+        operators=None,
     ):
-        if vapoil and not disgas:
-            # MRST allows it in principle, nothing in this port has been
-            # validated for it, and a silently untested path is worse than a
-            # refusal.
-            raise NotImplementedError("vapoil without disgas is not supported")
-        phase_fluid = (blackoil_phase_fluid(fluid, vapoil=vapoil) if disgas
+        phase_fluid = (blackoil_phase_fluid(
+            fluid, disgas=disgas, vapoil=vapoil
+        ) if (disgas or vapoil)
                        else simple_phase_fluid(fluid))
-        operators = setup_operators_tpfa(g, rock)
+        operators = (setup_operators_tpfa(g, rock)
+                     if operators is None else operators)
 
         n_if = operators.T.size
         if gravity:
@@ -294,7 +293,7 @@ class GenericBlackOilModel(GenericReservoirModel):
             ms_names = ["ms_pN", *["ms_rW", "ms_rO", "ms_rG"][:nph],
                         "ms_vmix"]
 
-        if not self.disgas:
+        if not (self.disgas or self.vapoil):
             prim = init_variables_adi(st["pressure"], st["sW"],
                                       *[st[q] for q in q_names], st["bhp"],
                                       *[st[n] for n in ms_names])
@@ -361,7 +360,7 @@ class GenericBlackOilModel(GenericReservoirModel):
                 out["well_flux"] = st0["well_flux"]
             return out
 
-        if not self.disgas:
+        if not (self.disgas or self.vapoil):
             return _carry(State(pressure=st0["pressure"], sW=st0["sW"]))
 
         p0, sw0 = st0["pressure"], st0["sW"]
@@ -382,6 +381,13 @@ class GenericBlackOilModel(GenericReservoirModel):
     # -- equations -----------------------------------------------------------
     def get_equations(self, state0: State, state: State, dt: float):
         """Reservoir equations from the graph, well equations from the facility."""
+        # `update_state` may have switched a well to a violated limit and left
+        # `within_limits=False` to force one more assembly.  This *is* that
+        # assembly: all equations below use the new controls, so the stale
+        # flag must not reject a converged residual and provoke an unnecessary
+        # extra Newton/linear solve.  Any further violation is detected after
+        # the next update and will set the flag again.
+        self.facility.within_limits = True
         st = self.init_state_ad(state)
         # remembered for `get_convergence`, which needs b and pv to form
         # MRST's CNV norm and is handed only the residuals
@@ -575,6 +581,12 @@ class GenericBlackOilModel(GenericReservoirModel):
         report = {"CNV": cnv, "MB": mb, "well": well, "control": ctrl_res}
         if extra_eqs:
             report["extra"] = extra_res
+        # `within_limits` is part of the decision above but is not a residual,
+        # so it was absent from the report - and a step failing only on it
+        # reported every residual at ~1e-11 alongside "did not converge", which
+        # reads as a solver that cannot count. Report it when it is the reason.
+        if not self.facility.within_limits:
+            report["within_limits"] = 0.0
         return converged, report
 
     # -- Newton update -------------------------------------------------------
@@ -614,15 +626,20 @@ def blackoil_status(sw, so, sg, disgas: bool = True,
 
 
 def initial_state_from_deck(model: GenericBlackOilModel, deck) -> State:
-    """SPE 1's initial state, as a graph State (cf. `initial_state_spe1`)."""
+    """Create a black-oil state from imported deck pressure/composition."""
     sw, sg = deck["swat"], deck["sgas"]
     nw = len(model.wells)
     qws, qos, qgs = np.zeros(nw), np.zeros(nw), np.zeros(nw)
     bhp = np.zeros(nw)
     p_mean = float(deck["pressure"].mean())
     for k, w in enumerate(model.wells):
-        if w.type == "orat":
-            qos[k] = w.val
+        if w.type in ("orat", "grat", "wrat", "lrat"):
+            if w.type == "orat":
+                qos[k] = w.val
+            elif w.type == "grat":
+                qgs[k] = w.val
+            elif w.type == "wrat":
+                qws[k] = w.val
             bhp[k] = p_mean - 10e5
         elif w.type == "rate":
             qgs[k] = w.val * w.compi[2]
@@ -630,13 +647,25 @@ def initial_state_from_deck(model: GenericBlackOilModel, deck) -> State:
             bhp[k] = p_mean + 10e5
         else:
             bhp[k] = w.val
-    return State(
+    state = State(
         pressure=deck["pressure"].copy(),
         sW=sw.copy(), sO=1.0 - sw - sg, sG=sg.copy(),
         rs=deck["rs"].copy(),
-        status=np.where(sg > 0, 3, 1).astype(np.int64),
+        status=blackoil_status(sw, 1.0 - sw - sg, sg,
+                               disgas=model.disgas, vapoil=model.vapoil),
         qWs=qws, qOs=qos, qGs=qgs, bhp=bhp,
     )
+    if model.vapoil:
+        state["rv"] = np.asarray(deck.get("rv", np.zeros_like(sw)), float).copy()
+        # Deck RV values are commonly rounded at the dew-point envelope (SPE3
+        # is a canonical example).  Seed those cells on the two-phase side and
+        # cap the rounded value, instead of forcing the first Newton iteration
+        # to discover hundreds of simultaneous phase appearances.
+        rv_sat = np.asarray(value(model.raw_fluid.rv_sat(state["pressure"])), float)
+        at_dew = state["rv"] >= rv_sat * (1.0 - ETOL)
+        state["rv"][at_dew] = rv_sat[at_dew]
+        state["status"][at_dew] = 3
+    return state
 
 
 if __name__ == "__main__":
@@ -654,10 +683,10 @@ if __name__ == "__main__":
     from pymrst.modules.ad_blackoil.models.two_phase_oil_water_model import (
         TwoPhaseOilWaterModelAD,
     )
-    from pymrst.modules.ad_props.blackoil_fluid import init_deck_blackoil_fluid
+    from pymrst.modules.ad_props.props.init_deck_adi_fluid import init_deck_blackoil_fluid
     from pymrst.modules.deckformat import read_spe1_deck
     from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
-    from pymrst.modules.ad_props.simple_adi_fluid import init_simple_adi_fluid
+    from pymrst.modules.ad_props.init_simple_adi_fluid import init_simple_adi_fluid
     from pymrst.params.rock import make_rock
     from pymrst.params.wells_and_bc import add_well
     from pymrst.utils.units import BARSA, CENTI, DARCY, DAY, MILLI, POISE
@@ -914,7 +943,7 @@ if __name__ == "__main__":
 
     def _wet_gas_model(nc=6, ngc=2):
         """A tiny wet-gas column: a gas cap with no oil phase over an oil leg."""
-        from pymrst.modules.ad_props.blackoil_fluid import BlackOilFluid
+        from pymrst.modules.ad_props.props.init_deck_adi_fluid import BlackOilFluid
         from pymrst.utils.adi import ad_max
 
         p_ref = 300 * BARSA
@@ -1015,16 +1044,14 @@ if __name__ == "__main__":
         print(f"ok test_a_closed_wet_gas_reservoir_does_not_move "
               f"(500 days, moved {moved:.1e})")
 
-    def test_vapoil_needs_disgas():
-        """A silently untested path is worse than a refusal."""
+    def test_vapoil_is_independent_of_disgas():
+        """SPE3 is wet gas with dead oil: VAPOIL must work without DISGAS."""
         model, st = _wet_gas_model()
-        try:
-            GenericBlackOilModel(model.G, model.rock, model.raw_fluid, [],
-                                 disgas=False, vapoil=True)
-        except NotImplementedError:
-            print("ok test_vapoil_needs_disgas (refused, as it should)")
-            return
-        raise AssertionError("vapoil without disgas should not be accepted")
+        spe3 = GenericBlackOilModel(model.G, model.rock, model.raw_fluid, [],
+                                    disgas=False, vapoil=True)
+        assert not spe3.disgas and spe3.vapoil
+        assert not spe3.fluid.disgas and spe3.fluid.vapoil
+        print("ok test_vapoil_is_independent_of_disgas")
 
     test_producer_switches_on_liquid_rate()
 
@@ -1146,7 +1173,7 @@ if __name__ == "__main__":
 
     test_the_variable_switch_means_three_different_things()
     test_a_closed_wet_gas_reservoir_does_not_move()
-    test_vapoil_needs_disgas()
+    test_vapoil_is_independent_of_disgas()
     test_the_two_bases_give_the_same_answer()
     test_multisegment_well_packs_a_square_system()
     print("\nAll tests passed!")

@@ -104,9 +104,10 @@ def make_internal_boundary(g, faces, *, tag: int = -1,
 
     g, _ = add_faces(g, fnodes_new, nnodes_new, neigh_new)
 
-    # Preserve metadata that is indexed by faces/half-faces. The low-level
-    # topology helpers intentionally operate on topology alone, whereas MRST's
-    # makeInternalBoundary copies these fields as part of the public operation.
+    # Reassign metadata indexed by faces/half-faces. add_faces/remove_faces do
+    # carry these across, but only they know each surviving face's identity;
+    # here every internal face becomes two new ones, so the parent relation
+    # needed to tag them is only available at this level.
     retained = np.flatnonzero(face_map >= 0)
     if source_face_tag is not None or source_half_tags is not None:
         dtype = source_face_tag.dtype if source_face_tag is not None else np.int64

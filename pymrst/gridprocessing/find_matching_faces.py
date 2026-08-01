@@ -9,7 +9,7 @@ At most two faces may share a node set (an assertion, as in MRST).
 
 import numpy as np
 
-from pymrst.utils.gridtools.rlencode import rlencode
+from pymrst.utils.rlencode import rlencode
 
 
 def find_matching_faces(g) -> np.ndarray:

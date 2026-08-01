@@ -31,7 +31,7 @@ def update_state_black_oil_generic(
     new["pressure"] = state["pressure"] + np.clip(increment[:nc], -cap, cap)
     dsw = increment[nc:2*nc]
 
-    if not model.disgas:
+    if not (model.disgas or model.vapoil):
         new["sW"] = np.clip(
             state["sW"] + np.clip(dsw, -model.ds_max, model.ds_max), 0.0, 1.0
         )
@@ -49,11 +49,15 @@ def update_state_black_oil_generic(
 
         ds = np.column_stack([dsw, -(dsg+dsw), dsg])
         largest = np.max(np.abs(ds), axis=1)
-        scale = np.minimum(
-            np.divide(model.ds_max, largest,
-                      out=np.ones_like(largest), where=largest > 0),
-            1.0,
-        )
+        # Subnormal nonzero increments can make ds_max/largest overflow even
+        # though the subsequent minimum correctly selects 1. Silence that
+        # harmless intermediate and retain the exact limiter semantics.
+        with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
+            scale = np.minimum(
+                np.divide(model.ds_max, largest,
+                          out=np.ones_like(largest), where=largest > 0),
+                1.0,
+            )
         ds = ds*scale[:, None]
         saturation = np.column_stack([
             state["sW"], state["sO"], state["sG"],
@@ -80,7 +84,7 @@ def update_state_black_oil_generic(
                 new[name] = updated
                 cursor += count
 
-    if model.disgas:
+    if model.disgas or model.vapoil:
         compute_flash_black_oil(new, state, model)
     model.facility.update_switched_controls(new, rate_names)
     new.clear_cache()

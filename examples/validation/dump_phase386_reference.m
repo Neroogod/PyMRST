@@ -28,9 +28,21 @@ g2 = permeabilityConverter(g, 'K_system', 'cell');
 out_PERMX  = g2.PERMX(:);   out_PERMY  = g2.PERMY(:);   out_PERMZ  = g2.PERMZ(:);
 out_PERMXY = g2.PERMXY(:);  out_PERMYZ = g2.PERMYZ(:);  out_PERMZX = g2.PERMZX(:);
 
+g.PERMXY = (2 + 0.1*(1:nc))';
+g.PERMYZ = (3 + 0.2*(1:nc))';
+g.PERMZX = (4 + 0.3*(1:nc))';
+in_PERMXY = g.PERMXY(:); in_PERMYZ = g.PERMYZ(:); in_PERMZX = g.PERMZX(:);
+offdiagFailed = false;
+try
+    permeabilityConverter(g, 'K_system', 'cell');
+catch
+    offdiagFailed = true;
+end
+
 save(fullfile(thisDir, 'ref_p386_permconv.mat'), '-v7', ...
      'in_cartDims', 'in_COORD', 'in_ZCORN', 'in_PERMX', 'in_PERMY', 'in_PERMZ', ...
-     'out_PERMX', 'out_PERMY', 'out_PERMZ', 'out_PERMXY', 'out_PERMYZ', 'out_PERMZX');
+     'out_PERMX', 'out_PERMY', 'out_PERMZ', 'out_PERMXY', 'out_PERMYZ', 'out_PERMZX', ...
+     'in_PERMXY', 'in_PERMYZ', 'in_PERMZX', 'offdiagFailed');
 
 fprintf('Wrote ref_p386_permconv.mat to %s\n', thisDir);
 fprintf('  %d cells; PERMXY range [%.4f, %.4f]\n', ...

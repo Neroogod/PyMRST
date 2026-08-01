@@ -53,7 +53,7 @@ from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
 )
 from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
 from pymrst.modules.ad_core.statefunctions.state_function import State
-from pymrst.modules.ad_props.blackoil_fluid import BlackOilFluid
+from pymrst.modules.ad_props.props.init_deck_adi_fluid import BlackOilFluid
 from pymrst.params import add_well, make_rock
 from pymrst.utils.adi import ad_max
 from pymrst.utils.units import BARSA, CENTI, DARCY, DAY, MILLI, POISE

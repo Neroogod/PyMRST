@@ -53,6 +53,7 @@ class CoarseGrid:
     g: Grid                       # the coarse grid itself
     partition: np.ndarray         # (nc_fine,) coarse block of each fine cell
     n_blocks: int
+    parent: Optional[Grid] = None
 
     def blocks(self):
         """Fine cells of each coarse block, in block order."""
@@ -92,7 +93,11 @@ def generate_coarse_grid(g: Grid, partition: np.ndarray) -> CoarseGrid:
         f"partition implies {n_blocks} blocks but the coarse grid has "
         f"{cg.cells.num}; only rectangular Cartesian partitions are supported"
     )
-    return CoarseGrid(g=cg, partition=partition, n_blocks=n_blocks)
+    cg.parent = g
+    cg.partition = partition
+    return CoarseGrid(
+        g=cg, partition=partition, n_blocks=n_blocks, parent=g
+    )
 
 
 def upscale_poro(g: Grid, rock: Rock, cg: CoarseGrid) -> np.ndarray:

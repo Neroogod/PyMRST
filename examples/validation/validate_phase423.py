@@ -18,7 +18,8 @@ pinned to MRST elsewhere in the mpfa module.)
 import numpy as np
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
-from pymrst.modules.vem.compute_virtual_ip import compute_virtual_ip, incomp_vem
+from pymrst.modules.vem.compute_virtual_ip import compute_virtual_ip
+from pymrst.modules.vem.incomp_vem import incomp_vem
 from pymrst.params.rock import make_rock
 
 

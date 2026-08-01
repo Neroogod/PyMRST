@@ -21,29 +21,43 @@ def make_rock(
     nc = g.cells.num
     perm_arr = _expand_to_cells(perm, nc)
     valid_cols = {1: (1,), 2: (1, 2, 3), 3: (1, 3, 6)}[g.griddim]
-    assert perm_arr.shape[1] in valid_cols, (
-        f"Permeability must have {valid_cols} columns in {g.griddim}D, "
-        f"got {perm_arr.shape[1]}"
-    )
+    if perm_arr.shape[1] not in valid_cols:
+        raise ValueError(
+            f"permeability must have {valid_cols} columns in {g.griddim}D, "
+            f"got {perm_arr.shape[1]}"
+        )
     poro_arr = _expand_to_cells(poro, nc)
-    assert poro_arr.shape[1] == 1, "Porosity must be a single column"
+    if poro_arr.shape[1] != 1:
+        raise ValueError("porosity must be a single column")
     if np.any(poro_arr <= 0):
         warnings.warn("Zero or negative porosity found")
 
     rock = Rock(perm=perm_arr, poro=poro_arr.ravel())
     if ntg is not None:
-        rock.ntg = _expand_to_cells(ntg, nc).ravel()
+        ntg_arr = _expand_to_cells(ntg, nc)
+        if ntg_arr.shape[1] != 1:
+            raise ValueError("net-to-gross must be a single column")
+        rock.ntg = ntg_arr.ravel()
     return rock
 
 
 def _expand_to_cells(vals: Scalar, nc: int) -> np.ndarray:
     """Broadcast a scalar or single row to one row per cell."""
-    arr = np.atleast_2d(np.asarray(vals, dtype=np.float64))
+    arr = np.asarray(vals, dtype=np.float64)
+    if arr.ndim == 0:
+        arr = arr.reshape(1, 1)
+    elif arr.ndim == 1:
+        # NumPy has no row/column distinction. Treat nc entries as a
+        # per-cell scalar field; use [[kx, ky, kz]] for a uniform tensor.
+        arr = arr.reshape(-1, 1) if arr.size == nc else arr.reshape(1, -1)
+    elif arr.ndim != 2:
+        raise ValueError("rock values must be scalar, vector, or matrix")
     if arr.shape[0] == 1:
         arr = np.repeat(arr, nc, axis=0)
-    assert arr.shape[0] == nc, (
-        "Rock values must be one value per cell or one value for all cells"
-    )
+    if arr.shape[0] != nc:
+        raise ValueError(
+            "rock values must be one row per cell or one uniform row"
+        )
     return arr
 
 
@@ -69,4 +83,3 @@ if __name__ == "__main__":
     test_make_rock_scalar_expansion()
     test_make_rock_ntg()
     print("\nAll tests passed!")
-

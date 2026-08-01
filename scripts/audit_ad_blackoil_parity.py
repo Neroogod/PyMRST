@@ -19,17 +19,14 @@ FIELDS = (
 # A matching filename is insufficient for these examples: the current Python
 # module explicitly refuses the workflow or implements only a reduced subset.
 PLACEHOLDERS = {
-    "eggExample": "EGG dataset importer is absent",
-    "simulateSPE3": "SPE3 deck and schedule import are absent",
-    "simulateSPE9": "SPE9 deck, VFP, schedule, and summary import are absent",
-    "blackoilTutorialSPE9": "depends on the guarded SPE9 simulation",
-    "tenthCSP_Model_I": "SPE10 property and setup import are absent",
-    "fieldModelNorneExample": "full Norne deck and schedule import are absent",
 }
 
 PARTIAL = {
     "blackoilTimeIntegrationExample": (
-        "FIM, CFL-controlled explicit, and AIM SPE1 exist; SPE9 path is absent"
+        "FIM, CFL-controlled explicit, and AIM SPE1 exist; cross-method SPE9 integration comparison remains"
+    ),
+    "fieldModelNorneExample": (
+        "complete deck/output import, native schedule/wells, VFP tables, fault/NNC-aware operators, two-region fluid, model/state initialization, checkpoint/resume, bounded-CPR adaptive simulation, converged first four report periods through day 56, and field-scale reference regression exist; complete 247-step trajectory validation and regional facility surface densities remain"
     ),
 }
 

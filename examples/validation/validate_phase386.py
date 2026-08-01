@@ -45,6 +45,24 @@ def main() -> int:
                             - ref[f"out_{key}"].ravel()))
         failed += _check(f"{key} matches", err < 1e-9, f"max|d| = {err:.3e}")
 
+    off_input = dict(grdecl)
+    for key in ("PERMXY", "PERMYZ", "PERMZX"):
+        off_input[key] = ref[f"in_{key}"].ravel()
+    print("off-diagonal MRST-compatibility branch:")
+    refused = False
+    try:
+        permeability_converter(off_input, "cell")
+    except NotImplementedError:
+        refused = True
+    expected_refusal = bool(np.asarray(ref["offdiagFailed"]).item())
+    failed += _check("same refusal as MRST 2024a", refused == expected_refusal)
+    corrected = permeability_converter(
+        off_input, "cell", off_diagonal_mode="corrected"
+    )
+    keys = ("PERMX", "PERMY", "PERMZ", "PERMXY", "PERMYZ", "PERMZX")
+    finite = all(np.all(np.isfinite(corrected[key])) for key in keys)
+    failed += _check("corrected PyMRST extension is finite", finite)
+
     print("\npermeabilityConverter matches MRST!" if failed == 0
           else f"\n{failed} checks FAILED")
     return 1 if failed else 0

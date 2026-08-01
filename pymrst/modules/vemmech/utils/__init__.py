@@ -14,10 +14,23 @@ from pymrst.modules.vemmech.utils.enu2c import enu2c, enu2c_2d
 from pymrst.modules.vemmech.utils.vem2d_div import vem2d_div
 from pymrst.modules.vemmech.utils.vem3d_div import vem3d_div
 from pymrst.modules.vemmech.utils.vem3d_div_tedfm import vem3d_div_tedfm
+from pymrst.modules.vemmech.utils.add_fluid_contrib_mech_vem import (
+    add_fluid_contrib_mech_vem,
+)
+from pymrst.modules.vemmech.utils.enu2lmu_3d import enu2lmu_3d
+from pymrst.modules.vemmech.utils.linear_displacement import (
+    linear_displacement,
+)
+from pymrst.modules.vemmech.utils.square_grid import square_grid
+from pymrst.modules.vemmech.utils.complex_3d_grid import complex_3d_grid
+from pymrst.modules.vemmech.utils.explore_square_grid import explore_square_grid
+from pymrst.modules.vemmech.utils.square_layers_test import square_layers_test
+from pymrst.modules.vemmech.utils.square_test import square_test
 from pymrst.modules.vemmech.utils.vem_div import vem_div
 from pymrst.modules.vemmech.utils.vem_div_tedfm import vem_div_tedfm
 
 __all__ = [
+    "add_fluid_contrib_mech_vem",
     "c2d",
     "c2d_tedfm",
     "cal_stress_eigs_vem",
@@ -27,7 +40,14 @@ __all__ = [
     "calculate_qf_tedfm",
     "calculate_stress_vem",
     "enu2c",
+    "enu2lmu_3d",
     "enu2c_2d",
+    "linear_displacement",
+    "complex_3d_grid",
+    "explore_square_grid",
+    "square_grid",
+    "square_layers_test",
+    "square_test",
     "vem2d_div",
     "vem3d_div",
     "vem3d_div_tedfm",

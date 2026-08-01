@@ -85,6 +85,19 @@ def main() -> int:
     chk("fluxside: faces and rates",
         np.array_equal(bcf.face[o1], ml_ff[o2]) and d < 1e-12,
         f"total {bcf.value.sum():.3f}, max diff {d:.1e}")
+    raw_flux = np.arange(1, bcf.face.size + 1, dtype=float)
+    bcfv = fluxside(None, g, "ymin", raw_flux)
+    vector_ref = np.asarray(r["flux_vector_values"], float).ravel()
+    d = np.abs(bcfv.value-vector_ref).max()
+    chk("fluxside: vector area weighting", d < 1e-12,
+        f"max diff {d:.1e}")
+    range_ref = np.asarray(r["side_xmin_range"], int).ravel()-1
+    range_faces = np.sort(
+        pside(None, g, "xmin", 3e5, search_range=[0]).face
+    )
+    chk("pside: perpendicular range",
+        np.array_equal(range_faces, np.sort(range_ref)),
+        f"{range_faces.size} faces")
 
     # ---- vertical wells -----------------------------------------------------
     # MATLAB's (I, J) = (3, 2) is 0-based (2, 1)

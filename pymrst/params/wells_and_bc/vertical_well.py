@@ -15,24 +15,43 @@ def vertical_well(
     g: Grid,
     rock: Rock,
     i: int,
-    j: int,
+    j: Optional[int] = None,
     k: Optional[Sequence[int]] = None,
+    *,
+    top_cell: bool = False,
     **kwargs,
 ) -> List[Well]:
-    """Add a well down the 0-based logical `(i, j)` column."""
-    assert g.cartDims is not None, "vertical_well needs a Cartesian grid"
-    nx, ny, nz = _cart_dims_3d(g)
-    assert 0 <= i < nx, f"i = {i} is outside 0..{nx - 1}"
-    assert 0 <= j < ny, f"j = {j} is outside 0..{ny - 1}"
+    """Add a vertical well using zero-based logical or top-cell mode.
 
-    layers = np.arange(nz) if k is None else np.atleast_1d(np.asarray(k, dtype=np.int64))
-    assert np.all((layers >= 0) & (layers < nz)), f"layer index outside 0..{nz - 1}"
-    cells = _active_column_cells(g, nx, ny, nz, i, j, layers)
-    assert cells.size, (
-        f"the column (i={i}, j={j}) has no active cells in layers "
-        f"{layers.min()}..{layers.max()}"
-    )
-    kwargs.setdefault("well_dir", "z")
+    Logical mode uses ``i, j, k``.  Set ``top_cell=True`` to interpret ``i``
+    as the top-layer logical cell and omit ``j``.  Empty/``None`` layers mean
+    all layers, matching MRST.
+    """
+    layer_size, layer_count = _layer_shape(g)
+    if top_cell:
+        if j is not None:
+            raise ValueError("j must be omitted in top-cell mode")
+        column = int(i)
+        if not 0 <= column < layer_size:
+            raise IndexError("top cell is outside the first logical layer")
+    else:
+        if g.cartDims is None:
+            raise ValueError("logical (i, j) mode needs cartDims")
+        nx, ny, _ = _cart_dims_3d(g)
+        if j is None:
+            raise ValueError("j is required in logical (i, j) mode")
+        if not 0 <= i < nx or not 0 <= j < ny:
+            raise IndexError("logical well position is outside cartDims")
+        column = int(i + j*nx)
+
+    layers = np.asarray([] if k is None else k, dtype=np.int64).ravel()
+    if layers.size == 0:
+        layers = np.arange(layer_count, dtype=np.int64)
+    if np.any((layers < 0) | (layers >= layer_count)):
+        raise IndexError(f"layer index outside 0..{layer_count - 1}")
+    cells = _active_layer_cells(g, layer_size, layer_count, column, layers)
+    kwargs.pop("well_dir", None)
+    kwargs["well_dir"] = "z"
     return add_well(wells, g, rock, cells, **kwargs)
 
 
@@ -41,19 +60,20 @@ def _cart_dims_3d(g: Grid) -> tuple[int, int, int]:
     return int(dims[0]), int(dims[1]), int(dims[2])
 
 
-def _active_column_cells(
-    g: Grid,
-    nx: int,
-    ny: int,
-    nz: int,
-    i: int,
-    j: int,
-    layers: np.ndarray,
-) -> np.ndarray:
-    global_ix = i + j * nx + layers * nx * ny
+def _layer_shape(g: Grid) -> tuple[int, int]:
+    if hasattr(g, "layerSize") and hasattr(g, "numLayers"):
+        return int(g.layerSize), int(g.numLayers)
+    if g.cartDims is not None:
+        nx, ny, nz = _cart_dims_3d(g)
+        return nx*ny, nz if g.griddim == 3 else 1
+    raise ValueError("grid does not expose a layered structure")
+
+
+def _active_layer_cells(g, layer_size, layer_count, column, layers):
+    global_ix = column + layers*layer_size
     if g.cells.indexMap is None:
         return global_ix
-    lookup = -np.ones(nx * ny * nz, dtype=np.int64)
+    lookup = -np.ones(layer_size*layer_count, dtype=np.int64)
     lookup[np.asarray(g.cells.indexMap, dtype=np.int64)] = np.arange(g.cells.num)
     cells = lookup[global_ix]
     return cells[cells >= 0]
@@ -88,4 +108,3 @@ if __name__ == "__main__":
     test_vertical_well_perforates_a_column()
     test_vertical_well_skips_inactive_cells()
     print("\nAll tests passed!")
-

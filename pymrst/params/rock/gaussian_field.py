@@ -16,25 +16,45 @@ def gaussian_field(
 ) -> np.ndarray:
     """Return a smoothed random field rescaled to `vals`."""
     dims = tuple(int(d) for d in np.atleast_1d(dims))
-    size_arr = np.broadcast_to(
-        np.atleast_1d(np.asarray(size, dtype=np.int64)), (len(dims),)
-    )
+    if not 1 <= len(dims) <= 3 or any(d <= 0 for d in dims):
+        raise ValueError("dims must contain one to three positive sizes")
+    values = np.asarray(vals, dtype=float).ravel()
+    if values.size != 2:
+        raise ValueError("vals must contain exactly two entries")
+    if not np.isfinite(std) or std <= 0:
+        raise ValueError("std must be positive")
+    raw_size = np.asarray(size, dtype=np.int64).ravel()
+    if raw_size.size == 1:
+        size_arr = np.repeat(raw_size, len(dims))
+    elif len(dims) <= raw_size.size <= 3:
+        size_arr = raw_size[:len(dims)]
+    else:
+        raise ValueError("size must be scalar or cover every field dimension")
+    if np.any(size_arr <= 0) or np.any(size_arr % 2 == 0):
+        raise ValueError("Gaussian kernel sizes must be positive odd integers")
     if field is None:
         rng = np.random.default_rng() if rng is None else rng
         field = rng.standard_normal(dims)
-    field = np.asarray(field, dtype=np.float64).reshape(dims)
+    field = np.asarray(field, dtype=np.float64)
+    if field.shape != dims:
+        raise ValueError(f"field must have shape {dims}, got {field.shape}")
 
     smoothed = smooth_field(field, size_arr, std)
-    lo, hi = float(vals[0]), float(vals[1])
+    lo, hi = values
     pmin, pmax = smoothed.min(), smoothed.max()
-    if pmax == pmin:
-        return np.full(dims, 0.5 * (lo + hi))
+    if np.isclose(pmax, pmin, rtol=32*np.finfo(float).eps, atol=0.0):
+        # MRST's literal rescaling divides by zero for a constant draw.
+        return np.full(dims, np.nan)
     return lo + (hi - lo) * (smoothed - pmin) / (pmax - pmin)
 
 
 def gaussian_kernel(size: Sequence[int], std: float) -> np.ndarray:
     """Return an isotropic Gaussian kernel normalized to sum to one."""
     size_arr = np.atleast_1d(np.asarray(size, dtype=np.int64)).ravel()
+    if size_arr.size == 0 or np.any(size_arr <= 0) or np.any(size_arr % 2 == 0):
+        raise ValueError("Gaussian kernel sizes must be positive odd integers")
+    if not np.isfinite(std) or std <= 0:
+        raise ValueError("std must be positive")
     pad = (size_arr - 1) // 2
     axes = [np.arange(-p, p + 1) for p in pad]
     grids = np.meshgrid(*axes, indexing="ij")
@@ -85,4 +105,3 @@ if __name__ == "__main__":
     test_larger_kernel_smooths_more()
     test_gaussian_field_does_not_fade_at_edges()
     print("\nAll tests passed!")
-

@@ -1,8 +1,14 @@
 # PyMRST
 
 A Python port of the [MATLAB Reservoir Simulation Toolbox](https://www.sintef.no/projectweb/mrst/)
-(MRST 2024a), built alongside the reference MATLAB installation in
-`../mrst-2024a-Geomech` and the two MRST textbooks (Lie 2019; Lie & Møyner 2021).
+(MRST 2024a) maintained under [UnconvRS](https://github.com/UnconvRS/PyMRST).
+It mirrors MRST's module layout and is validated against MATLAB reference dumps,
+using the two MRST textbooks (Lie 2019; Lie & Møyner 2021) as the design guide.
+
+**What you can run today:** incompressible TPFA, MPFA / NTPFA / mimetic / VEM
+pressure solves, fully-implicit black-oil and compositional flow, CO₂ storage
+(VE + trapping), dual porosity, geothermal, fractures (EDFM), and coupled
+flow–geomechanics (including Norne).
 
 ## Conventions
 
@@ -13,23 +19,27 @@ A Python port of the [MATLAB Reservoir Simulation Toolbox](https://www.sintef.no
 - Data structures mirror MRST struct fields (`cells.facePos`,
   `faces.neighbors`) so the books and MATLAB code map directly onto the
   Python code.
-- Every module is directly runnable: `python pymrst/utils/units.py` executes
+- Every module is directly runnable: `python3 pymrst/utils/units.py` executes
   its unit tests.
 - Every phase is validated against arrays exported from the MATLAB MRST
   installation (see `examples/validation/`).
 
 ## Install
 
+Requires Python 3.11+. On macOS use `python3` / `pip3` if `python` is not on your PATH.
+
 ```bash
-pip install -e .              # numpy + scipy
-pip install -e ".[plotting]"  # + pyvista (3D rendering)
-pip install -e ".[gui]"       # + pyvistaqt (the interactive plot_toolbar)
+git clone https://github.com/UnconvRS/PyMRST.git
+cd PyMRST
+pip3 install -e .              # numpy + scipy
+pip3 install -e ".[plotting]"  # + pyvista (3D rendering)
+pip3 install -e ".[gui]"       # + pyvistaqt (the interactive plot_toolbar)
 ```
 
 ## Testing
 
 ```bash
-pytest                      # everything (173 tests, ~160 s)
+pytest                      # full suite (~2500 collected tests)
 pytest -m "not validation"  # module self-tests only
 pytest -m validation        # replay the saved MATLAB cross-checks
 ```
@@ -37,9 +47,9 @@ pytest -m validation        # replay the saved MATLAB cross-checks
 ## Run it on a real field
 
 ```bash
-python examples/run_norne_geomech.py                # mini Norne, ~15 s
-python examples/run_norne_geomech.py --subset full  # 7392 cells, ~2 min
-python examples/run_norne_geomech.py --plot         # + the interactive inspector
+python3 examples/run_norne_geomech.py                # mini Norne, ~15 s
+python3 examples/run_norne_geomech.py --subset full  # 7392 cells, ~2 min
+python3 examples/run_norne_geomech.py --plot         # + the interactive inspector
 ```
 
 Coupled flow and geomechanics on **Norne**, the Python equivalent of MRST's
@@ -52,7 +62,7 @@ would break if the coupling were wrong (see `report()` in that file). It needs
 nothing but numpy and scipy; `--plot` adds a PyVista view.
 
 Every module is also directly runnable and executes its own unit tests:
-`python pymrst/utils/units.py`.
+`python3 pymrst/utils/units.py`.
 
 ## Layout
 
@@ -73,6 +83,8 @@ map straight onto the Python code:
 | `pymrst/modules/fv_unsat` | `modules/fv-unsat/` | hydraulic soil catalog, van Genuchten-Mualem laws, and a conservative fully implicit Richards/MPFA time-step model |
 | `pymrst/modules/re_mpfa` | `modules/re-mpfa/` | direct ports of hydraulic-head arithmetic/upstream MPFA weighting, Newton-AD iteration, and adaptive time stepping |
 | `pymrst/modules/mimetic` | `modules/mimetic/` | MRST-layout mimetic inner-product families and conservative hybrid incompressible pressure/flux solve with gravity and rate/BHP wells |
+| `pymrst/modules/vem` | `modules/vem/` | virtual-element Poisson / incompressible pressure: quadrature, `computeVirtualIP`, `vem_poisson`, `incomp_vem` |
+| `pymrst/modules/dg` | `modules/dg/` | discontinuous Galerkin cubature and discretization helpers |
 | `pymrst/modules/ad_core` | `modules/ad-core/` | the state-function graph (`StateFunction`, groupings, PVT/flow/flux evaluators), the `PhysicalModel`/`ReservoirModel` protocol, the facility (wells), `NonLinearSolver`, TPFA operators, schedule driver |
 | `pymrst/modules/ad_props` | `modules/ad-props/` | `initSimpleADIFluid`, deck fluids, PVT interpolation |
 | `pymrst/modules/ad_blackoil` | `modules/ad-blackoil/` | oil-water and three-phase black-oil models |

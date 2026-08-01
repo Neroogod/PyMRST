@@ -310,12 +310,16 @@ def _sort_cell_faces(g: Grid) -> Grid:
     stored edge directions so signs stay consistent (MRST sortCellFaces)."""
     face_pos = g.cells.facePos
     cell_faces = g.cells.faces.copy()
+    # cells.tags is parallel to cells.faces, so it has to be permuted with it;
+    # leaving it behind silently re-labels which side every boundary face is on
+    cell_tags = None if g.cells.tags is None else np.asarray(g.cells.tags).copy()
     stored = g.faces.nodes.reshape(-1, 2).copy()
     x, y = g.nodes.coords[:, 0], g.nodes.coords[:, 1]
 
     for i in range(g.cells.num):
         lo, hi = face_pos[i], face_pos[i + 1]
         cf = cell_faces[lo:hi].copy()
+        order = np.arange(cf.size, dtype=np.int64)
         reverse = g.faces.neighbors[cf, 1] == i
         e = stored[cf].copy()
         e[reverse] = e[reverse][:, ::-1]
@@ -329,6 +333,7 @@ def _sort_cell_faces(g: Grid) -> Grid:
         for k in range(1, cf.size + 1):
             e, m, s = _swap(k, e, m, s)
         cf = cf[m]
+        order = order[m]
         assert np.array_equal(g.faces.neighbors[cf, 1] == i, reverse[m])
 
         e = stored[cf].copy()
@@ -339,6 +344,7 @@ def _sort_cell_faces(g: Grid) -> Grid:
         area = 0.5 * np.sum(np.sum(x[e], axis=1) * np.diff(y[e], axis=1).ravel())
         if area < 0:
             cf = cf[::-1].copy()
+            order = order[::-1].copy()
             s = -s[::-1]
 
         assert np.array_equal(e[:, 1], e[np.r_[1:cf.size, 0], 0])
@@ -346,8 +352,12 @@ def _sort_cell_faces(g: Grid) -> Grid:
         flip = cf[s == -1]
         stored[flip] = stored[flip][:, ::-1]
         cell_faces[lo:hi] = cf
+        if cell_tags is not None:
+            cell_tags[lo:hi] = np.asarray(g.cells.tags)[lo:hi][order]
 
     g.cells.faces = cell_faces
+    if cell_tags is not None:
+        g.cells.tags = cell_tags
     g.faces.nodes = stored.reshape(-1)
     return g
 

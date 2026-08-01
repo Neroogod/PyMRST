@@ -22,7 +22,7 @@ import numpy as np
 import scipy.sparse as sp
 
 from pymrst.params.rock.perm_tensor import perm_tensor
-from pymrst.utils.gridtools.rlencode import rlencode
+from pymrst.utils.rlencode import rlencode
 
 
 def _create_mapping(g):

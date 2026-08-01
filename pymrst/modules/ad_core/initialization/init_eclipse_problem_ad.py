@@ -43,7 +43,7 @@ def _automatic_inputs(deck):
             "model=... for another deck representation"
         )
     from pymrst.gridprocessing import compute_geometry, tensor_grid
-    from pymrst.modules.ad_props.blackoil_fluid import init_deck_blackoil_fluid
+    from pymrst.modules.ad_props.props.init_deck_adi_fluid import init_deck_blackoil_fluid
     from pymrst.params import add_well, make_rock
 
     G = compute_geometry(tensor_grid(

@@ -58,6 +58,33 @@ BTU: float = 1054.3503 * JOULE
 RANKINE: float = 5.0 / 9.0 * KELVIN
 
 
+# --------------------------------------------------------- electrical units
+# MRST sets these to 1: the SI base is already ampere and farad, so the
+# constants exist to be written in an expression, not to scale anything.
+AMPERE: float = 1.0
+FARAD: float = 1.0
+
+# `gal` is the CGS unit of acceleration (1 cm/s^2), not the volume "gallon" -
+# which this module also has, as GALLON. Confusing them is off by 5 orders of
+# magnitude and MRST's one-word filename does not help.
+GAL: float = 0.01 * METER / SECOND ** 2
+
+# ---------------------------------------------------- physical constants
+AVOGADRO: float = 6.022140857e23
+GAS_CONSTANT: float = 8.3144598                    # J / (mol K)
+FARADAY_CONSTANT: float = 96485.33289              # C / mol
+VACUUM_PERMITTIVITY: float = 8.854187817e-12       # F / m
+
+# One adsorption site: a mole divided by Avogadro's number.
+#
+# MRST's `site.m` divides by 6.00221413e23 while its `avogadro.m` states
+# 6.022140857e23 - the two disagree in the sixth digit. This uses the single
+# AVOGADRO above, so `SITE * AVOGADRO` is exactly 1; MRST's pair gives
+# 1.0000000095. The difference is far below any modelling tolerance, but two
+# values of a physical constant in one library is worth not reproducing.
+SITE: float = 1.0 / AVOGADRO
+
+
 def convert_from(q: Quantity, unit: float) -> Quantity:
     """Convert `q` from `unit` into SI."""
     return q * unit
@@ -102,6 +129,40 @@ if __name__ == "__main__":
         assert convert_from(1.0, CENTI * POISE) == 1e-3
         print("ok test_compound_units")
 
+    def test_the_electrical_units_are_si_base() -> None:
+        assert AMPERE == 1.0 and FARAD == 1.0
+        print("ok test_the_electrical_units_are_si_base")
+
+    def test_gal_is_an_acceleration_not_a_volume() -> None:
+        """`gal` is 1 cm/s^2; `gallon` is a volume. MRST names them alike."""
+        assert GAL == 0.01
+        assert abs(GALLON / GAL) > 1e-3, (GALLON, GAL)
+        assert GALLON != GAL
+        print("ok test_gal_is_an_acceleration_not_a_volume")
+
+    def test_a_site_is_one_over_avogadro() -> None:
+        """Exactly, unlike MRST, whose two files disagree in the sixth digit."""
+        assert SITE * AVOGADRO == 1.0
+        print("ok test_a_site_is_one_over_avogadro")
+
+    def test_the_physical_constants_are_codata_values() -> None:
+        assert abs(GAS_CONSTANT - 8.3144598) < 1e-7
+        assert abs(FARADAY_CONSTANT - 96485.33289) < 1e-5
+        assert abs(VACUUM_PERMITTIVITY - 8.854187817e-12) < 1e-20
+        print("ok test_the_physical_constants_are_codata_values")
+
+    def test_the_gas_constant_relates_boltzmann_and_avogadro() -> None:
+        """R = k_B * N_A, an independent check on two of the constants."""
+        boltzmann = 1.38064852e-23
+        assert abs(GAS_CONSTANT - boltzmann * AVOGADRO) < 1e-6, \
+            GAS_CONSTANT - boltzmann * AVOGADRO
+        print("ok test_the_gas_constant_relates_boltzmann_and_avogadro")
+
+    test_the_electrical_units_are_si_base()
+    test_gal_is_an_acceleration_not_a_volume()
+    test_a_site_is_one_over_avogadro()
+    test_the_physical_constants_are_codata_values()
+    test_the_gas_constant_relates_boltzmann_and_avogadro()
     test_reference_values()
     test_convert_roundtrip()
     test_convert_arrays()

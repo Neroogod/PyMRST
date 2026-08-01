@@ -126,11 +126,14 @@ def _processed_wells(
             apply_deck_well_controls,
             wells_from_deck_completion_records,
         )
+        gravity = float(getattr(
+            model, "gravity_magnitude", getattr(model, "gravity", 0.0)
+        ))
         geometry = None
         if _get(ctrl, "WELSPECS") is not None or _get(ctrl, "COMPDAT") is not None:
             geometry = wells_from_deck_completion_records(
                 grid, rock, ctrl, compi=np.array([1.0, 0.0, 0.0]),
-                gravity=np.array([0.0, 0.0, float(getattr(model, "gravity", 0.0))]),
+                gravity=np.array([0.0, 0.0, gravity]),
             )
         wells = list(base_wells)
         if geometry:

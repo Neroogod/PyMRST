@@ -69,7 +69,12 @@ def _tensor_values(grdecl: Dict[str, Any]) -> Tuple[np.ndarray, np.ndarray]:
     comp = np.ones((3, 3), dtype=np.int64)
 
     def add(key: str) -> int:
-        cols.append(np.asarray(grdecl[key], dtype=float).ravel())
+        values = np.asarray(grdecl[key], dtype=float).ravel()
+        if values.size != nc:
+            raise ValueError(
+                f"{key} contains {values.size} values; expected {nc}"
+            )
+        cols.append(values)
         return len(cols)                        # 1-based index of the new column
 
     has = grdecl.__contains__
@@ -109,10 +114,12 @@ def _get_tensor(grdecl: Dict[str, Any]) -> np.ndarray:
     vals, comp = _tensor_values(grdecl)
     i, j = np.where(comp > 1)
     if i.size and np.all(i == j):
-        assert i.size == 3, "expected three diagonal components"
+        if i.size != 3:
+            raise ValueError("incomplete diagonal permeability tensor")
         sel = comp[[0, 1, 2], [0, 1, 2]]
     else:
-        assert i.size == 9, "expected a full symmetric tensor"
+        if i.size != 9:
+            raise ValueError("incomplete full symmetric permeability tensor")
         ii = np.array([0, 0, 0, 1, 1, 2])
         jj = np.array([0, 1, 2, 1, 2, 2])
         sel = comp[ii, jj]
@@ -133,31 +140,46 @@ def grdecl2rock(grdecl: Dict[str, Any], actmap=None) -> Rock:
         raise ValueError("permeability tensor keywords are not consistent")
 
     perm = _get_tensor(grdecl)
+    property_count = perm.shape[0]
 
     if actmap is None:
         actmap = np.arange(perm.shape[0], dtype=np.int64)
     elif hasattr(actmap, "cells"):
-        actmap = np.asarray(actmap.cells.indexMap, dtype=np.int64)
+        actmap = np.asarray(actmap.cells.indexMap, dtype=np.int64).ravel()
     else:
-        actmap = np.asarray(actmap, dtype=np.int64)
+        raw_map = np.asarray(actmap)
+        if raw_map.dtype == bool:
+            if raw_map.size != perm.shape[0]:
+                raise ValueError("logical actmap must contain one flag per cell")
+            actmap = np.flatnonzero(raw_map.ravel())
+        else:
+            actmap = np.asarray(raw_map, dtype=np.int64).ravel()
+
+    if actmap.size and (actmap.min() < 0 or actmap.max() >= perm.shape[0]):
+        raise IndexError("actmap contains a cell index outside the property arrays")
 
     perm = perm[actmap]
 
     def extract(field: str) -> np.ndarray:
-        return np.asarray(grdecl[field], dtype=float).ravel()[actmap].reshape(-1, 1)
+        values = np.asarray(grdecl[field], dtype=float).ravel()
+        if values.size != property_count:
+            raise ValueError(
+                f"{field} contains {values.size} values; expected {property_count}"
+            )
+        return values[actmap].reshape(-1, 1)
 
-    poro = extract("PORO") if "PORO" in grdecl else None
-    ntg = extract("NTG") if "NTG" in grdecl else None
+    poro = extract("PORO").ravel() if "PORO" in grdecl else None
+    ntg = extract("NTG").ravel() if "NTG" in grdecl else None
     rock = Rock(perm=perm, poro=poro, ntg=ntg)
 
     if "ROCKTYPE" in grdecl:
-        rock.rocktype = extract("ROCKTYPE")
+        rock.rocktype = extract("ROCKTYPE").ravel()
 
     mult = {}
     for axis in ("X", "Y", "Z"):
         for key in (f"MULT{axis}", f"MULT{axis}_"):
             if key in grdecl:
-                mult[axis.lower()] = extract(key)
+                mult[key[4:].lower()] = extract(key).ravel()
     if mult:
         rock.multipliers = mult
 

@@ -268,7 +268,11 @@ def lincomp_tpfa(
     if matrix_output:
         out.A = A
         out.rhs = rhs
-        out.ct = sp.diags_array(cr * np.asarray(pv, dtype=float).ravel(), shape=A.shape, format="csr")
+        # the system carries one row per well control on top of the cells, and
+        # those rows hold no accumulation, so the diagonal is padded to match
+        accumulation = np.zeros(A.shape[0])
+        accumulation[:nc] = cr * np.asarray(pv, dtype=float).ravel()
+        out.ct = sp.diags_array(accumulation, shape=A.shape, format="csr")
     return out
 
 

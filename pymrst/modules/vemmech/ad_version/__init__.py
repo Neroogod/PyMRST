@@ -737,7 +737,7 @@ def _bc_vector_from_tensor(g, disp_bc: SparseMultiArray):
 
 
 def _load_vector_dual_grad(g, load: SparseMultiArray, qc_all):
-    from pymrst.utils.gridtools import mcolon
+    from pymrst.utils import mcolon
 
     cells = np.arange(g.cells.num)
     inodes = mcolon(g.cells.nodePos[cells], g.cells.nodePos[cells + 1])
@@ -756,7 +756,7 @@ def _load_vector_dual_grad(g, load: SparseMultiArray, qc_all):
 
 
 def _force_bc_vector(g, force_bc: SparseMultiArray, qf_all):
-    from pymrst.utils.gridtools import mcolon
+    from pymrst.utils import mcolon
 
     mat = force_bc.as_matrix([["f"], ["d"]], True,
                              [g.faces.num, g.griddim])

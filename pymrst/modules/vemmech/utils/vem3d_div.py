@@ -5,7 +5,7 @@ import scipy.sparse as sp
 
 from pymrst.gridprocessing.grid import Grid
 from pymrst.modules.vemmech.utils.calculate_qc import calculate_qc
-from pymrst.utils.gridtools import mcolon
+from pymrst.utils.mcolon import mcolon
 
 
 def vem3d_div(g: Grid) -> sp.csr_array:

@@ -186,7 +186,7 @@ pip install -e '.[browser]'
 Create a browser viewer from saved SPE1 states:
 
 ```bash
-python3 -m pymrst.plotting.plot_saved_states \
+python3 -m pymrst.plotting.extensions.plot_saved_states \
   examples/results_spe1/spe1_states.npz \
   --browser \
   --field sG \
@@ -197,7 +197,7 @@ python3 -m pymrst.plotting.plot_saved_states \
 Open it automatically after writing:
 
 ```bash
-python3 -m pymrst.plotting.plot_saved_states \
+python3 -m pymrst.plotting.extensions.plot_saved_states \
   examples/results_spe1/spe1_states.npz \
   --browser \
   --field sG \

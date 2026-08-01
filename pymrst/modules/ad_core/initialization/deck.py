@@ -121,7 +121,7 @@ if __name__ == "__main__":
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
         GenericBlackOilModel, initial_state_from_deck,
     )
-    from pymrst.modules.ad_props.blackoil_fluid import init_deck_blackoil_fluid
+    from pymrst.modules.ad_props.props.init_deck_adi_fluid import init_deck_blackoil_fluid
     from pymrst.modules.deckformat import read_spe1_deck
     from pymrst.params import NORM_GRAVITY, add_well, make_rock
 

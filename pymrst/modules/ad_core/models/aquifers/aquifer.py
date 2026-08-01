@@ -237,7 +237,7 @@ class AquiferModel:
 
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
-    from pymrst.modules.ad_props.simple_adi_fluid import init_simple_adi_fluid
+    from pymrst.modules.ad_props.init_simple_adi_fluid import init_simple_adi_fluid
     from pymrst.params.rock import make_rock
     from pymrst.utils.adi import init_variables_adi
     from pymrst.utils.units import BARSA, CENTI, DARCY, DAY, MILLI, POISE

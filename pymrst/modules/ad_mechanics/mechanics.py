@@ -37,7 +37,7 @@ from pymrst.modules.vemmech.vem import (
     vem_strain_operator,
     vem_stress_operator,
 )
-from pymrst.utils.gridtools import mcolon
+from pymrst.utils.mcolon import mcolon
 
 VOIGT_TRACE = np.array([1.0, 1.0, 1.0, 0.0, 0.0, 0.0])
 VOIGT_TRACE_2D = np.array([1.0, 1.0, 0.0])

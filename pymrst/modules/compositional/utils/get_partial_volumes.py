@@ -5,9 +5,14 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import scipy.sparse as sp
+import scipy.sparse.linalg as spla
 
 from pymrst.modules.compositional.backend import backend_flow_props
+from pymrst.modules.compositional.eos_ad import phase_compressibility_ad
 from pymrst.modules.compositional.properties import molar_density
+from pymrst.utils.adi import combine_equations, init_variables_adi, value
+from pymrst.utils.units import BARSA
 
 
 def _get(obj: Any, name: str, default=None):
@@ -62,19 +67,63 @@ def _num_components(model: Any, state: Any) -> int:
     return ncomp + int(bool(_get(model, "water", False)))
 
 
-def _numeric_accumulation_weights(model: Any, state: Any, acc, subs) -> np.ndarray:
+def _numeric_accumulation_weights(
+    model: Any,
+    state: Any,
+    acc,
+    subs,
+    *,
+    reorder=None,
+    well_var_indices=None,
+) -> np.ndarray:
     nc = int(np.count_nonzero(subs))
     ncomp = _num_components(model, state)
     if acc is None:
         return np.ones((nc, ncomp), dtype=float)
-    if hasattr(model, "partial_volume_weights"):
+    if hasattr(model, "partial_volume_weights") and reorder is None and well_var_indices is None:
         try:
             weights = model.partial_volume_weights(acc)
             return np.column_stack([np.asarray(w, dtype=float).reshape(-1)[subs] for w in weights])
         except Exception:
             if any(hasattr(a, "jac") for a in (acc if isinstance(acc, (list, tuple)) else [acc])):
                 raise
-    return np.ones((nc, ncomp), dtype=float)
+    terms = list(acc) if isinstance(acc, (list, tuple)) else [acc]
+    if not terms or not any(hasattr(term, "jac") for term in terms):
+        return np.ones((nc, ncomp), dtype=float)
+    ncell = np.asarray(getattr(terms[0], "val", terms[0])).size
+    J = combine_equations(*terms).jac[0].tocsc()
+    if reorder is not None:
+        order = np.asarray(reorder, dtype=np.int64).reshape(-1)
+        if order.size != J.shape[1] or set(order.tolist()) != set(range(J.shape[1])):
+            raise ValueError("reorder must be a zero-based permutation of all Jacobian columns")
+        J = J[:, order]
+    if well_var_indices is not None:
+        remove = np.asarray(well_var_indices, dtype=np.int64).reshape(-1)
+        if remove.size and (remove.min() < 0 or remove.max() >= J.shape[1]):
+            raise IndexError("wellVarIndices contains a Jacobian column outside the reordered system")
+        keep = np.ones(J.shape[1], dtype=bool)
+        keep[remove] = False
+        J = J[:, keep]
+    ndof = ncell * ncomp
+    if J.shape[0] < ndof or J.shape[1] < ndof:
+        raise ValueError(
+            f"accumulation Jacobian must contain a {ndof}-DOF cell block after filtering"
+        )
+    B = J[:ndof, :ndof]
+    C = J[:ndof, ndof:]
+    D = J[ndof:, :ndof]
+    E = J[ndof:, ndof:]
+    if E.shape == (0, 0):
+        A = B
+    else:
+        if E.shape[0] != E.shape[1]:
+            raise ValueError("non-cell Jacobian block must be square after well-variable filtering")
+        A = B - C @ spla.spsolve(E, D.toarray())
+        A = sp.csc_array(A)
+    rhs = np.zeros(ndof, dtype=float)
+    rhs[:ncell] = 1.0 / BARSA
+    weights = np.asarray(spla.spsolve(A.T, rhs), dtype=float).reshape(ncomp, ncell).T
+    return weights[subs]
 
 
 def _mass_densities(mix: Any, eos_model: Any, p: np.ndarray, T: np.ndarray, fp):
@@ -85,8 +134,6 @@ def _mass_densities(mix: Any, eos_model: Any, p: np.ndarray, T: np.ndarray, fp):
 
 
 def _analytical_density_from_eos(model: Any, state: Any, subs) -> np.ndarray:
-    if bool(_get(model, "water", False)):
-        raise NotImplementedError("analytical getPartialVolumes without state.rho is only implemented for hydrocarbon phases")
     mix, eos_model = _mixture_and_backend(model)
     rows = np.flatnonzero(subs)
     p = np.asarray(_state_field(state, "pressure"), dtype=float).reshape(-1)[rows]
@@ -102,10 +149,31 @@ def _analytical_density_from_eos(model: Any, state: Any, subs) -> np.ndarray:
     return np.where(liquid, rho_l, rho_v)
 
 
+def _water_partial_volume(model: Any, state: Any, subs, units: str) -> np.ndarray:
+    """Return water-first volume weights from state density or model fallback."""
+    rows = np.flatnonzero(subs)
+    rho = _get(state, "rho", None)
+    if rho is not None:
+        rho = np.asarray(rho, dtype=float)
+        if rho.ndim == 2 and rho.shape[1] >= 1:
+            density = rho[rows, 0]
+        else:
+            density = np.full(rows.size, float(_get(model, "water_rho_s", 1000.0)))
+    else:
+        density = np.full(rows.size, float(_get(model, "water_rho_s", 1000.0)))
+    volume = 1.0 / np.maximum(density, 1.0e-300)
+    if units.lower() == "moles":
+        volume = volume * float(_get(model, "water_molar_mass", 0.01801528))
+    elif units.lower() != "mass":
+        raise ValueError(f"unknown units {units!r}")
+    return volume[:, None]
+
+
 def _analytical_single_phase(model: Any, state: Any, subs, units: str) -> np.ndarray:
     rho = _get(state, "rho", None)
     if rho is None:
-        phase_rho = _analytical_density_from_eos(model, state, subs)
+        values, _ = _analytical_single_phase_ad(model, state, subs, units)
+        return values
     else:
         rho = np.asarray(rho, dtype=float)
         if rho.ndim == 1:
@@ -116,13 +184,92 @@ def _analytical_single_phase(model: Any, state: Any, subs, units: str) -> np.nda
             phase_idx = np.where(liquid, int(bool(_get(model, "water", False))), int(bool(_get(model, "water", False))) + 1)
             rows = np.flatnonzero(subs)
             phase_rho = np.array([rho[row, phase_idx[row]] for row in rows], dtype=float)
-    ncomp = _num_components(model, state)
-    V = np.repeat((1.0 / np.maximum(phase_rho, 1.0e-300))[:, None], ncomp, axis=1)
+    components = _get(state, "components", _get(state, "z", None))
+    hydrocarbon_components = (
+        np.asarray(components).shape[1]
+        if components is not None
+        else _num_components(model, state) - int(bool(_get(model, "water", False)))
+    )
+    V = np.repeat(
+        (1.0 / np.maximum(phase_rho, 1.0e-300))[:, None],
+        hydrocarbon_components,
+        axis=1,
+    )
     if units.lower() == "mass":
-        V = V / _molar_mass(model, ncomp)[None, :]
+        V = V / _molar_mass(model, hydrocarbon_components)[None, :]
     elif units.lower() != "moles":
         raise ValueError(f"unknown units {units!r}")
+    if bool(_get(model, "water", False)):
+        V = np.column_stack([_water_partial_volume(model, state, subs, units), V])
     return V
+
+
+def _analytical_single_phase_ad(
+    model: Any, state: Any, subs: np.ndarray, units: str
+) -> tuple[np.ndarray, np.ndarray]:
+    """MRST single-phase partial volumes with native cubic-EOS AD.
+
+    Pressure and each overall composition are independent AD blocks.  The
+    compressibility root receives its implicit cubic derivative through
+    :func:`phase_compressibility_ad`, after which the density Jacobian gives
+    MRST's ``1/rho - drho/dz_i/rho**2`` partial molar-volume expression.
+    """
+    mix, eos_backend = _mixture_and_backend(model)
+    rows = np.flatnonzero(subs)
+    pressure = np.asarray(_state_field(state, "pressure"), dtype=float).reshape(-1)[rows]
+    temperature = _temperature(model, state, rows)
+    composition = _normalize_rows(
+        np.asarray(_state_field(state, "components", "z"), dtype=float)[rows]
+    )
+    primary = init_variables_adi(pressure, *[composition[:, i] for i in range(composition.shape[1])])
+    p_ad, z_ad = primary[0], list(primary[1:])
+
+    fp = backend_flow_props(mix, eos_backend, pressure, temperature, composition)
+    z_l_ad, z_v_ad = phase_compressibility_ad(
+        mix, p_ad, temperature, z_ad, z_ad,
+        np.asarray(fp.Z_L, dtype=float).reshape(-1),
+        np.asarray(fp.Z_V, dtype=float).reshape(-1),
+    )
+    liquid = np.asarray(_get(state, "L", fp.L), dtype=float).reshape(-1)
+    if liquid.size != rows.size:
+        liquid = liquid[rows]
+    liquid = liquid >= 0.5
+
+    volume_shift = None
+    eos = _get(model, "EOSModel", None)
+    prop = _get(eos, "PropertyModel", _get(eos, "property_model", None))
+    if prop is not None:
+        volume_shift = _get(prop, "volumeShift", _get(prop, "volume_shift", None))
+    rho_l = molar_density(mix, p_ad, temperature, z_ad, z_l_ad, volume_shift)
+    rho_v = molar_density(mix, p_ad, temperature, z_ad, z_v_ad, volume_shift)
+    rho = rho_l.copy()
+    rho[~liquid] = rho_v[~liquid]
+
+    rho_value = np.asarray(value(rho), dtype=float).reshape(-1)
+    inv_rho = 1.0 / np.maximum(rho_value, 1.0e-300)
+    values = np.empty((rows.size, composition.shape[1]), dtype=float)
+    derivatives = np.empty_like(values)
+    pressure_jac = rho.jac[0].diagonal()
+    for component in range(composition.shape[1]):
+        drho_dzi = rho.jac[component + 1].diagonal()
+        values[:, component] = inv_rho - drho_dzi * inv_rho**2
+        # This follows MRST getSinglePhaseVolumes: drho/dz is extracted as a
+        # value before differentiating v, so no mixed second derivative enters.
+        derivatives[:, component] = (
+            -pressure_jac * inv_rho**2
+            + 2.0 * drho_dzi * pressure_jac * inv_rho**3
+        )
+
+    if units.lower() == "mass":
+        values = values / _molar_mass(model, composition.shape[1])[None, :]
+        derivatives = derivatives / _molar_mass(model, composition.shape[1])[None, :]
+    elif units.lower() != "moles":
+        raise ValueError(f"unknown units {units!r}")
+    if bool(_get(model, "water", False)):
+        water = _water_partial_volume(model, state, subs, units)
+        values = np.column_stack([water, values])
+        derivatives = np.column_stack([np.zeros_like(water), derivatives])
+    return values, derivatives
 
 
 def _mixture_and_backend(model: Any):
@@ -203,7 +350,7 @@ def _eos_partial_volumes(model: Any, state: Any, subs: np.ndarray, units: str) -
     elif units.lower() != "moles":
         raise ValueError(f"unknown units {units!r}")
     if bool(_get(model, "water", False)):
-        water_col = np.zeros((rows.size, 1), dtype=float)
+        water_col = _water_partial_volume(model, state, subs, units)
         V = np.column_stack([water_col, V])
     return V
 
@@ -222,6 +369,109 @@ def _pressure_derivative_eos(model: Any, state: Any, subs: np.ndarray, units: st
     pert.pressure = p
     V_lower = _eos_partial_volumes(model, pert, subs, units)
     return (V - V_lower) / float(pressure_epsilon)
+
+
+def _state_with_pressure(state: Any, pressure: np.ndarray):
+    """Return a shallow state copy with a replaced pressure vector."""
+    if isinstance(state, dict):
+        perturbed = dict(state)
+        perturbed["pressure"] = pressure
+        return perturbed
+    class Perturbed:
+        pass
+    perturbed = Perturbed()
+    perturbed.__dict__.update(getattr(state, "__dict__", {}))
+    perturbed.pressure = pressure
+    return perturbed
+
+
+def _pressure_derivative_analytical(
+    model: Any,
+    state: Any,
+    subs: np.ndarray,
+    units: str,
+    pressure_epsilon: float,
+) -> np.ndarray:
+    """Differentiate single-phase weights using native EOS AD when available."""
+    current = _analytical_single_phase(model, state, subs, units)
+    if _get(state, "rho", None) is not None:
+        # A stored density has no associated pressure law. Do not fabricate one.
+        return np.zeros_like(current)
+    del pressure_epsilon
+    _, derivative = _analytical_single_phase_ad(model, state, subs, units)
+    return derivative
+
+
+def _partial_volume_group(
+    model: Any,
+    state: Any,
+    acc,
+    subs: np.ndarray,
+    strategy: str,
+    diff: str,
+    units: str,
+    pressure_epsilon: float,
+    reorder=None,
+    well_var_indices=None,
+    iteration: float = np.nan,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Evaluate one uniform phase/strategy subset like MRST's wrapper."""
+    strategy = str(strategy).lower()
+    diff = str(diff).lower()
+    nc = _num_cells(state)
+    if strategy == "numerical":
+        V = _numeric_accumulation_weights(
+            model,
+            state,
+            acc,
+            subs,
+            reorder=reorder,
+            well_var_indices=well_var_indices,
+        )
+    elif strategy == "analytical":
+        V = _analytical_single_phase(model, state, subs, units)
+    elif strategy == "eos":
+        V = _eos_partial_volumes(model, state, subs, units)
+    else:
+        raise ValueError(f"unsupported partial-volume strategy {strategy!r}")
+
+    if diff == "none":
+        dVdp = np.zeros_like(V)
+    elif diff == "eos" and strategy == "eos":
+        dVdp = _pressure_derivative_eos(model, state, subs, units, pressure_epsilon)
+    elif diff == "numerical":
+        w_prev = _get(state, "w", None)
+        w_p = _get(state, "w_p", None)
+        pressure = np.asarray(_state_field(state, "pressure"), dtype=float).reshape(-1)[subs]
+        if w_prev is not None and w_p is not None and float(iteration) > 1.0:
+            prev = np.asarray(w_prev, dtype=float)
+            if prev.shape[0] == nc:
+                prev = prev[subs]
+            prev_sum = np.sum(np.abs(prev), axis=1, keepdims=True)
+            curr_sum = np.sum(np.abs(V), axis=1, keepdims=True)
+            prev_norm = np.divide(prev, prev_sum, out=np.zeros_like(prev), where=prev_sum != 0.0)
+            curr_norm = np.divide(V, curr_sum, out=np.zeros_like(V), where=curr_sum != 0.0)
+            previous_pressure = np.asarray(w_p, dtype=float).reshape(-1)
+            if previous_pressure.size == nc:
+                previous_pressure = previous_pressure[subs]
+            dp = pressure - previous_pressure
+            dVdp = np.divide(
+                curr_norm - prev_norm,
+                dp[:, None],
+                out=np.zeros_like(V),
+                where=dp[:, None] != 0.0,
+            )
+        else:
+            dVdp = np.zeros_like(V)
+    elif diff == "analytical" and strategy == "analytical":
+        dVdp = _pressure_derivative_analytical(
+            model, state, subs, units, pressure_epsilon
+        )
+    else:
+        raise ValueError(
+            f"partial-volume differentiation {diff!r} is invalid for strategy {strategy!r}"
+        )
+    return V, dVdp
 
 
 def getPartialVolumes(model, state, acc=None, **kwargs):
@@ -243,6 +493,9 @@ def getPartialVolumes(model, state, acc=None, **kwargs):
     single_diff = _option(kwargs, "singlePhaseDifferentiation", "single_phase_differentiation", "numerical")
     two_diff = _option(kwargs, "twoPhaseDifferentiation", "two_phase_differentiation", single_diff)
     subset = _option(kwargs, "subset", "subset", None)
+    reorder = _option(kwargs, "reorder", "reorder", None)
+    well_var_indices = _option(kwargs, "wellVarIndices", "well_var_indices", None)
+    iteration = _option(kwargs, "iteration", "iteration", np.nan)
     if kwargs:
         unknown = ", ".join(sorted(kwargs))
         raise TypeError(f"unexpected option(s): {unknown}")
@@ -261,43 +514,40 @@ def getPartialVolumes(model, state, acc=None, **kwargs):
         two_phase = (L > 1.0e-8) & (L < 1.0 - 1.0e-8)
         single_phase = ~two_phase
 
-    strategy = str(single_strategy if not np.any(two_phase & subs) else two_strategy).lower()
-    diff = str(single_diff if not np.any(two_phase & subs) else two_diff).lower()
-    if strategy == "numerical":
-        V = _numeric_accumulation_weights(model, state, acc, subs)
-    elif strategy == "analytical":
-        if np.any(~single_phase & subs):
-            raise NotImplementedError("analytical getPartialVolumes is only supported for single-phase cells")
-        V = _analytical_single_phase(model, state, subs, units)
-    elif strategy == "eos":
-        V = _eos_partial_volumes(model, state, subs, units)
-    else:
-        raise ValueError(f"unsupported partial-volume strategy {strategy!r}")
-
-    if diff == "none":
-        dVdp = np.zeros_like(V)
-    elif diff == "eos" and strategy == "eos":
-        dVdp = _pressure_derivative_eos(model, state, subs, units, pressure_epsilon)
-    elif diff == "numerical":
-        w_prev = _get(state, "w", None)
-        w_p = _get(state, "w_p", None)
-        pressure = np.asarray(_state_field(state, "pressure"), dtype=float).reshape(-1)[subs]
-        if w_prev is not None and w_p is not None:
-            prev = np.asarray(w_prev, dtype=float)
-            if prev.shape[0] == nc:
-                prev = prev[subs]
-            prev_sum = np.sum(np.abs(prev), axis=1, keepdims=True)
-            curr_sum = np.sum(np.abs(V), axis=1, keepdims=True)
-            prev_norm = np.divide(prev, prev_sum, out=np.zeros_like(prev), where=prev_sum != 0.0)
-            curr_norm = np.divide(V, curr_sum, out=np.zeros_like(V), where=curr_sum != 0.0)
-            dp = pressure - np.asarray(w_p, dtype=float).reshape(-1)[subs]
-            dVdp = np.divide(curr_norm - prev_norm, dp[:, None], out=np.zeros_like(V), where=dp[:, None] != 0.0)
-        else:
-            dVdp = np.zeros_like(V)
-    elif diff == "analytical":
-        dVdp = np.zeros_like(V)
-    else:
-        raise ValueError(f"unsupported partial-volume derivative strategy {diff!r}")
+    selected = np.flatnonzero(subs)
+    output_position = np.full(nc, -1, dtype=int)
+    output_position[selected] = np.arange(selected.size)
+    groups = (
+        (single_phase & subs, single_strategy, single_diff),
+        (two_phase & subs, two_strategy, two_diff),
+    )
+    V = dVdp = None
+    for group, strategy, diff in groups:
+        if not np.any(group):
+            continue
+        values, derivatives = _partial_volume_group(
+            model,
+            state,
+            acc,
+            group,
+            strategy,
+            diff,
+            units,
+            pressure_epsilon,
+            reorder=reorder,
+            well_var_indices=well_var_indices,
+            iteration=iteration,
+        )
+        if V is None:
+            V = np.empty((selected.size, values.shape[1]), dtype=float)
+            dVdp = np.empty_like(V)
+        positions = output_position[np.flatnonzero(group)]
+        V[positions] = values
+        dVdp[positions] = derivatives
+    if V is None:
+        ncomp = _num_components(model, state)
+        V = np.empty((0, ncomp), dtype=float)
+        dVdp = np.empty_like(V)
     return V, dVdp
 
 

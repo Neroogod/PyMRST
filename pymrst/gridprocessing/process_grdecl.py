@@ -25,7 +25,8 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 from pymrst.gridprocessing.grid import Cells, Faces, Grid, Nodes
-from pymrst.utils.gridtools import mcolon, rlencode
+from pymrst.utils.mcolon import mcolon
+from pymrst.utils.rlencode import rlencode
 
 
 def _flat(a: np.ndarray) -> np.ndarray:

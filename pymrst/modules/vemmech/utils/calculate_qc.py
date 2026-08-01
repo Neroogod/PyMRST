@@ -6,7 +6,7 @@ import numpy as np
 import scipy.sparse as sp
 
 from pymrst.gridprocessing.grid import Grid
-from pymrst.utils.gridtools import mcolon
+from pymrst.utils.mcolon import mcolon
 
 
 def calculate_qc(g: Grid) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:

@@ -30,6 +30,11 @@ ref.bc_values = bcp.value(:);
 bcf = fluxside([], G, 'ymin', 2.0);
 ref.flux_faces  = bcf.face(:);
 ref.flux_values = bcf.value(:);
+rawFlux = (1:numel(bcf.face))';
+bcfv = fluxside([], G, 'ymin', rawFlux);
+ref.flux_vector_values = bcfv.value(:);
+bcrange = pside([], G, 'xmin', 3e5, 'range', 1);
+ref.side_xmin_range = sort(bcrange.face(:));
 
 %% --- vertical wells ------------------------------------------------------
 rock = makeRock(G, 100*milli*darcy, 0.2);

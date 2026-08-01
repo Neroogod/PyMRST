@@ -19,14 +19,14 @@ class Saturations(StateFunction):
         self.single_phase = model is not None and model.fluid.n_phases == 1
         if not self.single_phase:
             self.depends_on("sW", STATE)
-        if model is not None and model.fluid.disgas:
+        if model is not None and (model.fluid.disgas or model.fluid.vapoil):
             self.depends_on(["sG", "status"], STATE)
 
     def evaluate_on_domain(self, model, state):
         if self.single_phase:
             return [np.ones(model.G.cells.num)]
         sw = state["sW"]
-        if not model.fluid.disgas:
+        if not (model.fluid.disgas or model.fluid.vapoil):
             return [sw, 1.0 - sw]
         sg = state["sG"]
         return [sw, 1.0 - sw - sg, sg]

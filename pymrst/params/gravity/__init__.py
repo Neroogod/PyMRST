@@ -1,5 +1,11 @@
 """MRST-shaped gravity namespace."""
 
-from pymrst.params.gravity_const import NORM_GRAVITY, gravity_or_zero, gravity_vector
+from pymrst.params.gravity.gravity import (
+    NORM_GRAVITY, current_gravity, gravity, gravity_or_zero, gravity_vector,
+    isolated_gravity,
+)
 
-__all__ = ["NORM_GRAVITY", "gravity_or_zero", "gravity_vector"]
+__all__ = [
+    "NORM_GRAVITY", "current_gravity", "gravity", "gravity_or_zero",
+    "gravity_vector", "isolated_gravity",
+]

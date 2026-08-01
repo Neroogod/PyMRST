@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
 from pymrst.gridprocessing import cart_grid, compute_geometry  # noqa: E402
 from pymrst.modules.compositional import wells_from_deck_completion_records  # noqa: E402
 from pymrst.params.rock import make_rock  # noqa: E402
-from pymrst.params.wells_and_bc.compute_well_index import compute_well_index  # noqa: E402
+from pymrst.utils.compute_well_index import compute_well_index  # noqa: E402
 
 
 def _check(name: str, condition: bool) -> int:

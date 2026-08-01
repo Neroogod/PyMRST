@@ -23,7 +23,7 @@ from typing import Callable, Optional, Tuple
 
 import numpy as np
 
-from pymrst.modules.ad_props.simple_adi_fluid import ADFluid
+from pymrst.modules.ad_props.init_simple_adi_fluid import ADFluid
 from pymrst.modules.dual_porosity.shape_factors import ShapeFactor
 from pymrst.params.rock import Rock
 from pymrst.utils.adi import value
@@ -98,7 +98,7 @@ class KazemiTwoPhaseTransfer:
 
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
-    from pymrst.modules.ad_props.simple_adi_fluid import init_simple_adi_fluid
+    from pymrst.modules.ad_props.init_simple_adi_fluid import init_simple_adi_fluid
     from pymrst.modules.dual_porosity.shape_factors import KazemiShapeFactor
     from pymrst.params.rock import make_rock
     from pymrst.utils.adi import init_variables_adi

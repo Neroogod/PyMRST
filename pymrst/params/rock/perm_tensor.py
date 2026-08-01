@@ -9,19 +9,27 @@ from pymrst.params.rock.rock import Rock
 
 def perm_tensor(rock: Rock, dim: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Expand `rock.perm` to row-wise full tensor entries and indices."""
-    nc, nk = rock.perm.shape
+    if rock is None or not hasattr(rock, "perm"):
+        raise ValueError("rock must contain a permeability field")
+    perm = np.asarray(rock.perm, dtype=float)
+    if perm.ndim == 1:
+        perm = perm.reshape(-1, 1)
+    if perm.ndim != 2 or perm.shape[0] == 0:
+        raise ValueError("rock permeability must be a non-empty matrix")
+    nc, nk = perm.shape
     if dim == 1:
-        assert nk == 1, "1D domains support scalar permeability only"
-        return rock.perm, np.array([0]), np.array([0])
+        if nk != 1:
+            raise ValueError("1D domains support scalar permeability only")
+        return perm, np.array([0]), np.array([0])
     if dim == 2:
-        tensor = _symmetric_2d(rock.perm, nk, nc)
+        tensor = _symmetric_2d(perm, nk, nc)
         return (
             tensor[:, [0, 1, 1, 2]],
             np.array([0, 0, 1, 1]),
             np.array([0, 1, 0, 1]),
         )
     if dim == 3:
-        tensor = _symmetric_3d(rock.perm, nk, nc)
+        tensor = _symmetric_3d(perm, nk, nc)
         return (
             tensor[:, [0, 1, 2, 1, 3, 4, 2, 4, 5]],
             np.array([0, 0, 0, 1, 1, 1, 2, 2, 2]),
@@ -35,8 +43,9 @@ def _symmetric_2d(perm: np.ndarray, nk: int, nc: int) -> np.ndarray:
         return perm * np.array([1.0, 0.0, 1.0])
     if nk == 2:
         return np.column_stack([perm[:, 0], np.zeros(nc), perm[:, 1]])
-    assert nk == 3
-    return perm
+    if nk == 3:
+        return perm
+    raise ValueError(f"{nk}-component permeability is unsupported in 2D")
 
 
 def _symmetric_3d(perm: np.ndarray, nk: int, nc: int) -> np.ndarray:
@@ -45,8 +54,9 @@ def _symmetric_3d(perm: np.ndarray, nk: int, nc: int) -> np.ndarray:
     if nk == 3:
         zeros = np.zeros(nc)
         return np.column_stack([perm[:, 0], zeros, zeros, perm[:, 1], zeros, perm[:, 2]])
-    assert nk == 6
-    return perm
+    if nk == 6:
+        return perm
+    raise ValueError(f"{nk}-component permeability is unsupported in 3D")
 
 
 if __name__ == "__main__":
@@ -73,4 +83,3 @@ if __name__ == "__main__":
     test_perm_tensor_scalar_3d()
     test_perm_tensor_diagonal_3d()
     print("\nAll tests passed!")
-

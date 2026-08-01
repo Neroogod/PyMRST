@@ -81,13 +81,31 @@ def well_control_residual(well_residuals: Sequence[np.ndarray],
     """
     if not len(wells):
         return 0.0, 0.0
+    # `if rates else 1.0` guards the case where every well is bhp-controlled,
+    # but not the case where rate-controlled wells all carry a zero target -
+    # every producer shut in a step, say. `max` is then 0.0 and the division
+    # below yields inf or nan, and since nan compares false against any
+    # tolerance the step can never converge, however small the residual gets.
+    # This is the same hazard the ctrl_scale comment below describes; it
+    # applies here too.
     rates = [abs(w.val) for w in wells if w.type != "bhp"]
-    q_ref = max(rates) if rates else 1.0
+    positive = [r for r in rates if r > 1e-12]
+    q_ref = max(positive) if positive else 1.0
     well = max(np.abs(np.asarray(value(r), dtype=float)).max()
                for r in well_residuals)
     well /= q_ref
-    ctrl_scale = np.array([1e5 if w.type == "bhp" else max(abs(w.val), 1e-12)
-                           for w in wells])
+    # A zero rate target is common in history schedules (a well may remain
+    # open while its measured target is zero).  Dividing its floating-point
+    # closure error by 1e-12 turns pressure-sized roundoff (~1e-8 m3/s in a
+    # field case) into a residual of order 1e4 and makes exact convergence
+    # impossible.  Use the schedule's characteristic rate for zero targets;
+    # nonzero controls retain their target-relative scaling.
+    ctrl_scale = np.array([
+        1e5 if w.type == "bhp" else (
+            abs(w.val) if abs(w.val) > 1e-12 else max(q_ref, 1.0)
+        )
+        for w in wells
+    ])
     ctrl = float(np.max(np.abs(np.asarray(value(control_residual), float))
                         / ctrl_scale))
     return float(well), ctrl
@@ -160,13 +178,51 @@ if __name__ == "__main__":
         well, ctrl_res = well_control_residual(well_eqs, ctrl, wells)
         assert np.isclose(well, 2e-6 / 2e-3)         # scaled by max rate
         assert np.isclose(ctrl_res, max(1e-4 / 2e-3, 3e3 / 1e5))
+        zero_target = [SimpleNamespace(type="rate", val=0.0),
+                       SimpleNamespace(type="rate", val=2.0)]
+        _, zero_ctrl = well_control_residual(
+            [np.zeros(2)], np.array([1e-8, 0.0]), zero_target
+        )
+        assert np.isclose(zero_ctrl, 1e-8 / 2.0)
         assert well_control_residual([], np.array([]), []) == (0.0, 0.0)
         assert np.isclose(max_extra_residual([np.array([1.0, -5.0])]), 5.0)
         assert max_extra_residual([]) == 0.0
         print("ok test_well_and_extra_residuals")
 
+    def test_every_rate_target_zero_still_converges():
+        """The SPE3 failure: all rate targets zero made `q_ref` zero.
+
+        The existing zero-target case above has one zero rate beside a nonzero
+        one, so `max` is still positive and the division is safe. When *every*
+        rate-controlled well carries a zero target - all producers shut for a
+        step - `max` is 0.0, the scaled residual becomes inf or nan, and since
+        nan compares false against any tolerance the step can never converge
+        however small the residual is. SPE3 died at step 20 that way.
+        """
+        from types import SimpleNamespace
+        all_zero = [SimpleNamespace(type="rate", val=0.0),
+                    SimpleNamespace(type="rate", val=0.0)]
+        well, ctrl = well_control_residual(
+            [np.array([1e-9, 1e-9])], np.array([1e-9, 1e-9]), all_zero)
+        assert np.isfinite(well), f"well residual is {well}"
+        assert np.isfinite(ctrl), f"control residual is {ctrl}"
+        # A tiny residual must read as tiny, not as inf.
+        assert well < 1e-6 and ctrl < 1e-6, (well, ctrl)
+        print("ok test_every_rate_target_zero_still_converges")
+
+    def test_a_shut_well_set_falls_back_to_unit_scaling():
+        """With no positive rate to scale by, the residual is its own size."""
+        from types import SimpleNamespace
+        wells = [SimpleNamespace(type="rate", val=0.0)]
+        well, _ = well_control_residual([np.array([3e-4])], np.array([0.0]),
+                                        wells)
+        assert np.isclose(well, 3e-4), well
+        print("ok test_a_shut_well_set_falls_back_to_unit_scaling")
+
     test_b_avg_is_mean_reciprocal()
     test_cnv_mb_formula()
     test_the_gas_scaling_is_what_b_avg_is_for()
     test_well_and_extra_residuals()
+    test_every_rate_target_zero_still_converges()
+    test_a_shut_well_set_falls_back_to_unit_scaling()
     print("\nAll tests passed!")

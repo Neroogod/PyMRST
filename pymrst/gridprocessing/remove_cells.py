@@ -119,7 +119,10 @@ def _drop_orphan_faces_and_nodes(
             num=g.cells.num - int(removed_cells.sum()),
             facePos=face_pos,
             faces=cell_faces,
-            indexMap=g.cells.indexMap[~removed_cells].copy(),
+            # a glued grid has no indexMap - MRST drops it in squareGrid and
+            # guards with isfield, so absence has to survive removal too
+            indexMap=(None if g.cells.indexMap is None
+                      else g.cells.indexMap[~removed_cells].copy()),
             tags=(
                 g.cells.tags[~np.repeat(removed_cells, np.diff(g.cells.facePos))].copy()
                 if g.cells.tags is not None else None

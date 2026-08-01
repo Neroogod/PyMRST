@@ -80,8 +80,7 @@ def psideh(
     if getattr(g.faces, "centroids", None) is None:
         raise ValueError("psideh requires face centroids; run compute_geometry first")
 
-    faces = boundary_face_indices(g, side, i1, i2)
-    faces = _restrict_perpendicular_range(g, side, faces, search_range)
+    faces = boundary_face_indices(g, side, i1, i2, search_range)
     sat_row = _uniform_saturation(sat)
     mu, rho = _fluid_properties(fluid, sat_row)
     kr = _fluid_relperm(fluid, sat_row, mu.size)

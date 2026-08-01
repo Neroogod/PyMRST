@@ -173,7 +173,7 @@ if __name__ == "__main__":
     from pymrst.modules.ad_core.statefunctions.state_function import State
     from pymrst.modules.ad_mechanics.mech_blackoil import MechBlackOilModel
     from pymrst.modules.ad_mechanics.mechanics import MechanicModel
-    from pymrst.modules.ad_props.simple_adi_fluid import init_simple_adi_fluid
+    from pymrst.modules.ad_props.init_simple_adi_fluid import init_simple_adi_fluid
     from pymrst.modules.vemmech.vem import (
         ElasticBC,
         create_augmented_grid,

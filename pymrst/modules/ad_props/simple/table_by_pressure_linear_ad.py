@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from pymrst.modules.ad_props.tables import _interp1
+from pymrst.utils.interp_table import _interp1
 from pymrst.utils.adi import ADI, _diag_mul, value
 
 

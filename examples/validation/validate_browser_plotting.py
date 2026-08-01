@@ -9,7 +9,10 @@ import numpy as np
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.params import add_well, make_rock
-from pymrst.plotting.browser import plot_reservoir_browser, reservoir_browser_data
+from pymrst.plotting.extensions.browser import (
+    plot_reservoir_browser,
+    reservoir_browser_data,
+)
 
 
 def main() -> int:
@@ -61,7 +64,29 @@ def main() -> int:
         filename=out,
         zscale=4.0,
     )
-    html_ok = path.exists() and path.stat().st_size > 1000
+    source = path.read_text(encoding="utf-8") if path.exists() else ""
+    required_ui = (
+        "PyMRST Studio",
+        'id="field"',
+        'id="step"',
+        'id="robust"',
+        'id="unit"',            # unit-aware readouts
+        'id="delta"',           # change-from-initial map
+        'id="range-mode"',      # colour limits fixed across time by default
+        'id="ve"',              # live vertical exaggeration
+        'id="i0"',              # index filters replace the old percentage cutaway
+        'id="k1"',
+        'data-camera="top"',
+        "State statistics",
+        "plotly_click",
+        "buildSurface",         # visible surface is triangulated in the browser
+        "scaleFor",             # colour scale names resolved, not passed through
+    )
+    html_ok = (
+        path.exists()
+        and path.stat().st_size > 1000
+        and all(marker in source for marker in required_ui)
+    )
     print(f"{'ok  ' if html_ok else 'FAIL'} browser HTML render: {path}")
     return failed + (0 if html_ok else 1)
 

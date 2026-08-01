@@ -821,3 +821,162 @@ row of `nodes` supplies the triangulation center for the corresponding curved
 or non-planar face. The substituted centers affect face area, normal, and
 centroid as well as the derived cell volumes and centroids. Attribute-style
 objects with `.faces` and `.nodes` are also accepted.
+
+`slice_grid` now handles the two degeneracies where the cut plane coincides
+with a face. A pinched cell whose collapsed face lies in the plane is split
+normally: coincident cut-polygon corners are merged by coordinate so the
+boundary edges still close into a ring, which is what previously failed and
+raised `NotImplementedError`. A cut snapped onto an existing column of faces
+splits nothing but marks those faces as slices (`gix.new.faces == 3`), so the
+third output returns the cross-section grid, matching MRST.
+
+Cell splitting follows MRST's `splitCells` acceptance test: a cell is divided
+only when both halves keep at least `griddim` faces. A cell that fails is left
+whole - if the odd half is a single in-plane face that face becomes the slice,
+otherwise the cell is skipped with a warning, mirroring MRST's "Cutting of %d
+out of %d cells failed". Faces are still split for every cell the plane fully
+traverses, as MRST's `splitFaces` runs before the cell-split decision.
+
+Against MRST, every face with area matches exactly. MRST additionally retains a
+zero-area sliver face where it splits the collapsed face; PyMRST does not
+create it, so the sliced grid has one fewer degenerate face and identical
+geometry.
+
+`add_faces` and `remove_faces` now carry a grid's optional data across instead
+of rebuilding a topology-only grid. MRST's `addFaces`/`removeFaces` mutate `G`
+in place, so everything they do not touch survives; the ports rebuilt `Grid`
+from four fields each and silently dropped `cartDims`, face and cell tags, and
+every geometry or custom field. Since `cart_grid` populates both `faces.tag`
+and `cells.tags`, this affected ordinary grids, not just augmented ones.
+
+`remove_faces` restricts each per-face array - `tag`, `areas`, `normals`,
+`centroids`, `diameters` and the packed `edges`/`edgePos`/`edgeSign`/
+`edgeNormals` set - to the surviving faces, and drops cell-face tags together
+with their half-faces. `add_faces` takes MRST's optional `tags` argument for
+the new half-faces (ordered like `neighbors` flattened column first, entries
+for cell `-1` dropped), zero-fills `faces.tag` as MRST does, and keeps cell
+tags aligned through `insert_in_packed_data_layout`.
+
+Per-face geometry is the one thing `add_faces` cannot carry: no value exists
+for an appended face, so `areas`, `normals`, `centroids`, `diameters` and the
+edge fields are cleared rather than left short, and `compute_geometry` must be
+rerun. Cell geometry is kept, as MRST keeps it, but is stale as soon as a cell
+gains or loses a face - MRST's own note is that "cells may not be closed
+polygons/polyhedra after this call".
+
+`remove_pinch` and `remove_short_edges` now keep their metadata consistent
+through a collapse. Both merge nodes, so `cells.cpnodes` - a corner-point node
+map, attached dynamically by `process_grdecl_omo(preserve_cp_nodes=True)` - was
+left addressing the pre-merge numbering: silently wrong, and out of range once
+the node array shrank. Each merge map is now composed and applied through
+`remap_cp_nodes`, including `remove_pinch`'s two-stage exact-then-tolerance
+merge.
+
+`cells.cpnodes` and `g.nnc` are attributes rather than declared dataclass
+fields, so any rebuild of the grid drops them. `carry_custom_fields` copies a
+grid's undeclared attributes onto a rebuilt one, and `add_faces`/`remove_faces`
+now call it - both leave nodes and cells alone, so cpnodes and NNCs carry over
+unchanged. NNCs that reference a cell the collapse removed are still filtered
+out by `remove_cells`, which owns that mapping.
+
+Geometry is cleared when a collapse changes the cell, face or node count.
+Merging nodes moves them, so incoming `faces.areas`/`normals`/`centroids` and
+`cells.volumes`/`centroids` describe a shape that no longer exists - and
+because the arrays keep a valid length, nothing downstream errors on them. A
+grid with nothing to collapse passes through with its geometry intact.
+
+Both operations mutate the grid passed in, as their MRST originals do; the
+returned grid is the one to use.
+
+`compute_geometry(..., max_block_size=..., verbose=...)` implements MRST's
+`MaxBlockSize` and `verbose` options. Both are operational: they change memory
+use and reporting, never the numbers.
+
+`max_block_size` caps how many cells the 3D cell pass handles at once. That
+pass allocates one row per cell-face triangle - the largest temporary in the
+routine - so bounding it bounds peak memory. `None` or a negative value
+processes every cell in one pass; the default is MRST's 20000, which runs
+ordinary grids in a single pass. `_partition_cells` ports MRST's
+`partition_cells`: the requested size is first reduced to the largest that
+divides the work evenly, then the remainder is spread one cell at a time over
+the leading blocks, so no two blocks differ by more than one cell. The block
+boundaries match MRST's for every case checked.
+
+Measured on a 40x40x25 grid (40000 cells), peak allocation falls from 215 MB
+in a single pass to 111 MB at `max_block_size=5000`, with no runtime penalty
+and bit-identical results. Below that the saving plateaus, because the
+face-level sub-triangle arrays are sized by the whole grid - as they are in
+MRST, which preallocates them in full - and then dominate.
+
+`verbose=True` prints per-block progress and rates for 3D grids and a total,
+and the two phase timings for 2D, mirroring MRST's `dispif`/`ticif` output.
+Cell ranges are reported zero-based, matching the rest of the Python API.
+
+`examples/validation/stress_gridprocessing.py` exercises the stack at scale on
+the four fronts the parity ledger left open: a faulted corner-point deck, a
+deck that falls into many disconnected regions, a dense NNC network, and
+repeated slicing. Every grid is put through one structural checker - closed
+topology, no orphan faces, half-face incidence, positive finite volumes,
+conserved total volume, and cells that close (the sum of outward face normals
+must vanish). Failures name the offending entity, so a 200000-cell grid is
+diagnosable. Sizes are `small` (what the test suite runs), `medium` and
+`large`.
+
+At `large` the suite handles a 200000-cell faulted deck in 1.9s and 633 MB, a
+lattice of 289 disconnected components, and ~40000 requested NNCs, with cell
+closure residuals at 1e-15. `tests/gridprocessing/test_stress_invariants.py`
+runs the `small` configuration on every commit, and also feeds the checker
+deliberately broken grids, since a checker that cannot fail proves nothing.
+Timing and peak memory are measured in separate passes (`--memory` adds the
+second): `tracemalloc` inflates allocation-heavy code several fold, so a run
+that traced and timed at once reported neither honestly.
+
+`validate_grid_large_deck.py` supplies the parity half: the stress harness only
+shows a large grid is self-consistent, so a two-tier MRST reference pins it to
+MRST's own output. Full sorted volumes and areas at 40x40x10, and counts plus a
+21-point fingerprint of the sorted distributions at 60x60x20 (72000 cells) -
+the fingerprint keeps the stored reference at 11 kB. Component counts and sizes
+for the disconnected-lattice deck are pinned too. Everything agrees to 1e-14
+relative or better.
+
+The stress work drove the vectorization pass documented below. It also
+showed why the harness must not time and trace at once: the first runs
+attributed 93s to repeated slicing, nearly all of it `tracemalloc` overhead
+rather than real work.
+
+## Vectorization
+
+Profiling the stress scenarios turned up one algorithmic defect and several
+per-face Python loops. Every change below was checked to reproduce the previous
+implementation exactly, not merely to pass the suite.
+
+`compute_geometry(find_neighbors=True)` was quadratic in the face count. Its
+reconstruction of `faces.neighbors` scanned the whole sorted half-face array
+once per face to find that face's incident cells, so doubling the faces
+quadrupled the work. Half-faces are now scattered into their face's free slot
+using `bincount` and a within-group offset, which is linear. On a 72000-cell
+faulted deck that is 20.3s to 0.92s; the 200000-cell deck went from an
+extrapolated ~160s to 0.71s. This path runs automatically whenever
+`faces.neighbors` is absent, so the cost was easy to hit without asking for it.
+
+`triangulate_faces` built its triangle fan a node at a time; the fan is now
+formed with a successor-index gather, 4x faster. `_face_edges` in
+`remove_short_edges` used the same per-face ring loop and is now essentially
+free. `remove_pinch`'s `_dedupe_face_nodes` compared each node with its cyclic
+predecessor in Python and now does it as one masked comparison. In `slice_grid`,
+`_rebuild_cell_faces` walked the neighbor table row by row, the per-face side
+tests ran once per face per pass, and untouched faces had their node lists
+converted to Python lists and back; faces the cut does not divide are now
+handed through as array slices and concatenated once.
+
+Measured on a 30x30x12 grid: `find_neighbors` 0.467s to 0.044s,
+`triangulate_faces` 0.186s to 0.047s, `slice_grid` 0.236s to 0.127s,
+`remove_short_edges` 0.081s to 0.059s, `remove_pinch` 0.074s to 0.058s.
+`compute_geometry` itself was already vectorized and is unchanged at 0.23s for
+72000 cells.
+
+The main loop in `_slice_grid_single` remains, and is the largest Python loop
+left in the module. It builds ragged per-face node lists for the faces a cut
+divides, and restructuring it would put the degeneracy handling that
+`validate_grid_slice_degeneracy.py` pins at risk for a modest gain now that
+untouched faces bypass it.

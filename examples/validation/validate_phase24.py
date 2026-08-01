@@ -38,7 +38,7 @@ from pymrst.modules.ad_blackoil.models.two_phase_oil_water_model import TwoPhase
 from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
 from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.modules.ad_props import init_simple_adi_fluid
-from pymrst.modules.ad_props.blackoil_fluid import init_deck_blackoil_fluid
+from pymrst.modules.ad_props.props.init_deck_adi_fluid import init_deck_blackoil_fluid
 from pymrst.modules.deckformat import read_spe1_deck
 from pymrst.params import NORM_GRAVITY, add_well, make_rock
 from pymrst.utils.units import BARSA, CENTI, DARCY, DAY, MILLI, POISE

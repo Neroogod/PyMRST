@@ -12,7 +12,7 @@ import numpy as np
 from scipy.io import loadmat
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
-from pymrst.modules.vem.utils.quadrature import polyhedron_int
+from pymrst.modules.vem.utils import polyhedron_int
 
 REF = Path(__file__).with_name("ref_p404_polyhedronint.mat")
 

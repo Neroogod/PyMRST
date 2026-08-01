@@ -17,7 +17,7 @@ import numpy as np
 import scipy.sparse.linalg as spla
 
 from pymrst.gridprocessing.grid import Grid
-from pymrst.modules.ad_props.blackoil_fluid import BlackOilFluid
+from pymrst.modules.ad_props.props.init_deck_adi_fluid import BlackOilFluid
 from pymrst.params.gravity_const import NORM_GRAVITY
 from pymrst.params.rock import Rock, pore_volume
 from pymrst.params.wells_and_bc import Well
@@ -377,7 +377,7 @@ if __name__ == "__main__":
     from pathlib import Path
 
     from pymrst.gridprocessing import compute_geometry, tensor_grid
-    from pymrst.modules.ad_props.blackoil_fluid import init_deck_blackoil_fluid
+    from pymrst.modules.ad_props.props.init_deck_adi_fluid import init_deck_blackoil_fluid
     from pymrst.modules.deckformat import read_spe1_deck
     from pymrst.params.rock import make_rock
     from pymrst.params.wells_and_bc import Well, add_well

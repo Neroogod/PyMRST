@@ -20,6 +20,10 @@ from typing import Optional
 import numpy as np
 
 from pymrst.gridprocessing.find_matching_faces import find_matching_faces
+from pymrst.gridprocessing.grid_structure import (
+    invalidate_geometry,
+    remap_cp_nodes,
+)
 from pymrst.gridprocessing.private.remove_faces import remove_faces
 from pymrst.gridprocessing.remove_cells import remove_cells
 from pymrst.gridprocessing.remove_internal_boundary import remove_internal_boundary
@@ -30,15 +34,17 @@ def _dedupe_face_nodes(g) -> None:
     after coincident nodes were merged."""
     node_pos = np.asarray(g.faces.nodePos, dtype=np.int64)
     fnodes = np.asarray(g.faces.nodes, dtype=np.int64)
-    new_nodes, counts = [], []
-    for f in range(g.faces.num):
-        seg = list(fnodes[node_pos[f]:node_pos[f + 1]])
-        kept = [seg[i] for i in range(len(seg))
-                if seg[i] != seg[(i - 1) % len(seg)]]      # drop consecutive dups
-        # also collapse a face whose first and last coincide to a single run
-        counts.append(len(kept))
-        new_nodes += kept
-    g.faces.nodes = np.asarray(new_nodes, dtype=np.int64)
+    if fnodes.size == 0:
+        return
+    # a node survives when it differs from its predecessor around its own face,
+    # the first node comparing against the last - the wrap-around case
+    predecessor = np.arange(-1, fnodes.size - 1, dtype=np.int64)
+    predecessor[node_pos[:-1]] = node_pos[1:] - 1
+    keep = fnodes != fnodes[predecessor]
+    face_of_node = np.repeat(np.arange(g.faces.num, dtype=np.int64),
+                             np.diff(node_pos))
+    counts = np.bincount(face_of_node[keep], minlength=g.faces.num)
+    g.faces.nodes = fnodes[keep]
     g.faces.nodePos = np.concatenate([[0], np.cumsum(counts)]).astype(np.int64)
 
 
@@ -46,12 +52,14 @@ def remove_pinch(g, tol: Optional[float] = None):
     """Return `g` with pinched layers removed and the surrounding cells
     reconnected."""
     coords = np.asarray(g.nodes.coords, dtype=float)
+    before = (g.cells.num, g.faces.num, g.nodes.num)
 
     # merge coincident nodes (exact), optionally near-coincident within tol
     uniq, inv = np.unique(coords, axis=0, return_inverse=True)
+    node_map = inv.ravel()
     g.nodes.coords = uniq
     g.nodes.num = uniq.shape[0]
-    g.faces.nodes = inv.ravel()[np.asarray(g.faces.nodes, dtype=np.int64)]
+    g.faces.nodes = node_map[np.asarray(g.faces.nodes, dtype=np.int64)]
 
     if tol is not None:
         d = np.concatenate([[np.inf],
@@ -64,7 +72,9 @@ def remove_pinch(g, tol: Optional[float] = None):
         g.nodes.coords = uniq[keep]
         g.nodes.num = int(keep.sum())
         g.faces.nodes = remap[g.faces.nodes]
+        node_map = remap[node_map]                         # compose both merges
 
+    remap_cp_nodes(g, node_map)
     _dedupe_face_nodes(g)
 
     pinched = np.flatnonzero(np.diff(np.asarray(g.faces.nodePos)) < g.griddim)
@@ -79,6 +89,8 @@ def remove_pinch(g, tol: Optional[float] = None):
     N = find_matching_faces(g)                             # coincident faces
     if N.shape[0]:
         g, _ = remove_internal_boundary(g, N)              # reconnect across pinch
+    if (g.cells.num, g.faces.num, g.nodes.num) != before:
+        invalidate_geometry(g)
     return g
 
 

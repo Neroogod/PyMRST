@@ -24,7 +24,7 @@ from typing import Callable, Optional
 
 import numpy as np
 
-from pymrst.modules.ad_props.tables import _interp1, interp_table
+from pymrst.utils.interp_table import _interp1, interp_table
 from pymrst.params.gravity_const import NORM_GRAVITY
 from pymrst.utils.adi import ADI, ad_max, ad_min, value
 

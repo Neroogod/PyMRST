@@ -15,8 +15,11 @@ import numpy as np
 from scipy.io import loadmat
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
-from pymrst.modules.vem.compute_virtual_ip import compute_virtual_ip, incomp_vem
-from pymrst.modules.vem.utils.vem_geometry import compute_vem_geometry
+from pymrst.modules.vem.compute_virtual_ip import compute_virtual_ip
+from pymrst.modules.vem.incomp_vem import incomp_vem
+from pymrst.modules.vem.utils.compute_vem_geometry import (
+    compute_vem_geometry,
+)
 from pymrst.params.rock import make_rock
 from pymrst.params.wells_and_bc.types import Source
 from pymrst.utils.units import DARCY

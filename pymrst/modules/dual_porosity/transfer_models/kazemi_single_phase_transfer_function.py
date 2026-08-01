@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from pymrst.modules.ad_props.simple_adi_fluid import ADFluid
+from pymrst.modules.ad_props.init_simple_adi_fluid import ADFluid
 from pymrst.modules.dual_porosity.shape_factors import ShapeFactor
 from pymrst.params.rock import Rock
 

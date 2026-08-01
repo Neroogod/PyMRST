@@ -14,7 +14,7 @@ import scipy.io
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from pymrst.gridprocessing import cart_grid, compute_geometry       # noqa: E402
-from pymrst.modules.ad_props.simple_adi_fluid import (              # noqa: E402
+from pymrst.modules.ad_props.init_simple_adi_fluid import (              # noqa: E402
     init_simple_adi_fluid,
 )
 from pymrst.modules.dual_porosity import (                          # noqa: E402

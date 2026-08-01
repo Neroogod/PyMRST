@@ -70,7 +70,7 @@ def _cell_node_load_tensor(g, rho):
 
 def _cell_node_load_jac(g, rho_jac):
     from pymrst.modules.vemmech.vem import calculate_qc, calculate_qf
-    from pymrst.utils.gridtools import mcolon
+    from pymrst.utils.mcolon import mcolon
 
     rho_jac = np.asarray(rho_jac, dtype=float)
     if rho_jac.ndim == 1:

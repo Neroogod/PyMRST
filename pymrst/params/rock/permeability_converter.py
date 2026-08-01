@@ -11,11 +11,10 @@ axes come from the averaged edge vectors of each cell in the three logical
 directions; `bedding_plane` replaces the vertical axis with the plane normal,
 and `bedding_plane_normal` also re-orthogonalises the in-plane axes.
 
-Only the diagonal input path is ported. MRST's off-diagonal branch (when
-`PERMXY`/`PERMYZ`/`PERMZX` are supplied) is *buggy* - its `for field = ofdiagonal`
-loop sets the component indices but the tensor update sits outside the loop, so
-only the last field's indices are used and with the wrong (diagonal) magnitude;
-it is refused here rather than reproduced.
+MRST 2024a's off-diagonal branch fails at its cell-array ``switch``. The
+default ``off_diagonal_mode="mrst"`` reproduces that refusal clearly.
+``"corrected"`` applies the mathematically expected symmetric cross-axis
+terms and is an explicit PyMRST extension.
 """
 
 from typing import Dict
@@ -42,7 +41,9 @@ def _cell_axes(grdecl: Dict):
     return dir1, dir2, dir3
 
 
-def permeability_converter(grdecl: Dict, k_system: str = "xyz") -> Dict:
+def permeability_converter(
+    grdecl: Dict, k_system: str = "xyz", *, off_diagonal_mode: str = "mrst"
+) -> Dict:
     """Return a grdecl whose PERM* keywords give the global-frame tensor.
 
     `k_system` is the frame the input diagonal PERMX/Y/Z are given in: `xyz`
@@ -52,11 +53,6 @@ def permeability_converter(grdecl: Dict, k_system: str = "xyz") -> Dict:
     """
     if k_system == "xyz":
         return dict(grdecl)
-
-    if any(k in grdecl for k in ("PERMXY", "PERMYZ", "PERMZX")):
-        raise NotImplementedError(
-            "off-diagonal input to permeabilityConverter is not ported "
-            "(MRST's branch for it is buggy); supply diagonal PERMX/Y/Z")
 
     perm = np.column_stack([np.asarray(grdecl[k], dtype=float).ravel()
                             for k in ("PERMX", "PERMY", "PERMZ")])
@@ -80,6 +76,29 @@ def permeability_converter(grdecl: Dict, k_system: str = "xyz") -> Dict:
         # k_i * (e ⊗ e), flattened column-major to match MRST's 9-vector
         outer = np.einsum("ca,cb->cba", e, e).reshape(nc, 9)
         tensor += perm[:, i:i + 1] * outer
+
+    off_diagonal = [
+        ("PERMXY", 0, 1), ("PERMYZ", 1, 2), ("PERMZX", 0, 2)
+    ]
+    present = [item for item in off_diagonal if item[0] in grdecl]
+    if present:
+        if off_diagonal_mode == "mrst":
+            raise NotImplementedError(
+                "MRST 2024a fails for off-diagonal permeability input; "
+                "use off_diagonal_mode='corrected' for PyMRST's tensor transform"
+            )
+        elif off_diagonal_mode == "corrected":
+            for keyword, first, second in present:
+                cross = (
+                    np.einsum("ca,cb->cba", dirs[first], dirs[second])
+                    + np.einsum("ca,cb->cba", dirs[second], dirs[first])
+                ).reshape(perm.shape[0], 9)
+                values = np.asarray(grdecl[keyword], dtype=float).ravel()
+                if values.size != perm.shape[0]:
+                    raise ValueError(f"{keyword} must contain one value per cell")
+                tensor += values[:, None]*cross
+        else:
+            raise ValueError("off_diagonal_mode must be 'mrst' or 'corrected'")
 
     out = dict(grdecl)
     out["PERMX"] = tensor[:, 0]      # xx
@@ -142,19 +161,16 @@ if __name__ == "__main__":
         assert np.allclose([out["PERMXY"], out["PERMYZ"], out["PERMZX"]], 0.0)
         print("ok test_isotropic_perm_stays_isotropic_under_rotation")
 
-    def test_offdiagonal_input_is_refused():
+    def test_offdiagonal_input_has_strict_and_corrected_modes():
         g = _axis_aligned_box(1, 1, 1)
         g.update(PERMX=np.array([1.0]), PERMY=np.array([1.0]),
                  PERMZ=np.array([1.0]), PERMXY=np.array([0.1]))
-        try:
-            permeability_converter(g, "cell")
-        except NotImplementedError:
-            print("ok test_offdiagonal_input_is_refused")
-            return
-        raise AssertionError("off-diagonal input should be refused")
+        corrected = permeability_converter(g, "cell", off_diagonal_mode="corrected")
+        assert np.allclose(corrected["PERMXY"], 0.1)
+        print("ok test_offdiagonal_input_has_strict_and_corrected_modes")
 
     test_axis_aligned_grid_keeps_diagonal_tensor()
     test_xyz_system_is_a_noop()
     test_isotropic_perm_stays_isotropic_under_rotation()
-    test_offdiagonal_input_is_refused()
+    test_offdiagonal_input_has_strict_and_corrected_modes()
     print("\nAll tests passed!")

@@ -88,6 +88,7 @@ beats a direct solve but does not scale like multigrid does. The rest of the
 port needs nothing but numpy and scipy, and so does this.
 """
 
+import gc
 from typing import Any, Optional
 
 import numpy as np
@@ -111,10 +112,16 @@ class CPRSolver:
                  restart: int = 50, ilu_drop_tol: float = 1e-2,
                  ilu_fill_factor: float = 1.5, use_amg: bool = True,
                  amg_tol: float = 1e-3, use_pressure_stage: bool = True,
-                 local_stage: str = "auto", amg_cycles: int = 1):
+                 local_stage: str = "auto", amg_cycles: int = 1,
+                 fallback_to_ilu: bool = True,
+                 amg_rebuild_interval: int = 8):
         if local_stage not in ("auto", "block_jacobi", "ilu"):
             raise ValueError(f"unknown local_stage {local_stage!r}")
         self.local_stage = local_stage
+        self.fallback_to_ilu = bool(fallback_to_ilu)
+        if int(amg_rebuild_interval) < 1:
+            raise ValueError("amg_rebuild_interval must be positive")
+        self.amg_rebuild_interval = int(amg_rebuild_interval)
         # V-cycles per application of the pressure stage. One is optimal -
         # see `_elliptic_solver`, where the numbers are.
         self.amg_cycles = amg_cycles
@@ -130,6 +137,8 @@ class CPRSolver:
         # elliptic stage is load-bearing rather than decorative.
         self.use_pressure_stage = use_pressure_stage
         self.last_iterations = 0
+        self._amg_hierarchy = None
+        self._amg_matrix_updates = 0
 
     # -- the decoupling ------------------------------------------------------
     def _weighting(self, model, state, n_rows: int) -> sp.csr_array:
@@ -157,7 +166,10 @@ class CPRSolver:
         rs = (np.asarray(value(state["rs"]), float).mean()
               if model.fluid.disgas else None)
         sat = np.ones(1, dtype=bool) if model.fluid.disgas else None
-        b = model.fluid.b(np.array([p_mean]), rs, sat)
+        rv = (np.asarray(value(state["rv"]), float).mean()
+              if model.fluid.vapoil else None)
+        oil_present = np.ones(1, dtype=bool) if model.fluid.vapoil else None
+        b = model.fluid.b(np.array([p_mean]), rs, sat, rv, oil_present)
         w = np.array([1.0 / float(np.asarray(value(bi)).ravel()[0])
                       for bi in b[:nph]])
 
@@ -222,8 +234,32 @@ class CPRSolver:
         stop, which it does not need to when it is only ever taking one step.
         """
         if self.use_amg:
-            ml = pyamg.smoothed_aggregation_solver(self._for_pyamg(a_p),
-                                                   max_coarse=50)
+            matrix = self._for_pyamg(a_p)
+            ml = self._amg_hierarchy
+            rebuild = (
+                ml is None
+                or ml.levels[0].A.shape != matrix.shape
+                or self._amg_matrix_updates >= self.amg_rebuild_interval
+            )
+            if rebuild:
+                # PyAMG's `change_solve_matrix` refreshes only the fine grid.
+                # Bound reuse so the coarse Galerkin operators cannot drift
+                # arbitrarily far from a long Newton/history trajectory.
+                # Release the sole retained hierarchy before rebuilding to
+                # keep peak field-scale memory bounded.
+                self._amg_hierarchy = None
+                ml = None
+                gc.collect()
+                ml = pyamg.smoothed_aggregation_solver(matrix, max_coarse=50)
+                self._amg_hierarchy = ml
+                self._amg_matrix_updates = 0
+            else:
+                # Newton changes coefficients, not grid connectivity. Reuse
+                # the expensive coarse hierarchy and refresh the fine-grid
+                # operator/smoother instead of retaining a hierarchy per
+                # iteration on field-scale models.
+                ml.change_solve_matrix(matrix)
+            self._amg_matrix_updates += 1
             if self.amg_cycles == 1:
                 return ml.aspreconditioner(cycle="V").matvec
             return lambda r: ml.solve(r, tol=self.amg_tol, accel=None,
@@ -277,7 +313,23 @@ class CPRSolver:
         inv = np.linalg.inv(blocks)
 
         tail = a_i[nc * nph:, nc * nph:].tocsc()
-        tail_lu = spla.splu(tail) if tail.shape[0] else None
+        tail_lu = None
+        if tail.shape[0]:
+            try:
+                tail_lu = spla.splu(tail)
+            except RuntimeError:
+                # A control switch can make the facility-only diagonal block
+                # rank deficient even though the complete reservoir/well
+                # Jacobian is nonsingular through its off-diagonal coupling.
+                # Block Jacobi only needs an approximate local inverse.  The
+                # matrix is already Ruiz-equilibrated, so a scale-free
+                # roundoff-sized diagonal makes that inverse well defined
+                # without changing the outer GMRES system.
+                shift = np.sqrt(np.finfo(float).eps)
+                regularized = tail + shift*sp.eye(
+                    tail.shape[0], format="csc"
+                )
+                tail_lu = spla.splu(regularized)
 
         def solve(z: np.ndarray) -> np.ndarray:
             out = np.empty_like(z)
@@ -377,7 +429,7 @@ class CPRSolver:
         # rule is exactly the kind of thing that is wrong on the case nobody
         # tried. So it is never allowed to decide the answer: if it did not
         # converge, pay for the ILU and solve it properly.
-        if info != 0 and stage != "ilu":
+        if info != 0 and stage != "ilu" and self.fallback_to_ilu:
             stage = "ilu"
             x, info, iterations = attempt(stage)
 
@@ -442,7 +494,7 @@ if __name__ == "__main__":
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import GenericBlackOilModel
     from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
     from pymrst.modules.ad_core.statefunctions.state_function import State
-    from pymrst.modules.ad_props.simple_adi_fluid import init_simple_adi_fluid
+    from pymrst.modules.ad_props.init_simple_adi_fluid import init_simple_adi_fluid
     from pymrst.params.rock import make_rock
     from pymrst.params.wells_and_bc import add_well
     from pymrst.utils.adi import combine_equations

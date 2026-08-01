@@ -14,6 +14,10 @@ import scipy.sparse as sp
 from scipy.sparse.csgraph import connected_components
 
 from pymrst.gridprocessing.find_matching_faces import find_matching_faces
+from pymrst.gridprocessing.grid_structure import (
+    invalidate_geometry,
+    remap_cp_nodes,
+)
 from pymrst.gridprocessing.private.remove_faces import remove_faces
 from pymrst.gridprocessing.remove_cells import remove_cells
 from pymrst.gridprocessing.remove_internal_boundary import remove_internal_boundary
@@ -23,19 +27,23 @@ def _face_edges(g) -> np.ndarray:
     """Every face's directed edges `(n1, n2)` (cyclic)."""
     node_pos = np.asarray(g.faces.nodePos, dtype=np.int64)
     fnodes = np.asarray(g.faces.nodes, dtype=np.int64)
-    e = []
-    for f in range(g.faces.num):
-        seg = fnodes[node_pos[f]:node_pos[f + 1]]
-        m = seg.size
-        for k in range(m):
-            e.append((seg[k], seg[(k + 1) % m]))
-    return np.asarray(e, dtype=np.int64) if e else np.zeros((0, 2), np.int64)
+    if fnodes.size == 0:
+        return np.zeros((0, 2), np.int64)
+    # each node's successor within its own face, with the last wrapping to the
+    # first, so every face's ring is formed without a Python loop
+    successor = np.arange(1, fnodes.size + 1, dtype=np.int64)
+    successor[node_pos[1:] - 1] = node_pos[:-1]
+    return np.column_stack([fnodes, fnodes[successor]])
 
 
-def _merge_nodes(g, edges: np.ndarray) -> None:
-    """Merge the endpoints of `edges` into a single node each (averaged)."""
+def _merge_nodes(g, edges: np.ndarray):
+    """Merge the endpoints of `edges` into a single node each (averaged).
+
+    Returns the old-to-new node map, or `None` when nothing was merged, so the
+    caller can bring index arrays such as `cells.cpnodes` along.
+    """
     if edges.size == 0:
-        return
+        return None
     n = g.nodes.num
     a = sp.csr_array((np.ones(edges.shape[0]), (edges[:, 0], edges[:, 1])),
                      shape=(n, n))
@@ -49,6 +57,7 @@ def _merge_nodes(g, edges: np.ndarray) -> None:
     g.nodes.coords = new
     g.nodes.num = new.shape[0]
     g.faces.nodes = labels[np.asarray(g.faces.nodes, dtype=np.int64)]
+    return labels
 
 
 def _remove_collapsed_faces(g):
@@ -89,13 +98,23 @@ def _remove_collapsed_cells(g):
 
 
 def remove_short_edges(g, tol: float = 0.0):
-    """Return `g` with all edges shorter than `tol` collapsed."""
+    """Return `g` with all edges shorter than `tol` collapsed.
+
+    Collapsing moves and merges nodes, so any geometry on the way in is stale
+    on the way out and is cleared; rerun `compute_geometry`. A corner-point
+    node map follows the merge, and NNCs and other custom fields survive.
+    """
+    before = (g.cells.num, g.faces.num, g.nodes.num)
     edges = _face_edges(g)
     coords = np.asarray(g.nodes.coords, dtype=float)
     length = np.sqrt(((coords[edges[:, 0]] - coords[edges[:, 1]]) ** 2).sum(axis=1))
-    _merge_nodes(g, edges[length < tol])
+    node_map = _merge_nodes(g, edges[length < tol])
+    if node_map is not None:
+        remap_cp_nodes(g, node_map)
     g = _remove_collapsed_faces(g)
     g = _remove_collapsed_cells(g)
+    if (g.cells.num, g.faces.num, g.nodes.num) != before:
+        invalidate_geometry(g)
     return g
 
 

@@ -9,7 +9,7 @@ EXAMPLES = {
     "blackoilTutorialOnePhase": "Runnable WaterModel depletion/open-boundary port.",
     "blackoilTutorialPlotHook": "Runnable schedule with Python callback hook.",
     "egg/eggExample": "Requires EGG dataset import not present in PyMRST.",
-    "fieldModelNorneExample": "Norne deck/geomech workflow lives in examples/run_norne_geomech.py.",
+    "fieldModelNorneExample": "Full Norne deck/output import with field-scale regression tiers.",
     "immiscibleTimeIntegrationExample": "Runnable fully implicit 1D heterogeneous waterflood port.",
     "multisegmentWellExample": "Runnable reduced MS-well packing port.",
     "simulatorWorkflowExample": "Runnable basic model/schedule/solver workflow.",
@@ -19,7 +19,7 @@ EXAMPLES = {
     "spe3/simulateSPE3": "Requires SPE3 deck support not present in PyMRST.",
     "spe9/blackoilTutorialSPE9": "Requires SPE9 deck support not present in PyMRST.",
     "spe9/simulateSPE9": "Requires SPE9 deck support not present in PyMRST.",
-    "spe10/tenthCSP_Model_I": "Requires SPE10 dataset support not present in PyMRST.",
+    "spe10/tenthCSP_Model_I": "Official SPE10 Model I oil-gas benchmark workflow.",
 }
 
 
