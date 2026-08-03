@@ -20,19 +20,45 @@ def simulate_schedule_ad(
     timesteps: Sequence[float],
     max_cuts: int = 6,
     verbose: bool = False,
+    *,
+    observer=None,
 ) -> Tuple[List[OWState], np.ndarray]:
-    """Advance through the report steps; returns (states, iterations)."""
+    """Advance through the report steps; returns (states, iterations).
+
+    `observer` is an optional, dependency-free observation hook, matching the
+    one `NonLinearSolver` carries. It receives copied scalar metadata only and
+    cannot participate in any decision this loop makes; its exceptions are
+    swallowed so a reporting fault never becomes a simulation fault.
+
+    It exists because this driver keeps its own Newton loop rather than
+    delegating to `NonLinearSolver`, so the canonical hook does not reach it.
+    Event names match the canonical solver's, so a handler written for one
+    reads the other without special cases. The default is `None`, and with it
+    this function behaves exactly as before.
+    """
+    def _observe(event, **payload):
+        if observer is None:
+            return
+        try:
+            observer(event, payload)
+        except Exception:
+            pass
+
     state = state0
     states: List[OWState] = []
     its_per_step = np.zeros(len(timesteps), dtype=np.int64)
 
     for i, dt_report in enumerate(timesteps):
+        _observe("report_step_started", report_step=int(i), dt=float(dt_report))
         t_local, its = 0.0, 0
         dt, cuts = float(dt_report), 0
         while t_local < dt_report - 1e-12 * dt_report:
             dt = min(dt, dt_report - t_local)
+            _observe("ministep_started", report_step=int(i), dt=float(dt))
             candidate, ok, nit = model.step(state, dt)
             its += nit
+            _observe("step_accepted" if ok else "step_rejected",
+                     report_step=int(i), dt=float(dt), iterations=int(nit))
             if ok:
                 state = candidate
                 t_local += dt
@@ -43,6 +69,8 @@ def simulate_schedule_ad(
                     f"step {i}: Newton failed after {max_cuts} timestep cuts"
                 )
                 dt /= 2.0
+                _observe("timestep_cut", report_step=int(i), cut=int(cuts),
+                         dt=float(dt))
                 if verbose:
                     print(f"  step {i}: cutting dt to {dt:.3e}")
         its_per_step[i] = its

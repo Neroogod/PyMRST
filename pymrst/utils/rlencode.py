@@ -5,18 +5,33 @@ from typing import Tuple
 import numpy as np
 
 
-def rlencode(a: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    """Compress runs of identical elements or rows."""
+def rlencode(a: np.ndarray, dim: int = 0) -> Tuple[np.ndarray, np.ndarray]:
+    """Compress equal adjacent layers along ``dim``.
+
+    Python dimensions are zero-based, so MRST's ``dim=1`` is ``dim=0`` here.
+    NaNs in corresponding positions compare equal, matching MRST.
+    """
     arr = np.asarray(a)
-    if arr.shape[0] == 0:
+    if arr.ndim == 0:
+        arr = arr.reshape(1)
+    if dim < 0:
+        dim += arr.ndim
+    if not 0 <= dim < arr.ndim:
+        raise np.AxisError(dim, ndim=arr.ndim)
+    if arr.shape[dim] == 0:
         return arr, np.zeros(0, dtype=np.int64)
-    if arr.ndim == 1:
-        change = arr[1:] != arr[:-1]
+
+    moved = np.moveaxis(arr, dim, 0)
+    top, bottom = moved[:-1], moved[1:]
+    equal = (top == bottom) | (np.isnan(top) & np.isnan(bottom)) \
+        if np.issubdtype(arr.dtype, np.number) else top == bottom
+    if moved.ndim == 1:
+        change = ~equal
     else:
-        change = np.any(arr[1:] != arr[:-1], axis=1)
+        change = ~np.all(equal.reshape(equal.shape[0], -1), axis=1)
     starts = np.flatnonzero(np.concatenate(([True], change)))
-    lengths = np.diff(np.concatenate((starts, [arr.shape[0]])))
-    return arr[starts], lengths
+    lengths = np.diff(np.concatenate((starts, [moved.shape[0]])))
+    return np.moveaxis(moved[starts], 0, dim), lengths
 
 
 if __name__ == "__main__":
@@ -39,4 +54,3 @@ if __name__ == "__main__":
     test_rlencode()
     test_rlencode_empty()
     print("\nAll tests passed!")
-

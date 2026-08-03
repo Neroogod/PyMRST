@@ -1,0 +1,1137 @@
+{
+  "artifact": "pymrst_blackoil_linear_solver_evidence_graph",
+  "artifact_schema_version": 1,
+  "graph": {
+    "edges": [
+      {
+        "accepted": true,
+        "claim": "Direct-solver pressure agrees with MRST",
+        "converged": true,
+        "edge_id": "direct_mrst_pressure",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 37.771389588713646,
+          "maximum_relative_error": 1.0810086435928276e-06,
+          "maximum_scaled_error": 37.771389588713646,
+          "worst_time": 86400.0
+        },
+        "shared_kernels": [
+          "PyMRST is a Python translation of the MRST formulation"
+        ],
+        "source": "mrst_direct",
+        "target": "pymrst_direct"
+      },
+      {
+        "accepted": true,
+        "claim": "Direct-solver saturation agrees with MRST",
+        "converged": true,
+        "edge_id": "direct_mrst_saturation",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 2.0329347579992052e-07,
+          "maximum_relative_error": 2.0329347579992052e-07,
+          "maximum_scaled_error": 2.0329347579992052e-07,
+          "worst_time": 259200.0
+        },
+        "shared_kernels": [
+          "PyMRST is a Python translation of the MRST formulation"
+        ],
+        "source": "mrst_direct",
+        "target": "pymrst_direct"
+      },
+      {
+        "accepted": true,
+        "claim": "Direct-solver solution gas ratio agrees with MRST",
+        "converged": true,
+        "edge_id": "direct_mrst_solution_gas_ratio",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 0.0001581150153810995,
+          "maximum_relative_error": 6.990012791989588e-07,
+          "maximum_scaled_error": 0.0001581150153810995,
+          "worst_time": 86400.0
+        },
+        "shared_kernels": [
+          "PyMRST is a Python translation of the MRST formulation"
+        ],
+        "source": "mrst_direct",
+        "target": "pymrst_direct"
+      },
+      {
+        "accepted": true,
+        "claim": "Direct-solver well bhp agrees with MRST",
+        "converged": true,
+        "edge_id": "direct_mrst_well_bhp",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 1727.1897478327155,
+          "maximum_relative_error": 3.0921146212930785e-05,
+          "maximum_scaled_error": 1727.1897478327155,
+          "worst_time": 86400.0
+        },
+        "shared_kernels": [
+          "PyMRST is a Python translation of the MRST formulation"
+        ],
+        "source": "mrst_direct",
+        "target": "pymrst_direct"
+      },
+      {
+        "accepted": true,
+        "claim": "Direct-solver well water rate agrees with MRST",
+        "converged": true,
+        "edge_id": "direct_mrst_well_water_rate",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 4.3232616627615406e-16,
+          "maximum_relative_error": 4.3232616627615406e-16,
+          "maximum_scaled_error": 4.3232616627615406e-16,
+          "worst_time": 86400.0
+        },
+        "shared_kernels": [
+          "PyMRST is a Python translation of the MRST formulation"
+        ],
+        "source": "mrst_direct",
+        "target": "pymrst_direct"
+      },
+      {
+        "accepted": true,
+        "claim": "Direct-solver well oil rate agrees with MRST",
+        "converged": true,
+        "edge_id": "direct_mrst_well_oil_rate",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 1.3877787807814457e-17,
+          "maximum_relative_error": 1.3877787807814457e-17,
+          "maximum_scaled_error": 1.3877787807814457e-17,
+          "worst_time": 86400.0
+        },
+        "shared_kernels": [
+          "PyMRST is a Python translation of the MRST formulation"
+        ],
+        "source": "mrst_direct",
+        "target": "pymrst_direct"
+      },
+      {
+        "accepted": true,
+        "claim": "Direct-solver well gas rate agrees with MRST",
+        "converged": true,
+        "edge_id": "direct_mrst_well_gas_rate",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 3.552713678800501e-15,
+          "maximum_relative_error": 4.26771437749954e-16,
+          "maximum_scaled_error": 3.552713678800501e-15,
+          "worst_time": 259200.0
+        },
+        "shared_kernels": [
+          "PyMRST is a Python translation of the MRST formulation"
+        ],
+        "source": "mrst_direct",
+        "target": "pymrst_direct"
+      },
+      {
+        "accepted": true,
+        "claim": "Direct and gmres ilu pressure agree",
+        "converged": true,
+        "edge_id": "direct_vs_gmres_ilu_pressure",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "shared_kernel",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 0.004251208156347275,
+          "maximum_relative_error": 1.2715030204007406e-10,
+          "maximum_scaled_error": 0.004251208156347275,
+          "worst_time": 86400.0
+        },
+        "shared_kernels": [
+          "assembled Jacobian",
+          "nonlinear solver",
+          "grid",
+          "fluid",
+          "wells"
+        ],
+        "source": "pymrst_direct",
+        "target": "pymrst_gmres_ilu"
+      },
+      {
+        "accepted": true,
+        "claim": "Direct and gmres ilu saturation agree",
+        "converged": true,
+        "edge_id": "direct_vs_gmres_ilu_saturation",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "shared_kernel",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 7.359099440940042e-12,
+          "maximum_relative_error": 7.359099440940042e-12,
+          "maximum_scaled_error": 7.359099440940042e-12,
+          "worst_time": 259200.0
+        },
+        "shared_kernels": [
+          "assembled Jacobian",
+          "nonlinear solver",
+          "grid",
+          "fluid",
+          "wells"
+        ],
+        "source": "pymrst_direct",
+        "target": "pymrst_gmres_ilu"
+      },
+      {
+        "accepted": true,
+        "claim": "Direct and gmres ilu solution gas ratio agree",
+        "converged": true,
+        "edge_id": "direct_vs_gmres_ilu_solution_gas_ratio",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "shared_kernel",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 4.6862282943038736e-09,
+          "maximum_relative_error": 1.507359155293549e-11,
+          "maximum_scaled_error": 4.6862282943038736e-09,
+          "worst_time": 259200.0
+        },
+        "shared_kernels": [
+          "assembled Jacobian",
+          "nonlinear solver",
+          "grid",
+          "fluid",
+          "wells"
+        ],
+        "source": "pymrst_direct",
+        "target": "pymrst_gmres_ilu"
+      },
+      {
+        "accepted": true,
+        "claim": "Direct and gmres ilu well bhp agree",
+        "converged": true,
+        "edge_id": "direct_vs_gmres_ilu_well_bhp",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "shared_kernel",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 0.017291851341724396,
+          "maximum_relative_error": 3.0955911576820424e-10,
+          "maximum_scaled_error": 0.017291851341724396,
+          "worst_time": 86400.0
+        },
+        "shared_kernels": [
+          "assembled Jacobian",
+          "nonlinear solver",
+          "grid",
+          "fluid",
+          "wells"
+        ],
+        "source": "pymrst_direct",
+        "target": "pymrst_gmres_ilu"
+      },
+      {
+        "accepted": true,
+        "claim": "Direct and gmres ilu well water rate agree",
+        "converged": true,
+        "edge_id": "direct_vs_gmres_ilu_well_water_rate",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "shared_kernel",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 1.698305195147935e-23,
+          "maximum_relative_error": 1.698305195147935e-23,
+          "maximum_scaled_error": 1.698305195147935e-23,
+          "worst_time": 86400.0
+        },
+        "shared_kernels": [
+          "assembled Jacobian",
+          "nonlinear solver",
+          "grid",
+          "fluid",
+          "wells"
+        ],
+        "source": "pymrst_direct",
+        "target": "pymrst_gmres_ilu"
+      },
+      {
+        "accepted": true,
+        "claim": "Direct and gmres ilu well oil rate agree",
+        "converged": true,
+        "edge_id": "direct_vs_gmres_ilu_well_oil_rate",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "shared_kernel",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 0.0,
+          "maximum_relative_error": 0.0,
+          "maximum_scaled_error": 0.0,
+          "worst_time": 86400.0
+        },
+        "shared_kernels": [
+          "assembled Jacobian",
+          "nonlinear solver",
+          "grid",
+          "fluid",
+          "wells"
+        ],
+        "source": "pymrst_direct",
+        "target": "pymrst_gmres_ilu"
+      },
+      {
+        "accepted": true,
+        "claim": "Direct and gmres ilu well gas rate agree",
+        "converged": true,
+        "edge_id": "direct_vs_gmres_ilu_well_gas_rate",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "shared_kernel",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 3.552713678800501e-15,
+          "maximum_relative_error": 4.2677143774995415e-16,
+          "maximum_scaled_error": 3.552713678800501e-15,
+          "worst_time": 86400.0
+        },
+        "shared_kernels": [
+          "assembled Jacobian",
+          "nonlinear solver",
+          "grid",
+          "fluid",
+          "wells"
+        ],
+        "source": "pymrst_direct",
+        "target": "pymrst_gmres_ilu"
+      },
+      {
+        "accepted": true,
+        "claim": "Direct and cpr pressure agree",
+        "converged": true,
+        "edge_id": "direct_vs_cpr_pressure",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "shared_kernel",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 0.003930486738681793,
+          "maximum_relative_error": 1.1755777595640062e-10,
+          "maximum_scaled_error": 0.003930486738681793,
+          "worst_time": 86400.0
+        },
+        "shared_kernels": [
+          "assembled Jacobian",
+          "nonlinear solver",
+          "grid",
+          "fluid",
+          "wells"
+        ],
+        "source": "pymrst_direct",
+        "target": "pymrst_cpr"
+      },
+      {
+        "accepted": true,
+        "claim": "Direct and cpr saturation agree",
+        "converged": true,
+        "edge_id": "direct_vs_cpr_saturation",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "shared_kernel",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 4.960185040481235e-12,
+          "maximum_relative_error": 4.960185040481235e-12,
+          "maximum_scaled_error": 4.960185040481235e-12,
+          "worst_time": 259200.0
+        },
+        "shared_kernels": [
+          "assembled Jacobian",
+          "nonlinear solver",
+          "grid",
+          "fluid",
+          "wells"
+        ],
+        "source": "pymrst_direct",
+        "target": "pymrst_cpr"
+      },
+      {
+        "accepted": true,
+        "claim": "Direct and cpr solution gas ratio agree",
+        "converged": true,
+        "edge_id": "direct_vs_cpr_solution_gas_ratio",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "shared_kernel",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 3.1096192287805025e-09,
+          "maximum_relative_error": 1.0002314696611344e-11,
+          "maximum_scaled_error": 3.1096192287805025e-09,
+          "worst_time": 259200.0
+        },
+        "shared_kernels": [
+          "assembled Jacobian",
+          "nonlinear solver",
+          "grid",
+          "fluid",
+          "wells"
+        ],
+        "source": "pymrst_direct",
+        "target": "pymrst_cpr"
+      },
+      {
+        "accepted": true,
+        "claim": "Direct and cpr well bhp agree",
+        "converged": true,
+        "edge_id": "direct_vs_cpr_well_bhp",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "shared_kernel",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 0.008129648864269257,
+          "maximum_relative_error": 1.4553715875735798e-10,
+          "maximum_scaled_error": 0.008129648864269257,
+          "worst_time": 86400.0
+        },
+        "shared_kernels": [
+          "assembled Jacobian",
+          "nonlinear solver",
+          "grid",
+          "fluid",
+          "wells"
+        ],
+        "source": "pymrst_direct",
+        "target": "pymrst_cpr"
+      },
+      {
+        "accepted": true,
+        "claim": "Direct and cpr well water rate agree",
+        "converged": true,
+        "edge_id": "direct_vs_cpr_well_water_rate",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "shared_kernel",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 1.431035384413809e-20,
+          "maximum_relative_error": 1.431035384413809e-20,
+          "maximum_scaled_error": 1.431035384413809e-20,
+          "worst_time": 86400.0
+        },
+        "shared_kernels": [
+          "assembled Jacobian",
+          "nonlinear solver",
+          "grid",
+          "fluid",
+          "wells"
+        ],
+        "source": "pymrst_direct",
+        "target": "pymrst_cpr"
+      },
+      {
+        "accepted": true,
+        "claim": "Direct and cpr well oil rate agree",
+        "converged": true,
+        "edge_id": "direct_vs_cpr_well_oil_rate",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "shared_kernel",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 0.0,
+          "maximum_relative_error": 0.0,
+          "maximum_scaled_error": 0.0,
+          "worst_time": 86400.0
+        },
+        "shared_kernels": [
+          "assembled Jacobian",
+          "nonlinear solver",
+          "grid",
+          "fluid",
+          "wells"
+        ],
+        "source": "pymrst_direct",
+        "target": "pymrst_cpr"
+      },
+      {
+        "accepted": true,
+        "claim": "Direct and cpr well gas rate agree",
+        "converged": true,
+        "edge_id": "direct_vs_cpr_well_gas_rate",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "shared_kernel",
+        "mappings": [
+          "report_time:exact",
+          "well_name:v1",
+          "cell_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 3.552713678800501e-15,
+          "maximum_relative_error": 4.2677143774995415e-16,
+          "maximum_scaled_error": 3.552713678800501e-15,
+          "worst_time": 86400.0
+        },
+        "shared_kernels": [
+          "assembled Jacobian",
+          "nonlinear solver",
+          "grid",
+          "fluid",
+          "wells"
+        ],
+        "source": "pymrst_direct",
+        "target": "pymrst_cpr"
+      },
+      {
+        "accepted": true,
+        "claim": "Linear work and true residuals are reported without equating factorization and Krylov iterations",
+        "converged": true,
+        "edge_id": "linear_solver_work",
+        "evidence_class": "solver_work",
+        "exceptions": [],
+        "independence": "shared_kernel",
+        "mappings": [],
+        "metrics": {
+          "cpr_linear_solve_seconds": 0.05947345699678408,
+          "cpr_maximum_true_relative_residual": 9.44243745346604e-09,
+          "cpr_runtime_seconds": 0.6370724159987731,
+          "cpr_total_linear_iterations": 48.0,
+          "direct_linear_solve_seconds": 0.01702025200393109,
+          "direct_maximum_true_relative_residual": 3.108215302627109e-15,
+          "direct_runtime_seconds": 0.5978295829991112,
+          "direct_total_linear_iterations": 8.0,
+          "gmres_ilu_linear_solve_seconds": 0.023422623997248593,
+          "gmres_ilu_maximum_true_relative_residual": 4.071763379279413e-11,
+          "gmres_ilu_runtime_seconds": 0.59944112499943,
+          "gmres_ilu_total_linear_iterations": 98.0
+        },
+        "shared_kernels": [
+          "assembled Jacobian",
+          "nonlinear solver",
+          "grid",
+          "fluid",
+          "wells"
+        ],
+        "source": "pymrst_direct",
+        "target": "pymrst_cpr"
+      }
+    ],
+    "nodes": [
+      {
+        "kind": "mrst",
+        "label": "MRST SPE1 sparse direct",
+        "metadata": {
+          "generator": "examples/validation/dump_time_integration_spe1_reference.m",
+          "reference": "examples/validation/ref_time_integration_spe1.mat",
+          "sha256": "a8c9b861b94fdf5a8585ce33b97bfa2d5c51b0d4e22f3b8350fb368b091b6211"
+        },
+        "node_id": "mrst_direct",
+        "version": "MRST 2024a"
+      },
+      {
+        "kind": "pymrst",
+        "label": "PyMRST SPE1 sparse direct",
+        "metadata": {
+          "runtime_seconds": 0.5978295829991112
+        },
+        "node_id": "pymrst_direct",
+        "version": "working-tree"
+      },
+      {
+        "kind": "pymrst",
+        "label": "PyMRST SPE1 GMRES + ILU",
+        "metadata": {
+          "runtime_seconds": 0.59944112499943
+        },
+        "node_id": "pymrst_gmres_ilu",
+        "version": "working-tree"
+      },
+      {
+        "kind": "pymrst",
+        "label": "PyMRST SPE1 CPR + GMRES",
+        "metadata": {
+          "runtime_seconds": 0.6370724159987731
+        },
+        "node_id": "pymrst_cpr",
+        "version": "working-tree"
+      }
+    ],
+    "schema_version": 1
+  },
+  "summary": {
+    "case": "spe1_blackoil_direct_gmres_ilu_cpr_two_steps",
+    "cross_solver": {
+      "cpr": {
+        "pressure": {
+          "candidate_unit": "Pa",
+          "compared_shape": [
+            2,
+            300
+          ],
+          "maximum_absolute_error": 0.003930486738681793,
+          "maximum_relative_error": 1.1755777595640062e-10,
+          "maximum_scaled_error": 0.003930486738681793,
+          "passed": true,
+          "reference_unit": "Pa",
+          "sign_scale": 1.0,
+          "unit_scale": 1.0,
+          "worst_coordinates": [
+            [
+              "cell",
+              "10"
+            ]
+          ],
+          "worst_time": 86400.0
+        },
+        "saturation": {
+          "candidate_unit": "volume_fraction",
+          "compared_shape": [
+            2,
+            300,
+            2
+          ],
+          "maximum_absolute_error": 4.960185040481235e-12,
+          "maximum_relative_error": 4.960185040481235e-12,
+          "maximum_scaled_error": 4.960185040481235e-12,
+          "passed": true,
+          "reference_unit": "volume_fraction",
+          "sign_scale": 1.0,
+          "unit_scale": 1.0,
+          "worst_coordinates": [
+            [
+              "cell",
+              "0"
+            ],
+            [
+              "phase",
+              "gas"
+            ]
+          ],
+          "worst_time": 259200.0
+        },
+        "solution_gas_ratio": {
+          "candidate_unit": "surface_m3/surface_m3",
+          "compared_shape": [
+            2,
+            300
+          ],
+          "maximum_absolute_error": 3.1096192287805025e-09,
+          "maximum_relative_error": 1.0002314696611344e-11,
+          "maximum_scaled_error": 3.1096192287805025e-09,
+          "passed": true,
+          "reference_unit": "surface_m3/surface_m3",
+          "sign_scale": 1.0,
+          "unit_scale": 1.0,
+          "worst_coordinates": [
+            [
+              "cell",
+              "0"
+            ]
+          ],
+          "worst_time": 259200.0
+        },
+        "well_bhp": {
+          "candidate_unit": "Pa",
+          "compared_shape": [
+            2,
+            2
+          ],
+          "maximum_absolute_error": 0.008129648864269257,
+          "maximum_relative_error": 1.4553715875735798e-10,
+          "maximum_scaled_error": 0.008129648864269257,
+          "passed": true,
+          "reference_unit": "Pa",
+          "sign_scale": 1.0,
+          "unit_scale": 1.0,
+          "worst_entity": "injector",
+          "worst_time": 86400.0
+        },
+        "well_gas_rate": {
+          "candidate_unit": "surface_m3/s",
+          "compared_shape": [
+            2,
+            2
+          ],
+          "maximum_absolute_error": 3.552713678800501e-15,
+          "maximum_relative_error": 4.2677143774995415e-16,
+          "maximum_scaled_error": 3.552713678800501e-15,
+          "passed": true,
+          "reference_unit": "surface_m3/s",
+          "sign_scale": 1.0,
+          "unit_scale": 1.0,
+          "worst_entity": "producer",
+          "worst_time": 86400.0
+        },
+        "well_oil_rate": {
+          "candidate_unit": "surface_m3/s",
+          "compared_shape": [
+            2,
+            2
+          ],
+          "maximum_absolute_error": 0.0,
+          "maximum_relative_error": 0.0,
+          "maximum_scaled_error": 0.0,
+          "passed": true,
+          "reference_unit": "surface_m3/s",
+          "sign_scale": 1.0,
+          "unit_scale": 1.0,
+          "worst_entity": "producer",
+          "worst_time": 86400.0
+        },
+        "well_water_rate": {
+          "candidate_unit": "surface_m3/s",
+          "compared_shape": [
+            2,
+            2
+          ],
+          "maximum_absolute_error": 1.431035384413809e-20,
+          "maximum_relative_error": 1.431035384413809e-20,
+          "maximum_scaled_error": 1.431035384413809e-20,
+          "passed": true,
+          "reference_unit": "surface_m3/s",
+          "sign_scale": 1.0,
+          "unit_scale": 1.0,
+          "worst_entity": "producer",
+          "worst_time": 86400.0
+        }
+      },
+      "gmres_ilu": {
+        "pressure": {
+          "candidate_unit": "Pa",
+          "compared_shape": [
+            2,
+            300
+          ],
+          "maximum_absolute_error": 0.004251208156347275,
+          "maximum_relative_error": 1.2715030204007406e-10,
+          "maximum_scaled_error": 0.004251208156347275,
+          "passed": true,
+          "reference_unit": "Pa",
+          "sign_scale": 1.0,
+          "unit_scale": 1.0,
+          "worst_coordinates": [
+            [
+              "cell",
+              "1"
+            ]
+          ],
+          "worst_time": 86400.0
+        },
+        "saturation": {
+          "candidate_unit": "volume_fraction",
+          "compared_shape": [
+            2,
+            300,
+            2
+          ],
+          "maximum_absolute_error": 7.359099440940042e-12,
+          "maximum_relative_error": 7.359099440940042e-12,
+          "maximum_scaled_error": 7.359099440940042e-12,
+          "passed": true,
+          "reference_unit": "volume_fraction",
+          "sign_scale": 1.0,
+          "unit_scale": 1.0,
+          "worst_coordinates": [
+            [
+              "cell",
+              "0"
+            ],
+            [
+              "phase",
+              "gas"
+            ]
+          ],
+          "worst_time": 259200.0
+        },
+        "solution_gas_ratio": {
+          "candidate_unit": "surface_m3/surface_m3",
+          "compared_shape": [
+            2,
+            300
+          ],
+          "maximum_absolute_error": 4.6862282943038736e-09,
+          "maximum_relative_error": 1.507359155293549e-11,
+          "maximum_scaled_error": 4.6862282943038736e-09,
+          "passed": true,
+          "reference_unit": "surface_m3/surface_m3",
+          "sign_scale": 1.0,
+          "unit_scale": 1.0,
+          "worst_coordinates": [
+            [
+              "cell",
+              "0"
+            ]
+          ],
+          "worst_time": 259200.0
+        },
+        "well_bhp": {
+          "candidate_unit": "Pa",
+          "compared_shape": [
+            2,
+            2
+          ],
+          "maximum_absolute_error": 0.017291851341724396,
+          "maximum_relative_error": 3.0955911576820424e-10,
+          "maximum_scaled_error": 0.017291851341724396,
+          "passed": true,
+          "reference_unit": "Pa",
+          "sign_scale": 1.0,
+          "unit_scale": 1.0,
+          "worst_entity": "injector",
+          "worst_time": 86400.0
+        },
+        "well_gas_rate": {
+          "candidate_unit": "surface_m3/s",
+          "compared_shape": [
+            2,
+            2
+          ],
+          "maximum_absolute_error": 3.552713678800501e-15,
+          "maximum_relative_error": 4.2677143774995415e-16,
+          "maximum_scaled_error": 3.552713678800501e-15,
+          "passed": true,
+          "reference_unit": "surface_m3/s",
+          "sign_scale": 1.0,
+          "unit_scale": 1.0,
+          "worst_entity": "producer",
+          "worst_time": 86400.0
+        },
+        "well_oil_rate": {
+          "candidate_unit": "surface_m3/s",
+          "compared_shape": [
+            2,
+            2
+          ],
+          "maximum_absolute_error": 0.0,
+          "maximum_relative_error": 0.0,
+          "maximum_scaled_error": 0.0,
+          "passed": true,
+          "reference_unit": "surface_m3/s",
+          "sign_scale": 1.0,
+          "unit_scale": 1.0,
+          "worst_entity": "producer",
+          "worst_time": 86400.0
+        },
+        "well_water_rate": {
+          "candidate_unit": "surface_m3/s",
+          "compared_shape": [
+            2,
+            2
+          ],
+          "maximum_absolute_error": 1.698305195147935e-23,
+          "maximum_relative_error": 1.698305195147935e-23,
+          "maximum_scaled_error": 1.698305195147935e-23,
+          "passed": true,
+          "reference_unit": "surface_m3/s",
+          "sign_scale": 1.0,
+          "unit_scale": 1.0,
+          "worst_entity": "producer",
+          "worst_time": 86400.0
+        }
+      }
+    },
+    "diagnostics": {
+      "cpr": {
+        "linear_iterations_per_newton": [
+          6,
+          5,
+          5,
+          6,
+          6,
+          8,
+          6,
+          6
+        ],
+        "linear_solve_seconds": 0.05947345699678408,
+        "maximum_true_relative_residual": 9.44243745346604e-09,
+        "nonlinear_iterations": [
+          3,
+          5
+        ],
+        "runtime_seconds": 0.6370724159987731,
+        "solver": "Constrained pressure residual (CPR) with GMRES.",
+        "total_linear_iterations": 48
+      },
+      "direct": {
+        "linear_iterations_per_newton": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "linear_solve_seconds": 0.01702025200393109,
+        "maximum_true_relative_residual": 3.108215302627109e-15,
+        "nonlinear_iterations": [
+          3,
+          5
+        ],
+        "runtime_seconds": 0.5978295829991112,
+        "solver": "BackslashSolverAD (spsolve direct solve)",
+        "total_linear_iterations": 8
+      },
+      "gmres_ilu": {
+        "linear_iterations_per_newton": [
+          10,
+          9,
+          12,
+          16,
+          13,
+          11,
+          14,
+          13
+        ],
+        "linear_solve_seconds": 0.023422623997248593,
+        "maximum_true_relative_residual": 4.071763379279413e-11,
+        "nonlinear_iterations": [
+          3,
+          5
+        ],
+        "runtime_seconds": 0.59944112499943,
+        "solver": "GMRES_ILUSolverAD (GMRES + ILU)",
+        "total_linear_iterations": 98
+      }
+    },
+    "direct_vs_mrst": {
+      "pressure": {
+        "candidate_unit": "Pa",
+        "compared_shape": [
+          2,
+          300
+        ],
+        "maximum_absolute_error": 37.771389588713646,
+        "maximum_relative_error": 1.0810086435928276e-06,
+        "maximum_scaled_error": 37.771389588713646,
+        "passed": true,
+        "reference_unit": "Pa",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_coordinates": [
+          [
+            "cell",
+            "200"
+          ]
+        ],
+        "worst_time": 86400.0
+      },
+      "saturation": {
+        "candidate_unit": "volume_fraction",
+        "compared_shape": [
+          2,
+          300,
+          2
+        ],
+        "maximum_absolute_error": 2.0329347579992052e-07,
+        "maximum_relative_error": 2.0329347579992052e-07,
+        "maximum_scaled_error": 2.0329347579992052e-07,
+        "passed": true,
+        "reference_unit": "volume_fraction",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_coordinates": [
+          [
+            "cell",
+            "0"
+          ],
+          [
+            "phase",
+            "gas"
+          ]
+        ],
+        "worst_time": 259200.0
+      },
+      "solution_gas_ratio": {
+        "candidate_unit": "surface_m3/surface_m3",
+        "compared_shape": [
+          2,
+          300
+        ],
+        "maximum_absolute_error": 0.0001581150153810995,
+        "maximum_relative_error": 6.990012791989588e-07,
+        "maximum_scaled_error": 0.0001581150153810995,
+        "passed": true,
+        "reference_unit": "surface_m3/surface_m3",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_coordinates": [
+          [
+            "cell",
+            "200"
+          ]
+        ],
+        "worst_time": 86400.0
+      },
+      "well_bhp": {
+        "candidate_unit": "Pa",
+        "compared_shape": [
+          2,
+          2
+        ],
+        "maximum_absolute_error": 1727.1897478327155,
+        "maximum_relative_error": 3.0921146212930785e-05,
+        "maximum_scaled_error": 1727.1897478327155,
+        "passed": true,
+        "reference_unit": "Pa",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_entity": "injector",
+        "worst_time": 86400.0
+      },
+      "well_gas_rate": {
+        "candidate_unit": "surface_m3/s",
+        "compared_shape": [
+          2,
+          2
+        ],
+        "maximum_absolute_error": 3.552713678800501e-15,
+        "maximum_relative_error": 4.26771437749954e-16,
+        "maximum_scaled_error": 3.552713678800501e-15,
+        "passed": true,
+        "reference_unit": "surface_m3/s",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_entity": "producer",
+        "worst_time": 259200.0
+      },
+      "well_oil_rate": {
+        "candidate_unit": "surface_m3/s",
+        "compared_shape": [
+          2,
+          2
+        ],
+        "maximum_absolute_error": 1.3877787807814457e-17,
+        "maximum_relative_error": 1.3877787807814457e-17,
+        "maximum_scaled_error": 1.3877787807814457e-17,
+        "passed": true,
+        "reference_unit": "surface_m3/s",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_entity": "producer",
+        "worst_time": 86400.0
+      },
+      "well_water_rate": {
+        "candidate_unit": "surface_m3/s",
+        "compared_shape": [
+          2,
+          2
+        ],
+        "maximum_absolute_error": 4.3232616627615406e-16,
+        "maximum_relative_error": 4.3232616627615406e-16,
+        "maximum_scaled_error": 4.3232616627615406e-16,
+        "passed": true,
+        "reference_unit": "surface_m3/s",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_entity": "producer",
+        "worst_time": 86400.0
+      }
+    },
+    "passed": true,
+    "reference_sha256": "a8c9b861b94fdf5a8585ce33b97bfa2d5c51b0d4e22f3b8350fb368b091b6211"
+  }
+}

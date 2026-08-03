@@ -195,6 +195,24 @@ def _rachford_rice(z: np.ndarray, K: np.ndarray, tol: float = 1.0e-12, max_it: i
         if np.all(k >= 1.0):
             out[c] = 1.0
             continue
+        # Bracket check. Mixed K-values do not guarantee a root in [0, 1]: a
+        # feed below its bubble point has f(0) <= 0 and f(1) <= 0, and the
+        # bisection below then walks `lo` to 1.0 and reports an all-vapour
+        # mixture that is entirely liquid. The same defect was fixed in
+        # `fluids/blackoil/kvalue_model.py`.
+        f0 = np.sum(zz * (k - 1.0))
+        if f0 <= 0.0:
+            out[c] = 0.0          # bubble point not reached
+            continue
+        absent = k <= 0.0
+        if np.any(absent & (zz > 0.0)):
+            f1 = -np.inf
+        else:
+            safe = np.where(absent, 1.0, k)
+            f1 = np.sum(np.where(absent, 0.0, zz * (k - 1.0) / safe))
+        if f1 >= 0.0:
+            out[c] = 1.0          # past the dew point
+            continue
         lo, hi = 0.0, 1.0
         flo = np.sum(zz * (k - 1.0) / (1.0 + lo * (k - 1.0)))
         for _ in range(max_it):
@@ -226,3 +244,130 @@ def _state_set(state, name: str, value) -> None:
 
 
 __all__ = ["EquilibriumConstantModel", "EquilibriumConstantFlashResult"]
+
+
+if __name__ == "__main__":
+
+    def _residual(z, K, V):
+        """The Rachford-Rice function itself, which must vanish at the root."""
+        return float(np.sum(z * (K - 1.0) / (1.0 + V * (K - 1.0))))
+
+    def test_a_binary_split_matches_the_closed_form():
+        """Two components have an analytic solution, so this is exact.
+
+        For a binary, `z1 a/(1+Va) + z2 b/(1+Vb) = 0` with `a = K1-1`,
+        `b = K2-1` rearranges to `V = -(z1 a + z2 b)/(a b)`. Bisection has no
+        business disagreeing with that, and comparing against it catches a
+        bracket that converges to the wrong root.
+        """
+        z = np.array([[0.6, 0.4]])
+        K = np.array([[3.0, 0.2]])
+        V = _rachford_rice(z, K)[0]
+        a, b = K[0, 0] - 1.0, K[0, 1] - 1.0
+        analytic = -(z[0, 0] * a + z[0, 1] * b) / (a * b)
+        assert abs(V - analytic) < 1e-9, (V, analytic)
+        print(f"ok test_a_binary_split_matches_the_closed_form "
+              f"(V = {V:.10f} against {analytic:.10f})")
+
+    def test_the_rachford_rice_function_vanishes_at_the_root():
+        """The defining property, checked on several multicomponent mixtures.
+
+        A solver that returns a plausible vapour fraction without satisfying
+        the material balance gives compositions that do not sum to the feed,
+        and nothing downstream raises.
+        """
+        cases = [
+            (np.array([0.5, 0.3, 0.2]), np.array([4.0, 0.9, 0.05])),
+            (np.array([0.1, 0.2, 0.3, 0.4]), np.array([8.0, 2.0, 0.4, 0.02])),
+            (np.array([0.25, 0.25, 0.25, 0.25]), np.array([1.8, 1.2, 0.7, 0.3])),
+        ]
+        worst = 0.0
+        for z, K in cases:
+            V = _rachford_rice(z[None, :], K[None, :])[0]
+            assert 0.0 <= V <= 1.0, V
+            worst = max(worst, abs(_residual(z, K, V)))
+        assert worst < 1e-9, worst
+        print(f"ok test_the_rachford_rice_function_vanishes_at_the_root "
+              f"({len(cases)} mixtures, worst residual {worst:.2e})")
+
+    def test_an_all_liquid_mixture_returns_no_vapour():
+        """Every K below one means nothing boils: V must be exactly 0.
+
+        Running the bisection here would converge to a bracket endpoint and
+        return a small positive fraction of a phase that does not exist.
+        """
+        z = np.array([[0.4, 0.6]])
+        K = np.array([[0.4, 0.05]])
+        assert _rachford_rice(z, K)[0] == 0.0
+        print("ok test_an_all_liquid_mixture_returns_no_vapour")
+
+    def test_an_all_vapour_mixture_returns_no_liquid():
+        z = np.array([[0.4, 0.6]])
+        K = np.array([[2.5, 8.0]])
+        assert _rachford_rice(z, K)[0] == 1.0
+        print("ok test_an_all_vapour_mixture_returns_no_liquid")
+
+    def test_more_volatile_feed_gives_more_vapour():
+        """V rises with the light component's K, which a sign error reverses.
+
+        The first version of this test compared K = [6.0, 0.2] against
+        K = [1.6, 0.2]; the latter is below its bubble point, not two-phase,
+        which is how the bracket bug below was found.
+        """
+        z = np.array([[0.5, 0.5]])
+        # Only K1 varies. Moving both at once is ill-posed: raising the light
+        # K and lowering the heavy one push V in opposite directions, and the
+        # heavy component wins - K = [3.0, 0.4] gives more vapour than
+        # K = [6.0, 0.2], which looks like a violation and is not.
+        fractions = [_rachford_rice(z, np.array([[k1, 0.2]]))[0]
+                     for k1 in (2.0, 3.0, 4.0, 6.0, 8.0)]
+        assert all(0.0 < v < 1.0 for v in fractions), fractions
+        assert all(a < b for a, b in zip(fractions, fractions[1:])), fractions
+        print(f"ok test_more_volatile_feed_gives_more_vapour "
+              f"({fractions[0]:.4f} to {fractions[-1]:.4f} as K1 goes 2 to 8)")
+
+    def test_a_feed_below_its_bubble_point_is_all_liquid():
+        """Mixed K-values do not guarantee a two-phase split.
+
+        With z = [0.5, 0.5] and K = [1.6, 0.2] the Rachford-Rice function is
+        negative at both ends - f(0) = -0.1, f(1) = -1.81 - so no root exists
+        and the feed is entirely liquid. Without a bracket check the bisection
+        walks its lower bound to 1.0 and reports an all-vapour mixture. The
+        identical defect was fixed in `fluids/blackoil/kvalue_model.py`; this
+        test is what found the second copy.
+        """
+        z = np.array([[0.5, 0.5]])
+        K = np.array([[1.6, 0.2]])
+        assert _residual(z[0], K[0], 0.0) < 0.0, "the case is not single-phase"
+        assert _rachford_rice(z, K)[0] == 0.0
+        print("ok test_a_feed_below_its_bubble_point_is_all_liquid")
+
+    def test_each_cell_is_solved_independently():
+        """Rows must not bleed into one another."""
+        z = np.array([[0.6, 0.4], [0.4, 0.6], [0.5, 0.5]])
+        K = np.array([[3.0, 0.2], [0.4, 0.05], [2.5, 8.0]])
+        V = _rachford_rice(z, K)
+        assert V.shape == (3,)
+        assert abs(V[0] - _rachford_rice(z[:1], K[:1])[0]) < 1e-12
+        assert V[1] == 0.0 and V[2] == 1.0, V
+        print(f"ok test_each_cell_is_solved_independently ({np.round(V, 6).tolist()})")
+
+    def test_k_values_are_required():
+        """A K-value model without K-values would flash everything to liquid."""
+        try:
+            EquilibriumConstantModel(None, None, None)
+        except ValueError as error:
+            assert "k_values" in str(error), error
+        else:
+            raise AssertionError("expected a missing k_values to be rejected")
+        print("ok test_k_values_are_required")
+
+    test_a_binary_split_matches_the_closed_form()
+    test_the_rachford_rice_function_vanishes_at_the_root()
+    test_an_all_liquid_mixture_returns_no_vapour()
+    test_an_all_vapour_mixture_returns_no_liquid()
+    test_more_volatile_feed_gives_more_vapour()
+    test_a_feed_below_its_bubble_point_is_all_liquid()
+    test_each_cell_is_solved_independently()
+    test_k_values_are_required()
+    print("\nAll tests passed!")

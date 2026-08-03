@@ -14,6 +14,15 @@ def compute_flash_black_oil(state, state0, model):
     negative phase saturations, handles gas/oil phase appearance, caps `rs`
     and `rv` against their saturation curves, and writes the hydrocarbon
     status `oil_present + 2*gas_present`.
+
+    **One deliberate departure from MATLAB.** The saturations are renormalized
+    before being written back; MRST writes them as the clipping cascade leaves
+    them. On a well-formed state the two agree exactly - each clip divides by
+    ``1 - s_negative``, which preserves a unit sum - so the normalization only
+    bites on input that did not sum to one, where MRST propagates the error and
+    this silently repairs it. Kept because a saturation triple that does not
+    sum to one is not a state any downstream property can read, but recorded
+    because it means this function cannot be used to detect that upstream fault.
     """
     f = model.raw_fluid
     sw, so, sg = state["sW"], state["sO"], state["sG"]
@@ -22,19 +31,31 @@ def compute_flash_black_oil(state, state0, model):
     st2_prev = state0["status"] == 2
     wat_only = sw > 1.0 - ETOL
 
-    rs_sat = value(f.rs_sat(state["pressure"]))
-    rs_sat0 = value(f.rs_sat(state0["pressure"]))
+    if not getattr(model, "disgas", True):
+        # MRST's `~disgas` branch, which this port omitted. Without dissolved
+        # gas there is no saturation curve to cross: the previous `rs` *is* the
+        # bound, and gas counts as present everywhere. The omission was only
+        # reachable through `disgas=False, vapoil=True` - the caller in
+        # `update_state_black_oil_generic` skips the flash when both are false -
+        # and there it reported status 1 where MRST reports 3, because
+        # `gasPresent` contributes the 2.
+        rs_sat0 = np.asarray(value(state0["rs"]), dtype=float)
+        rs_sat = rs_sat0
+        gas_present = np.ones_like(wat_only, dtype=bool)
+    else:
+        rs_sat = value(f.rs_sat(state["pressure"]))
+        rs_sat0 = value(f.rs_sat(state0["pressure"]))
 
-    gas_present = ((sg > 0) | (rs == 0)) & ~st1_prev
-    gas_present |= wat_only
-    gas_present |= (sg < 0) & (state0["sG"] > ETOL)
-    crossed = (
-        (rs > rs_sat * (1 + ETOL))
-        & st1_prev
-        & (state0["rs"] > rs_sat0 * (1 - ETOL))
-    )
-    sg[crossed] = 0.0
-    gas_present |= crossed
+        gas_present = ((sg > 0) | (rs == 0)) & ~st1_prev
+        gas_present |= wat_only
+        gas_present |= (sg < 0) & (state0["sG"] > ETOL)
+        crossed = (
+            (rs > rs_sat * (1 + ETOL))
+            & st1_prev
+            & (state0["rs"] > rs_sat0 * (1 - ETOL))
+        )
+        sg[crossed] = 0.0
+        gas_present |= crossed
 
     neg = sg < 0
     sw[neg] /= 1.0 - sg[neg]

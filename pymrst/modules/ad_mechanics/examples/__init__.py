@@ -7,10 +7,7 @@ from pymrst.modules.ad_mechanics.examples.mandel import (
     mandel_roots,
     poro_params,
 )
-from pymrst.modules.ad_mechanics.examples.run_2d_case import (
-    TwoDVEMNotPorted,
-    run_2d_case,
-)
+from pymrst.modules.ad_mechanics.examples.run_2d_case import run_2d_case
 from pymrst.modules.ad_mechanics.examples.run_adjoint_example import (
     run_adjoint_example,
 )
@@ -29,7 +26,6 @@ from pymrst.modules.ad_mechanics.examples.terzaghi import (
 
 __all__ = [
     "MandelCase",
-    "TwoDVEMNotPorted",
     "consolidation_coefficient",
     "mandel_pressure",
     "mandel_roots",

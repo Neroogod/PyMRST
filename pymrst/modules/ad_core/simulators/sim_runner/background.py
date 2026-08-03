@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
+import math
 import multiprocessing as mp
 from pathlib import Path
 import pickle
+import platform
+import sys
+import time
 import traceback
 
 from pymrst.modules.ad_core.simulators.sim_runner.simulate_packed_problem import (
@@ -27,12 +32,51 @@ class BackgroundSimulationInfo:
         return self.path / "simulation.log"
 
     @property
+    def events_path(self) -> Path:
+        return self.path / "events.jsonl"
+
+    @property
+    def manifest_path(self) -> Path:
+        return self.path / "run_manifest.json"
+
+    @property
     def running(self) -> bool:
         return self.lock_path.exists()
 
 
-def simulate_packed_problem_standalone(path: str | Path):
-    """Load ``problem.pkl`` from a work directory and simulate under a lock."""
+def _json_safe(value):
+    """A payload value reduced to something `json` can write.
+
+    Observer payloads are documented as copied scalars, but this writes to a
+    file a detached run is read back from, so anything unexpected is stringified
+    rather than allowed to raise inside the hook.
+    """
+    if value is None or isinstance(value, (bool, int, str)):
+        return value
+    if isinstance(value, float):
+        return value if math.isfinite(value) else repr(value)
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    return repr(value)
+
+
+def simulate_packed_problem_standalone(path: str | Path, *,
+                                       record_evidence: bool = True):
+    """Load ``problem.pkl`` from a work directory and simulate under a lock.
+
+    With ``record_evidence`` the run also leaves ``events.jsonl`` and
+    ``run_manifest.json`` beside the existing log. A detached run is the one
+    case where nothing can be observed as it happens: the only account of what
+    the child did was a single line naming the restart index and a message.
+
+    Written with the standard library alone. This module is replica-layer, and
+    the covenant forbids it depending on Research Studio - so the event log is
+    JSON Lines by hand rather than through `JsonLinesHandler`, and the manifest
+    is a plain dict rather than a `ReproducibilityManifest`. Both are readable
+    by the extension without either side importing the other.
+    """
     work = Path(path)
     payload = work / "problem.pkl"
     lock = work / "lock.pymrst"
@@ -41,21 +85,67 @@ def simulate_packed_problem_standalone(path: str | Path):
     if lock.exists():
         raise RuntimeError("this packed simulation is already running")
     lock.write_text(str(mp.current_process().pid), encoding="utf-8")
+    started = time.time()
+    counts: dict[str, int] = {}
+    stream_out = None
+    observer = None
+    if record_evidence:
+        stream_out = (work / "events.jsonl").open("w", encoding="utf-8")
+
+        def observer(event, payload):          # noqa: F811 - bound only here
+            counts[event] = counts.get(event, 0) + 1
+            record = {"event": str(event), "sequence": sum(counts.values()),
+                      "monotonic": time.monotonic(),
+                      "payload": _json_safe(dict(payload))}
+            stream_out.write(json.dumps(record, sort_keys=True) + "\n")
+            stream_out.flush()
+
+    def write_manifest(problem, ok, status, error=None):
+        if not record_evidence:
+            return
+        manifest = {
+            "schema_version": 1,
+            "kind": "packed_problem_background_child",
+            "base_name": getattr(problem, "BaseName", None),
+            "name": getattr(problem, "Name", None),
+            "pid": mp.current_process().pid,
+            "python": sys.version.split()[0],
+            "platform": platform.platform(),
+            "started_unix": started,
+            "finished_unix": time.time(),
+            "ok": ok,
+            "restart_index": (None if status is None
+                              else _json_safe(status.RestartIndex)),
+            "message": None if status is None else _json_safe(status.Message),
+            "error": error,
+            "event_counts": dict(sorted(counts.items())),
+        }
+        (work / "run_manifest.json").write_text(
+            json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8",
+        )
+
+    problem = None
     try:
         with payload.open("rb") as stream:
             problem = pickle.load(stream)
         ok, status = simulate_packed_problem(
-            problem, continue_on_error=True
+            problem, continue_on_error=True, observer=observer,
         )
         with log.open("a", encoding="utf-8") as stream:
             stream.write(f"ok={ok} restart={status.RestartIndex} "
                          f"message={status.Message}\n")
+        write_manifest(problem, ok, status)
         return ok, status
-    except Exception:
+    except Exception as error:
         with log.open("a", encoding="utf-8") as stream:
             traceback.print_exc(file=stream)
+        # A crashed child is exactly when its account matters most, so the
+        # manifest is written on the way out rather than only on success.
+        write_manifest(problem, False, None, error=f"{type(error).__name__}: {error}")
         raise
     finally:
+        if stream_out is not None:
+            stream_out.close()
         if lock.exists():
             lock.unlink()
 

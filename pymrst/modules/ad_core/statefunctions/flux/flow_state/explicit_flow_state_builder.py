@@ -54,8 +54,6 @@ class ExplicitFlowStateBuilder(FlowStateBuilder):
         super().__init__(verbose=verbose)
         self.saturation_cfl = saturation_cfl
         self.composition_cfl = composition_cfl
-        # FaceComponentMobility is in MRST's default set but is not yet ported
-        # (AC1/AC6); it is skipped below if the model does not define it.
         self.explicit_flux = (["FaceMobility", "FaceComponentMobility",
                                "GravityPotentialDifference"]
                               if explicit_flux is None else list(explicit_flux))
@@ -198,15 +196,19 @@ if __name__ == "__main__":
             assert np.allclose((flux[ph] - manual).jac[0].toarray(), 0.0)
         print("ok test_impes_flux_matches_manual_split")
 
-    def test_missing_terms_are_skipped():
-        """Requesting a not-ported term (FaceComponentMobility) is skipped,
-        not an error - the default set stays usable before AC6."""
+    def test_default_freezes_face_component_mobility():
+        """The default graph freezes MRST's component-aware face mobility."""
         model, st, st0 = _model_and_states()
-        # default explicit_flux includes FaceComponentMobility, absent here
         fs = ExplicitFlowStateBuilder().build(model, st, st0, dt=30.0)
-        assert "FaceComponentMobility" not in fs.containers.get("FluxDisc", {})
+        assert "FaceComponentMobility" in fs.containers.get("FluxDisc", {})
         assert "FaceMobility" in fs.containers.get("FluxDisc", {})
-        print("ok test_missing_terms_are_skipped")
+        frozen = model.get_props(fs, "FaceComponentMobility")
+        old = model.get_props(st0, "FaceComponentMobility")
+        for c in range(len(frozen)):
+            for ph in range(model.n_phases):
+                if frozen[c][ph] is not None:
+                    assert np.allclose(value(frozen[c][ph]), value(old[c][ph]))
+        print("ok test_default_freezes_face_component_mobility")
 
     def test_first_step_uses_initial_step():
         """With no flux on the state, the max step is the configured initial."""

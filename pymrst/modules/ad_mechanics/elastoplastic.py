@@ -6,7 +6,7 @@ from typing import Sequence
 import numpy as np
 import scipy.sparse.linalg as spla
 
-from pymrst.modules.ad_mechanics.mechanics import MechanicModel
+from pymrst.modules.ad_mechanics.models.mechanic_model import MechanicModel
 from pymrst.modules.ad_mechanics.plasticity import (
     PlasticityState,
     empty_plasticity_state,

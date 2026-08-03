@@ -80,9 +80,13 @@ if __name__ == "__main__":
         bc = add_bc(bc, np.array([5, 6]), "flux", 1e-3)
         assert bc.face.size == 4
         assert bc.type == ["pressure"] * 2 + ["flux"] * 2
+        # `add_bc` raises ValueError, not AssertionError. Catching the wrong
+        # one let the raise escape and the self-test failed on a working
+        # rejection.
         try:
             add_bc(bc, np.array([1]), "pressure", 0.0)
-        except AssertionError:
+        except ValueError as exc:
+            assert "overlaps" in str(exc), exc
             print("ok test_add_bc_accumulates_and_rejects_overlap")
             return
         raise AssertionError("expected overlap rejection")

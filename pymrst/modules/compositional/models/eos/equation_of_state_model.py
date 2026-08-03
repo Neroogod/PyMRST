@@ -268,7 +268,7 @@ class EquationOfStateModel:
         """Solve the cubic EOS and return positive real roots padded with NaN."""
         A = np.asarray(A, float).reshape(-1)
         B = np.asarray(B, float).reshape(-1)
-        if self.shortname() == "pr":
+        if self.shortname() in {"pr", "prcorr"}:
             roots = _cubic_roots(A, B)
         else:
             e2, e1, e0 = self.getCubicCoefficients(A, B)

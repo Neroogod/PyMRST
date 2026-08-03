@@ -1652,6 +1652,7 @@ def run_schedule(
     max_cuts: int = 6,
     verbose: bool = False,
     stop_on_end_run: bool = True,
+    observer=None,
 ) -> SimulationResult:
     """Run an MRST-style compositional schedule with timestep cutting.
 
@@ -1660,7 +1661,25 @@ def run_schedule(
     halved substeps until it succeeds or `max_cuts` is exceeded. If an imported
     ``GECON`` economics row requests end-run on violation, the accepted report
     is emitted and the schedule stops by default.
+
+    ``observer`` is an optional, dependency-free observation hook matching the
+    one ``NonLinearSolver`` and the fixed-stress splitting loop carry, with the
+    same event names. This loop drives ``model.step`` and owns its own cutting
+    and retry, so the canonical solver hook never reaches it and a schedule run
+    here produced no events at all. Per-iteration residuals stay out of reach -
+    they live inside ``model.step`` - so this reports ministep and cut
+    decisions, which is what the loop itself owns. It receives copied scalars
+    only, its exceptions are swallowed, and with the default ``None`` this
+    function behaves exactly as before.
     """
+    def _observe(event, **payload):
+        if observer is None:
+            return
+        try:
+            observer(event, payload)
+        except Exception:
+            pass
+
     states: list[CompositionalState] = []
     iterations = []
     reports: list[dict] = []
@@ -1711,10 +1730,17 @@ def run_schedule(
             t_local, it, cuts = 0.0, 0, 0
             mini_steps: list[float] = []
             dt = float(dt_report)
+            _observe("report_step_started", report_step=int(step_ix),
+                     report_dt=float(dt_report), control=int(ctrl_ix))
             while t_local < float(dt_report) - 1.0e-12 * max(float(dt_report), 1.0):
                 dt = min(dt, float(dt_report) - t_local)
+                _observe("ministep_started", report_step=int(step_ix),
+                         ministep_index=len(mini_steps), trial_dt=float(dt))
                 candidate, ok, nit = model.step(current, dt, bc=active_bc, src=active_src)
                 it += nit
+                _observe("step_accepted" if ok else "step_rejected",
+                         report_step=int(step_ix), ministep_index=len(mini_steps),
+                         trial_dt=float(dt), iterations=int(nit))
                 if ok:
                     current = candidate
                     t_local += dt
@@ -1727,6 +1753,9 @@ def run_schedule(
                             f"compositional schedule step {step_ix} did not converge after {max_cuts} cuts"
                         )
                     dt *= 0.5
+                    _observe("timestep_cut", report_step=int(step_ix),
+                             cut=int(cuts), report_dt=float(dt_report),
+                             trial_dt=float(dt))
                     if verbose:
                         print(f"  step {step_ix}: cutting dt to {dt:.3e}")
             states.append(current)

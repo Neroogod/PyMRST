@@ -3,9 +3,9 @@
 Turns a number of seconds into "2 Years, 30 Days, 4 Hours". Used in progress
 reporting, where "63115200 seconds" tells a reader nothing.
 
-`limit` caps how many units appear, and the last one shown is given to two
-decimals rather than truncated - so `limit=1` on eighteen months reads
-"1.50 Years" and not "1 Year", which would be wrong by six months.
+`limit` reproduces MRST's refinement-depth counter.  The first emitted unit
+has depth zero, so a limit of two can display three units; the unit at the
+requested depth carries the remainder as a decimal.
 """
 
 from pymrst.utils.units.units import DAY, HOUR, MINUTE, YEAR
@@ -20,17 +20,21 @@ def format_time_range(time: float, limit: int = None) -> str:
     """Describe ``time`` seconds in years, days, hours, seconds, milliseconds."""
     parts = []
     remaining = float(time)
+    depth = 0
+    added = False
     for index, (name, size) in enumerate(UNITS):
         count = int(remaining // size)
         if count <= 0:
             continue
-        last = limit is not None and len(parts) + 1 >= limit
+        depth += int(added)
+        last = limit is not None and depth == limit
         if last:
             value = remaining / size
             parts.append(f"{value:1.2f} {name}" + ("s" if value != 1 else ""))
             break
         parts.append(f"{count} {name}" + ("s" if count != 1 else ""))
         remaining -= count * size
+        added = True
     return ", ".join(parts)
 
 
@@ -55,13 +59,13 @@ if __name__ == "__main__":
 
     def test_the_limit_caps_the_number_of_units() -> None:
         out = format_time_range(2 * DAY + 3 * HOUR + 4, limit=2)
-        assert out.count(",") == 1, out
+        assert out == "2 Days, 3 Hours, 4.00 Seconds", out
         print("ok test_the_limit_caps_the_number_of_units")
 
     def test_the_last_unit_shown_carries_the_remainder() -> None:
-        """`limit=1` on 18 months is 1.50 Years, not 1 Year."""
+        """MRST counts refinements after the first displayed unit."""
         out = format_time_range(1.5 * YEAR, limit=1)
-        assert out.startswith("1.50 Year"), out
+        assert out.startswith("1 Year, 182.62 Day"), out
         print(f"ok test_the_last_unit_shown_carries_the_remainder ({out})")
 
     def test_no_limit_lists_everything_present() -> None:

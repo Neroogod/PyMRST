@@ -1,0 +1,16 @@
+flowchart TD
+  SSA[simulate_schedule_ad] --> MSTEP[model.step]
+  NLS[NonLinearSolver.simulate_schedule] --> TS[solve_timestep]
+  TS --> MS[solve_ministep]
+  MS --> EQ[model.get_equations]
+  MS --> LS[linear solver]
+  MS --> UP[model.update_state]
+  PACK[simulate_packed_problem] --> SETUP[PackedSimulationProblem.SimulatorSetup]
+  SETUP --> NLS
+  BG[background/standalone] --> PACK
+  COMP[compositional example runners] --> CEQ[compositional model equations]
+  ADJ[adjoint simulate_forward] --> NLS
+  OPT[optimization simulate_forward] --> ADJ
+  RS[Research Studio adapters] -. observe only .-> SSA
+  RS -. observe only .-> NLS
+  RS -. persist accepted outputs .-> PACK

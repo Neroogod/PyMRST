@@ -30,8 +30,8 @@ import scipy.io
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_core.statefunctions.state_function import State
-from pymrst.modules.ad_mechanics.mechanics import MechanicModel
-from pymrst.modules.ad_mechanics.poromech import MechWaterModel
+from pymrst.modules.ad_mechanics.models.mechanic_model import MechanicModel
+from pymrst.modules.ad_mechanics.models.fully_coupled.mech_water_model import MechWaterModel
 from pymrst.modules.vemmech.vem import ElasticBC, create_augmented_grid, enu2c
 from pymrst.params.rock import make_rock
 
@@ -129,7 +129,9 @@ REF_B = HERE / "ref_p27b_mechow.mat"
 
 def build_mech_ow(ref, case: str, mrst_bug: bool):
     """The oil-water poroelastic case of dump_phase27b_reference.m."""
-    from pymrst.modules.ad_mechanics.mech_blackoil import MechBlackOilModel
+    from pymrst.modules.ad_mechanics.models.fully_coupled.mech_oil_water_model import (
+        MechOilWaterModel,
+    )
     from pymrst.modules.ad_props import init_simple_adi_fluid
     from pymrst.params import add_well
     from pymrst.utils.units import BARSA, CENTI, DARCY, MILLI, POISE
@@ -171,7 +173,7 @@ def build_mech_ow(ref, case: str, mrst_bug: bool):
                  val=float(ref["pbhp"]), compi=np.array([0.0, 1.0]),
                  sign=-1, radius=0.1)
 
-    model = MechBlackOilModel(g, rock, fluid, w, mech,
+    model = MechOilWaterModel(g, rock, fluid, w, mech,
                               mrst_oilwater_bug=mrst_bug)
     st = State(
         pressure=np.full(g.cells.num, p0), sW=np.full(g.cells.num, sw0),

@@ -608,10 +608,15 @@ ported TOF/tracer, F-Phi, Lorenz, sweep, and well-pair landing files. The
 validated implementation remains in `flow_diagnostics.py` for now.
 
 Progress note: `upscaling` now has MRST-shaped compatibility packages for
-`coarsegrid/` and `flow/`, covering the validated Cartesian partition,
-coarse-grid generation, fixed TPFA permeability upscaling, volume-weighted
-porosity, and rock upscaling slice. Periodic, relperm, and capillary
-upscaling remain unported.
+`coarsegrid/` and `flow/`, covering fixed TPFA permeability upscaling,
+volume-weighted porosity, and the rock upscaling slice. Periodic, relperm and
+capillary upscaling remain unported.
+
+`upscaling/coarsegrid` is now a **re-export**. The coarse-grid material moved to
+`pymrst/modules/coarsegrid`, its MRST-shaped home, and was ported in full there
+(34 of 37 files, 3 recorded exclusions, 323 self-tests). Three implementations
+of `generate_coarse_grid` and two distinct `CoarseGrid` classes were merged into
+one along the way; nine modules had been sharing the two incompatible classes.
 
 Progress note: `streamlines` now has an MRST-shaped `utils/` package for
 `findStreamlineNeighborshipCart` and `getInteriorFluxesStreamlines`. The
@@ -652,9 +657,18 @@ the corresponding `equationsMICPMech.m`.
 
 Progress note: `hfm` now has MRST-shaped compatibility packages for the
 ported 2D EDFM slice: `gridding/`, `processing/`, `utils/`, and `operators/`.
-The implementation remains in `edfm2d.py`. 3D EDFM, projection-based
-`hfm_v2`, fracture mechanics/TEDFM, multiscale/Rsb support, and plotting
-remain unported.
+The numerical implementation lives in `edfm2d.py`, `edfm3d.py` and
+`mechanics.py`. The former `hfm_v2` re-export façade was consolidated into
+this owner; unported MRST `hfm_v2` breadth remains tracked as HFM work rather
+than as a duplicate Python package. Multiscale/Rsb support and plotting remain
+broader gaps.
+
+Progress note: `ADFNE15` now has a native `adfne15/` package for its first
+complete dependency chain: foundational geometry, bounded random distributions
+and runnable 2-D/3-D DFN generation. It retains the upstream license and has a
+direct MATLAB foundation fixture. Graph flow, advanced network processing,
+geostatistics, export, plotting and examples remain implementation gaps rather
+than placeholder files.
 
 Phase 10 status: the small-module layout pass is complete for all ported
 symbols in this batch. Remaining gaps are implementation gaps, not just layout

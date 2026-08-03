@@ -44,8 +44,13 @@ from pymrst.modules.ad_mechanics.elastoplastic import (
     ElastoplasticStep,
     solve_elastoplastic_vem,
 )
-from pymrst.modules.ad_mechanics.mech_blackoil import MechBlackOilModel
-from pymrst.modules.ad_mechanics.mechanics import (
+from pymrst.modules.ad_mechanics.models.fully_coupled.mech_black_oil_model import (
+    MechBlackOilModel,
+)
+from pymrst.modules.ad_mechanics.models.fully_coupled.mech_oil_water_model import (
+    MechOilWaterModel,
+)
+from pymrst.modules.ad_mechanics.models.mechanic_model import (
     MechanicModel,
     MechanicOperators,
 )
@@ -70,16 +75,18 @@ from pymrst.modules.ad_mechanics.plasticity import (
     von_mises_equivalent,
     von_mises_return_map,
 )
-from pymrst.modules.ad_mechanics.poromech import (
+from pymrst.modules.ad_mechanics.models.poromechanics import (
     FixedStressPoreVolume,
     FixedStressSplitModel,
-    MechWaterModel,
     PoroMechanicalPoreVolume,
+)
+from pymrst.modules.ad_mechanics.models.fully_coupled.mech_water_model import (
+    MechWaterModel,
 )
 
 __all__ = [
     "MechanicModel", "MechanicOperators",
-    "MechWaterModel", "MechBlackOilModel", "FixedStressSplitModel",
+    "MechWaterModel", "MechBlackOilModel", "MechOilWaterModel", "FixedStressSplitModel",
     "PoroelasticSchurSolver",
     "PoroMechanicalPoreVolume", "FixedStressPoreVolume",
     "MandelCase", "mandel_pressure", "mandel_roots", "poro_params",

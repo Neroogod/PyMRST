@@ -1,0 +1,1986 @@
+{
+  "artifact": "pymrst_analytic_foundation_evidence_graph",
+  "artifact_schema_version": 1,
+  "graph": {
+    "edges": [
+      {
+        "accepted": true,
+        "claim": "TPFA pressure reproduces the exact hydrostatic profile",
+        "converged": true,
+        "edge_id": "hydrostatic_pressure",
+        "evidence_class": "analytic_solution",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "absolute_tolerance_Pa": 1e-05,
+          "maximum_absolute_error_Pa": 2.0489096641540527e-07
+        },
+        "shared_kernels": [],
+        "source": "analytic_hydrostatic",
+        "target": "pymrst_hydrostatic"
+      },
+      {
+        "accepted": true,
+        "claim": "Hydrostatic equilibrium has zero face flux",
+        "converged": true,
+        "edge_id": "hydrostatic_zero_flux",
+        "evidence_class": "physical_invariant",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "absolute_tolerance_m3_s": 1e-15,
+          "maximum_absolute_flux_m3_s": 2.0023693863459645e-18
+        },
+        "shared_kernels": [],
+        "source": "analytic_hydrostatic",
+        "target": "pymrst_hydrostatic"
+      },
+      {
+        "accepted": true,
+        "claim": "Diffusion L1 error converges at the declared order",
+        "converged": true,
+        "edge_id": "diffusion_l1_convergence",
+        "evidence_class": "grid_time_refinement",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "finest_error": 7.418022561419212e-05,
+          "minimum_order": 1.9,
+          "observed_order": 2.0059631657394275
+        },
+        "shared_kernels": [],
+        "source": "analytic_diffusion",
+        "target": "pymrst_diffusion"
+      },
+      {
+        "accepted": true,
+        "claim": "Diffusion L2 error converges at the declared order",
+        "converged": true,
+        "edge_id": "diffusion_l2_convergence",
+        "evidence_class": "grid_time_refinement",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "finest_error": 9.819858031651957e-05,
+          "minimum_order": 1.9,
+          "observed_order": 2.009370316618859
+        },
+        "shared_kernels": [],
+        "source": "analytic_diffusion",
+        "target": "pymrst_diffusion"
+      },
+      {
+        "accepted": true,
+        "claim": "Diffusion LINF error converges at the declared order",
+        "converged": true,
+        "edge_id": "diffusion_linf_convergence",
+        "evidence_class": "grid_time_refinement",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "finest_error": 0.00018731783052233775,
+          "minimum_order": 1.9,
+          "observed_order": 2.013641067948921
+        },
+        "shared_kernels": [],
+        "source": "analytic_diffusion",
+        "target": "pymrst_diffusion"
+      },
+      {
+        "accepted": true,
+        "claim": "Accumulated pressure storage equals integrated net boundary flux",
+        "converged": true,
+        "edge_id": "diffusion_conservation",
+        "evidence_class": "conservation",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "absolute_tolerance": 1e-10,
+          "maximum_absolute_imbalance": 3.1867841698840493e-12
+        },
+        "shared_kernels": [],
+        "source": "analytic_diffusion",
+        "target": "pymrst_diffusion"
+      },
+      {
+        "accepted": true,
+        "claim": "Implicit diffusion respects the zero-to-one maximum principle",
+        "converged": true,
+        "edge_id": "diffusion_bounds",
+        "evidence_class": "physical_invariant",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "maximum_pressure": 0.984223638132772,
+          "minimum_pressure": 0.00021381504661692043
+        },
+        "shared_kernels": [],
+        "source": "analytic_diffusion",
+        "target": "pymrst_diffusion"
+      },
+      {
+        "accepted": true,
+        "claim": "Radial transient L1 error converges at near-second order",
+        "converged": true,
+        "edge_id": "radial_l1_convergence",
+        "evidence_class": "grid_time_refinement",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "finest_error": 1.8041647809420363e-06,
+          "minimum_order": 1.85,
+          "observed_order": 1.9557849239747986
+        },
+        "shared_kernels": [],
+        "source": "analytic_radial",
+        "target": "pymrst_radial"
+      },
+      {
+        "accepted": true,
+        "claim": "Radial transient L2 error converges at near-second order",
+        "converged": true,
+        "edge_id": "radial_l2_convergence",
+        "evidence_class": "grid_time_refinement",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "finest_error": 3.5411310967407388e-06,
+          "minimum_order": 1.85,
+          "observed_order": 1.9400541903216557
+        },
+        "shared_kernels": [],
+        "source": "analytic_radial",
+        "target": "pymrst_radial"
+      },
+      {
+        "accepted": true,
+        "claim": "Radial storage change equals integrated inner and outer boundary flux",
+        "converged": true,
+        "edge_id": "radial_conservation",
+        "evidence_class": "conservation",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "absolute_tolerance": 1e-10,
+          "maximum_absolute_imbalance": 4.671818487622659e-13
+        },
+        "shared_kernels": [],
+        "source": "analytic_radial",
+        "target": "pymrst_radial"
+      },
+      {
+        "accepted": true,
+        "claim": "Finest radial pressure profile meets the absolute error gate",
+        "converged": true,
+        "edge_id": "radial_profile_accuracy",
+        "evidence_class": "analytic_solution",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "absolute_tolerance": 5e-06,
+          "finest_l2_error": 3.5411310967407388e-06,
+          "finest_linf_error": 1.616713899366129e-05
+        },
+        "shared_kernels": [],
+        "source": "analytic_radial",
+        "target": "pymrst_radial"
+      },
+      {
+        "accepted": true,
+        "claim": "Shock-capturing transport has the declared L1 convergence rate",
+        "converged": true,
+        "edge_id": "buckley_l1_convergence",
+        "evidence_class": "grid_refinement",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "minimum_order": 0.7,
+          "observed_order": 0.7929147230934903
+        },
+        "shared_kernels": [],
+        "source": "analytic_buckley_leverett",
+        "target": "pymrst_buckley_leverett"
+      },
+      {
+        "accepted": true,
+        "claim": "The finest saturation profile meets its L1 gate",
+        "converged": true,
+        "edge_id": "buckley_profile_accuracy",
+        "evidence_class": "analytic_solution",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "absolute_tolerance": 0.006,
+          "finest_l1_error": 0.004192024019653301
+        },
+        "shared_kernels": [],
+        "source": "analytic_buckley_leverett",
+        "target": "pymrst_buckley_leverett"
+      },
+      {
+        "accepted": true,
+        "claim": "The numerical water front tracks the Welge shock",
+        "converged": true,
+        "edge_id": "buckley_shock_position",
+        "evidence_class": "analytic_solution",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "absolute_tolerance": 0.005,
+          "finest_shock_position_error": 0.0016179656440357681
+        },
+        "shared_kernels": [],
+        "source": "analytic_buckley_leverett",
+        "target": "pymrst_buckley_leverett"
+      },
+      {
+        "accepted": true,
+        "claim": "Injected water equals accumulated water",
+        "converged": true,
+        "edge_id": "buckley_conservation",
+        "evidence_class": "conservation",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "absolute_tolerance_m3": 1e-12,
+          "maximum_absolute_imbalance_m3": 6.217248937900877e-15
+        },
+        "shared_kernels": [],
+        "source": "analytic_buckley_leverett",
+        "target": "pymrst_buckley_leverett"
+      },
+      {
+        "accepted": true,
+        "claim": "Explicit transport preserves saturation bounds",
+        "converged": true,
+        "edge_id": "buckley_saturation_bounds",
+        "evidence_class": "physical_invariant",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "maximum_saturation": 0.9923138018104427,
+          "minimum_saturation": 0.0
+        },
+        "shared_kernels": [],
+        "source": "analytic_buckley_leverett",
+        "target": "pymrst_buckley_leverett"
+      },
+      {
+        "accepted": true,
+        "claim": "Terzaghi maximum pressure error converges at backward-Euler order",
+        "converged": true,
+        "edge_id": "terzaghi_pressure_convergence",
+        "evidence_class": "grid_time_refinement",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "minimum_order": 0.85,
+          "observed_order": 1.0231697788261338
+        },
+        "shared_kernels": [],
+        "source": "analytic_terzaghi",
+        "target": "pymrst_terzaghi"
+      },
+      {
+        "accepted": true,
+        "claim": "Finest Terzaghi pressure history meets its profile gate",
+        "converged": true,
+        "edge_id": "terzaghi_pressure_accuracy",
+        "evidence_class": "analytic_solution",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "finest_relative_linf_error": 0.0009379756022371811,
+          "tolerance": 0.001
+        },
+        "shared_kernels": [],
+        "source": "analytic_terzaghi",
+        "target": "pymrst_terzaghi"
+      },
+      {
+        "accepted": true,
+        "claim": "Terzaghi top settlement agrees with the analytic consolidation degree",
+        "converged": true,
+        "edge_id": "terzaghi_settlement",
+        "evidence_class": "analytic_solution",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "finest_relative_error": 0.00029586726307053693,
+          "tolerance": 0.0005
+        },
+        "shared_kernels": [],
+        "source": "analytic_terzaghi",
+        "target": "pymrst_terzaghi"
+      },
+      {
+        "accepted": true,
+        "claim": "Terzaghi excess pressure remains between drained and undrained limits",
+        "converged": true,
+        "edge_id": "terzaghi_pressure_bounds",
+        "evidence_class": "physical_invariant",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "maximum_pressure_ratio": 0.9999982674261849,
+          "minimum_pressure_ratio": 0.0002673174176217311
+        },
+        "shared_kernels": [],
+        "source": "analytic_terzaghi",
+        "target": "pymrst_terzaghi"
+      },
+      {
+        "accepted": true,
+        "claim": "Settlement increases monotonically as excess pressure dissipates",
+        "converged": true,
+        "edge_id": "terzaghi_monotone_settlement",
+        "evidence_class": "physical_invariant",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "minimum_settlement_increment_m": 0.0026722449899929286
+        },
+        "shared_kernels": [],
+        "source": "analytic_terzaghi",
+        "target": "pymrst_terzaghi"
+      },
+      {
+        "accepted": true,
+        "claim": "Mandel maximum pressure error converges at the declared order",
+        "converged": true,
+        "edge_id": "mandel_pressure_convergence",
+        "evidence_class": "grid_time_refinement",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "minimum_order": 0.8,
+          "observed_order": 1.2270566229917148
+        },
+        "shared_kernels": [],
+        "source": "analytic_mandel",
+        "target": "pymrst_mandel"
+      },
+      {
+        "accepted": true,
+        "claim": "Finest Mandel pressure history meets the analytic profile gate",
+        "converged": true,
+        "edge_id": "mandel_pressure_accuracy",
+        "evidence_class": "analytic_solution",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "finest_relative_linf_error": 0.008741224909397327,
+          "tolerance": 0.01
+        },
+        "shared_kernels": [],
+        "source": "analytic_mandel",
+        "target": "pymrst_mandel"
+      },
+      {
+        "accepted": true,
+        "claim": "The coupled solution reproduces the Mandel--Cryer pressure overshoot",
+        "converged": true,
+        "edge_id": "mandel_cryer_overshoot",
+        "evidence_class": "coupling_invariant",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "maximum_centre_pressure_ratio": 1.0964742497652973,
+          "minimum_required_ratio": 1.05
+        },
+        "shared_kernels": [],
+        "source": "analytic_mandel",
+        "target": "pymrst_mandel"
+      },
+      {
+        "accepted": true,
+        "claim": "Plane-strain Mandel pressure is uniform through slab thickness",
+        "converged": true,
+        "edge_id": "mandel_column_uniformity",
+        "evidence_class": "physical_invariant",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "maximum_pressure_ratio_spread": 1.0722046694944254e-08,
+          "tolerance": 1e-06
+        },
+        "shared_kernels": [],
+        "source": "analytic_mandel",
+        "target": "pymrst_mandel"
+      },
+      {
+        "accepted": true,
+        "claim": "The moving plate maintains its prescribed total load",
+        "converged": true,
+        "edge_id": "mandel_constant_plate_load",
+        "evidence_class": "mechanical_invariant",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "maximum_relative_force_error": 4.060994833707809e-09,
+          "tolerance": 1e-06
+        },
+        "shared_kernels": [],
+        "source": "analytic_mandel",
+        "target": "pymrst_mandel"
+      },
+      {
+        "accepted": true,
+        "claim": "Pressure both rises above its initial value and later dissipates",
+        "converged": true,
+        "edge_id": "mandel_two_way_coupling",
+        "evidence_class": "coupling_invariant",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "finest_l2_profile_error": 0.00247624431165041,
+          "peak_pressure_ratio": 1.0964742497652973
+        },
+        "shared_kernels": [],
+        "source": "analytic_mandel",
+        "target": "pymrst_mandel"
+      },
+      {
+        "accepted": true,
+        "claim": "VEM exactly reproduces affine displacement fields",
+        "converged": true,
+        "edge_id": "elasticity_affine_recovery",
+        "evidence_class": "patch_test",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "maximum_relative_error": 4.440892098500626e-16,
+          "tolerance": 1e-09
+        },
+        "shared_kernels": [],
+        "source": "analytic_elasticity_patch",
+        "target": "pymrst_elasticity_patch"
+      },
+      {
+        "accepted": true,
+        "claim": "Translations and rotations have zero elastic energy",
+        "converged": true,
+        "edge_id": "elasticity_rigid_modes",
+        "evidence_class": "mechanical_invariant",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "maximum_normalized_energy": 4.540863808997106e-17,
+          "tolerance": 1e-08
+        },
+        "shared_kernels": [],
+        "source": "analytic_elasticity_patch",
+        "target": "pymrst_elasticity_patch"
+      },
+      {
+        "accepted": true,
+        "claim": "Assembled elastic stiffness is symmetric",
+        "converged": true,
+        "edge_id": "elasticity_stiffness_symmetry",
+        "evidence_class": "operator_identity",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "maximum_relative_asymmetry": 8.650483191347432e-17,
+          "tolerance": 1e-12
+        },
+        "shared_kernels": [],
+        "source": "analytic_elasticity_patch",
+        "target": "pymrst_elasticity_patch"
+      },
+      {
+        "accepted": true,
+        "claim": "Phase split reconstructs the overall feed",
+        "converged": true,
+        "edge_id": "flash_material_balance",
+        "evidence_class": "thermodynamic_identity",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "maximum_error": 1.197930643570544e-13,
+          "tolerance": 1e-09
+        },
+        "shared_kernels": [],
+        "source": "analytic_flash_equilibrium",
+        "target": "pymrst_flash_equilibrium"
+      },
+      {
+        "accepted": true,
+        "claim": "Liquid and vapour component fugacities are equal",
+        "converged": true,
+        "edge_id": "flash_fugacity_equality",
+        "evidence_class": "thermodynamic_identity",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "maximum_error": 4.253486451934854e-12,
+          "tolerance": 1e-08
+        },
+        "shared_kernels": [],
+        "source": "analytic_flash_equilibrium",
+        "target": "pymrst_flash_equilibrium"
+      },
+      {
+        "accepted": true,
+        "claim": "Both phase compositions sum to unity",
+        "converged": true,
+        "edge_id": "flash_phase_closure",
+        "evidence_class": "composition_identity",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "maximum_error": 2.220446049250313e-16,
+          "tolerance": 1e-12
+        },
+        "shared_kernels": [],
+        "source": "analytic_flash_equilibrium",
+        "target": "pymrst_flash_equilibrium"
+      },
+      {
+        "accepted": true,
+        "claim": "The qualification ensemble remains in the two-phase region",
+        "converged": true,
+        "edge_id": "flash_state_coverage",
+        "evidence_class": "state_coverage",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "minimum_two_phase_fraction": 1.0
+        },
+        "shared_kernels": [],
+        "source": "analytic_flash_equilibrium",
+        "target": "pymrst_flash_equilibrium"
+      },
+      {
+        "accepted": true,
+        "claim": "Phase fractions and component compositions remain physical",
+        "converged": true,
+        "edge_id": "flash_physical_bounds",
+        "evidence_class": "physical_invariant",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "minimum_component_fraction": 4.763184964887794e-06
+        },
+        "shared_kernels": [],
+        "source": "analytic_flash_equilibrium",
+        "target": "pymrst_flash_equilibrium"
+      },
+      {
+        "accepted": true,
+        "claim": "Manufactured source cancels accumulation and flux",
+        "converged": true,
+        "edge_id": "manufactured_local_residual",
+        "evidence_class": "manufactured_solution",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "maximum_absolute_residual": 0.0,
+          "tolerance": 1e-20
+        },
+        "shared_kernels": [],
+        "source": "analytic_accumulation_flux",
+        "target": "pymrst_accumulation_flux"
+      },
+      {
+        "accepted": true,
+        "claim": "Global source equals storage on a closed domain",
+        "converged": true,
+        "edge_id": "manufactured_global_conservation",
+        "evidence_class": "conservation",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "maximum_absolute_imbalance": 7.444625512977249e-24,
+          "tolerance": 1e-20
+        },
+        "shared_kernels": [],
+        "source": "analytic_accumulation_flux",
+        "target": "pymrst_accumulation_flux"
+      },
+      {
+        "accepted": true,
+        "claim": "ADI Jacobian equals the analytic TPFA matrix",
+        "converged": true,
+        "edge_id": "manufactured_ad_jacobian",
+        "evidence_class": "derivative_identity",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "maximum_absolute_entry_error": 0.0,
+          "tolerance": 1e-24
+        },
+        "shared_kernels": [],
+        "source": "analytic_accumulation_flux",
+        "target": "pymrst_accumulation_flux"
+      },
+      {
+        "accepted": true,
+        "claim": "ADI preserves the expected tridiagonal sparsity",
+        "converged": true,
+        "edge_id": "manufactured_jacobian_structure",
+        "evidence_class": "sparsity_identity",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "cell_centroid:exact",
+          "SI_units:exact"
+        ],
+        "metrics": {
+          "all_levels_match": 1.0
+        },
+        "shared_kernels": [],
+        "source": "analytic_accumulation_flux",
+        "target": "pymrst_accumulation_flux"
+      }
+    ],
+    "nodes": [
+      {
+        "kind": "analytic",
+        "label": "p(z) = p_top + rho g z; zero Darcy flux",
+        "metadata": {
+          "assumptions": [
+            "incompressible fluid",
+            "constant density",
+            "constant gravity",
+            "top Dirichlet pressure",
+            "no-flow remaining boundaries"
+          ],
+          "case_id": "hydrostatic_tpfa_column",
+          "domain": "1 m x 1 m x 30 m vertical Cartesian column",
+          "expected_order": null,
+          "minimum_order": null,
+          "name": "Single-phase hydrostatic TPFA column",
+          "units": {
+            "cell_pressure": "Pa",
+            "face_flux": "m^3/s"
+          },
+          "variables": [
+            "cell_pressure",
+            "face_flux"
+          ]
+        },
+        "node_id": "analytic_hydrostatic",
+        "version": ""
+      },
+      {
+        "kind": "pymrst",
+        "label": "PyMRST incompressible TPFA gravity column",
+        "metadata": {
+          "refinement_levels": 4
+        },
+        "node_id": "pymrst_hydrostatic",
+        "version": ""
+      },
+      {
+        "kind": "analytic",
+        "label": "Fourier-series constant-coefficient 1D pressure diffusion",
+        "metadata": {
+          "assumptions": [
+            "constant diffusivity",
+            "zero initial excess pressure",
+            "unit left Dirichlet step",
+            "zero right Dirichlet pressure",
+            "cell-centred TPFA",
+            "backward Euler with dt proportional to dx^2"
+          ],
+          "case_id": "pressure_diffusion_1d",
+          "domain": "0 <= x <= 100 m",
+          "expected_order": 2.0,
+          "minimum_order": 1.9,
+          "name": "One-dimensional constant-coefficient pressure diffusion",
+          "units": {
+            "normalized_pressure": "1",
+            "time": "s",
+            "x": "m"
+          },
+          "variables": [
+            "normalized_pressure"
+          ]
+        },
+        "node_id": "analytic_diffusion",
+        "version": ""
+      },
+      {
+        "kind": "pymrst",
+        "label": "PyMRST cell-centred TPFA backward-Euler diffusion",
+        "metadata": {
+          "refinement_levels": 4
+        },
+        "node_id": "pymrst_diffusion",
+        "version": ""
+      },
+      {
+        "kind": "analytic",
+        "label": "Bessel J0 eigenmode of the axisymmetric diffusion operator",
+        "metadata": {
+          "assumptions": [
+            "constant diffusivity",
+            "axisymmetric flow",
+            "unit thickness",
+            "exact time-dependent Dirichlet data at both radii",
+            "cell-centred radial finite volumes",
+            "backward Euler"
+          ],
+          "case_id": "radial_pressure_bessel_transient",
+          "domain": "1 m <= r <= 10 m",
+          "expected_order": 2.0,
+          "minimum_order": 1.85,
+          "name": "Axisymmetric radial pressure transient on an annulus",
+          "units": {
+            "normalized_pressure": "1",
+            "r": "m",
+            "time": "s"
+          },
+          "variables": [
+            "normalized_pressure"
+          ]
+        },
+        "node_id": "analytic_radial",
+        "version": ""
+      },
+      {
+        "kind": "pymrst",
+        "label": "PyMRST radial finite-volume backward-Euler transient",
+        "metadata": {
+          "refinement_levels": 4
+        },
+        "node_id": "pymrst_radial",
+        "version": ""
+      },
+      {
+        "kind": "analytic",
+        "label": "Welge shock and rarefaction solution",
+        "metadata": {
+          "assumptions": [
+            "incompressible two-phase flow",
+            "no gravity or capillarity",
+            "equal viscosities",
+            "kr_w=Sw^2",
+            "kr_o=(1-Sw)^2",
+            "one-dimensional homogeneous rock",
+            "0.3 pore volumes injected"
+          ],
+          "case_id": "buckley_leverett_equal_mobility",
+          "domain": "0 <= x_D <= 1",
+          "expected_order": 1.0,
+          "minimum_order": 0.7,
+          "name": "Buckley--Leverett displacement with quadratic relative permeability",
+          "units": {
+            "shock_position": "pore-volume coordinate",
+            "water_saturation": "1"
+          },
+          "variables": [
+            "water_saturation",
+            "shock_position"
+          ]
+        },
+        "node_id": "analytic_buckley_leverett",
+        "version": ""
+      },
+      {
+        "kind": "pymrst",
+        "label": "PyMRST incompressible TPFA plus explicit transport",
+        "metadata": {
+          "refinement_levels": 4
+        },
+        "node_id": "pymrst_buckley_leverett",
+        "version": ""
+      },
+      {
+        "kind": "analytic",
+        "label": "Terzaghi Fourier-series pressure and settlement solution",
+        "metadata": {
+          "assumptions": [
+            "linear poroelasticity",
+            "top drained",
+            "bottom sealed",
+            "instantaneous constant vertical load",
+            "one-dimensional strain",
+            "backward Euler pressure diffusion"
+          ],
+          "case_id": "terzaghi_consolidation",
+          "domain": "20 m poroelastic column",
+          "expected_order": 1.0,
+          "minimum_order": 0.85,
+          "name": "Terzaghi one-dimensional consolidation",
+          "units": {
+            "excess_pressure": "Pa",
+            "top_settlement": "m"
+          },
+          "variables": [
+            "excess_pressure",
+            "top_settlement"
+          ]
+        },
+        "node_id": "analytic_terzaghi",
+        "version": ""
+      },
+      {
+        "kind": "pymrst",
+        "label": "PyMRST Terzaghi poroelastic consolidation workflow",
+        "metadata": {
+          "refinement_levels": 4
+        },
+        "node_id": "pymrst_terzaghi",
+        "version": ""
+      },
+      {
+        "kind": "analytic",
+        "label": "Mandel series solution with Mandel--Cryer pressure overshoot",
+        "metadata": {
+          "assumptions": [
+            "linear poroelasticity",
+            "plane strain",
+            "constant plate load",
+            "far side drained",
+            "remaining boundaries sealed",
+            "moving rigid plate"
+          ],
+          "case_id": "mandel_cryer_coupling",
+          "domain": "10 m x 1 m poroelastic half-slab",
+          "expected_order": 1.0,
+          "minimum_order": 0.8,
+          "name": "Mandel constant-load poroelastic slab",
+          "units": {
+            "normalized_pressure": "1",
+            "plate_displacement": "m"
+          },
+          "variables": [
+            "normalized_pressure",
+            "plate_displacement"
+          ]
+        },
+        "node_id": "analytic_mandel",
+        "version": ""
+      },
+      {
+        "kind": "pymrst",
+        "label": "PyMRST fully coupled constant-load Mandel workflow",
+        "metadata": {
+          "refinement_levels": 4
+        },
+        "node_id": "pymrst_mandel",
+        "version": ""
+      },
+      {
+        "kind": "analytic",
+        "label": "Affine elasticity and rigid-body identities",
+        "metadata": {
+          "assumptions": [
+            "homogeneous isotropic linear elasticity",
+            "analytic affine displacement prescribed on the boundary",
+            "zero body force",
+            "regular and distorted polyhedral cells"
+          ],
+          "case_id": "elasticity_linear_patch",
+          "domain": "2D distorted quadrilateral and 3D Cartesian patches",
+          "expected_order": null,
+          "minimum_order": null,
+          "name": "VEM linear-elasticity patch tests",
+          "units": {
+            "elastic_energy": "J",
+            "nodal_displacement": "m"
+          },
+          "variables": [
+            "nodal_displacement",
+            "elastic_energy"
+          ]
+        },
+        "node_id": "analytic_elasticity_patch",
+        "version": ""
+      },
+      {
+        "kind": "pymrst",
+        "label": "PyMRST VEM displacement and stiffness assembly",
+        "metadata": {
+          "refinement_levels": 3
+        },
+        "node_id": "pymrst_elasticity_patch",
+        "version": ""
+      },
+      {
+        "kind": "analytic",
+        "label": "Thermodynamic phase-equilibrium identities",
+        "metadata": {
+          "assumptions": [
+            "isothermal-isobaric equilibrium",
+            "three-component mixture",
+            "positive normalized feed",
+            "two-phase states selected explicitly"
+          ],
+          "case_id": "peng_robinson_flash_identities",
+          "domain": "pressure-temperature-composition state ensemble",
+          "expected_order": null,
+          "minimum_order": null,
+          "name": "Peng--Robinson two-phase flash identities",
+          "units": {
+            "component_fugacity": "Pa",
+            "liquid_composition": "1",
+            "vapour_composition": "1",
+            "vapour_fraction": "1"
+          },
+          "variables": [
+            "vapour_fraction",
+            "liquid_composition",
+            "vapour_composition",
+            "component_fugacity"
+          ]
+        },
+        "node_id": "analytic_flash_equilibrium",
+        "version": ""
+      },
+      {
+        "kind": "pymrst",
+        "label": "PyMRST Peng--Robinson stability and two-phase flash",
+        "metadata": {
+          "refinement_levels": 3
+        },
+        "node_id": "pymrst_flash_equilibrium",
+        "version": ""
+      },
+      {
+        "kind": "analytic",
+        "label": "Manufactured finite-volume balance and Jacobian",
+        "metadata": {
+          "assumptions": [
+            "one-dimensional Cartesian grid",
+            "constant compressibility",
+            "constant permeability",
+            "closed external boundary",
+            "source manufactured from the prescribed pressure field"
+          ],
+          "case_id": "manufactured_accumulation_flux_balance",
+          "domain": "1D cell-centred TPFA chains",
+          "expected_order": null,
+          "minimum_order": null,
+          "name": "Manufactured AD accumulation and TPFA flux balance",
+          "units": {
+            "cell_residual": "m^3/s",
+            "face_flux": "m^3/s",
+            "residual_jacobian": "m^3/(Pa s)"
+          },
+          "variables": [
+            "cell_residual",
+            "face_flux",
+            "residual_jacobian"
+          ]
+        },
+        "node_id": "analytic_accumulation_flux",
+        "version": ""
+      },
+      {
+        "kind": "pymrst",
+        "label": "PyMRST ADI accumulation and TPFA flux assembly",
+        "metadata": {
+          "refinement_levels": 3
+        },
+        "node_id": "pymrst_accumulation_flux",
+        "version": ""
+      }
+    ],
+    "schema_version": 1
+  },
+  "summary": {
+    "accepted_edges": 39,
+    "cases": {
+      "buckley_leverett_equal_mobility": {
+        "acceptance": {
+          "maximum_finest_l1_error": 0.006,
+          "maximum_finest_shock_error": 0.005,
+          "maximum_water_balance_m3": 1e-12,
+          "minimum_l1_order": 0.7
+        },
+        "levels": [
+          {
+            "characteristic_size": 0.02,
+            "errors": {
+              "l1": 0.022390435800191365,
+              "l2": 0.07417181640457221,
+              "linf": 0.4951192446695638,
+              "shock_position": 0.007867965644035746
+            },
+            "invariants": {
+              "maximum_saturation": 0.9524930828134757,
+              "minimum_saturation": 0.0,
+              "water_volume_balance_m3": 8.881784197001252e-16
+            },
+            "resolution": 50,
+            "steps": null,
+            "timestep": null
+          },
+          {
+            "characteristic_size": 0.01,
+            "errors": {
+              "l1": 0.013937122296587518,
+              "l2": 0.060548804921127075,
+              "linf": 0.5510421522229774,
+              "shock_position": 0.0028679656440357415
+            },
+            "invariants": {
+              "maximum_saturation": 0.9731973622944305,
+              "minimum_saturation": 0.0,
+              "water_volume_balance_m3": 8.881784197001252e-16
+            },
+            "resolution": 100,
+            "steps": null,
+            "timestep": null
+          },
+          {
+            "characteristic_size": 0.005,
+            "errors": {
+              "l1": 0.008713212523332667,
+              "l2": 0.0509630965622284,
+              "linf": 0.5959991228253507,
+              "shock_position": 0.005367965644035744
+            },
+            "invariants": {
+              "maximum_saturation": 0.9854374427276121,
+              "minimum_saturation": 0.0,
+              "water_volume_balance_m3": 3.552713678800501e-15
+            },
+            "resolution": 200,
+            "steps": null,
+            "timestep": null
+          },
+          {
+            "characteristic_size": 0.0025,
+            "errors": {
+              "l1": 0.004192024019653301,
+              "l2": 0.030544705527779686,
+              "linf": 0.5529162885493178,
+              "shock_position": 0.0016179656440357681
+            },
+            "invariants": {
+              "maximum_saturation": 0.9923138018104427,
+              "minimum_saturation": 0.0,
+              "water_volume_balance_m3": 6.217248937900877e-15
+            },
+            "resolution": 400,
+            "steps": null,
+            "timestep": null
+          }
+        ],
+        "observed_orders": {
+          "l1": 0.7929147230934903,
+          "l2": 0.40884918491708455
+        },
+        "passed": true,
+        "spec": {
+          "assumptions": [
+            "incompressible two-phase flow",
+            "no gravity or capillarity",
+            "equal viscosities",
+            "kr_w=Sw^2",
+            "kr_o=(1-Sw)^2",
+            "one-dimensional homogeneous rock",
+            "0.3 pore volumes injected"
+          ],
+          "case_id": "buckley_leverett_equal_mobility",
+          "domain": "0 <= x_D <= 1",
+          "expected_order": 1.0,
+          "minimum_order": 0.7,
+          "name": "Buckley--Leverett displacement with quadratic relative permeability",
+          "units": {
+            "shock_position": "pore-volume coordinate",
+            "water_saturation": "1"
+          },
+          "variables": [
+            "water_saturation",
+            "shock_position"
+          ]
+        }
+      },
+      "elasticity_linear_patch": {
+        "acceptance": {
+          "maximum_normalized_rigid_energy": 1e-08,
+          "maximum_relative_displacement": 1e-09,
+          "maximum_relative_stiffness_asymmetry": 1e-12
+        },
+        "levels": [
+          {
+            "characteristic_size": 0.5,
+            "errors": {
+              "maximum_relative_displacement": 2.220446049250313e-16
+            },
+            "invariants": {
+              "fields_exercised": 6.0,
+              "maximum_normalized_rigid_energy": 8.745206287493803e-18,
+              "relative_stiffness_asymmetry": 4.463493026400327e-17
+            },
+            "resolution": 4,
+            "steps": null,
+            "timestep": null
+          },
+          {
+            "characteristic_size": 0.25,
+            "errors": {
+              "maximum_relative_displacement": 4.440892098500626e-16
+            },
+            "invariants": {
+              "fields_exercised": 6.0,
+              "maximum_normalized_rigid_energy": 1.0171626817869535e-17,
+              "relative_stiffness_asymmetry": 8.650483191347432e-17
+            },
+            "resolution": 16,
+            "steps": null,
+            "timestep": null
+          },
+          {
+            "characteristic_size": 0.3333333333333333,
+            "errors": {
+              "maximum_relative_displacement": 4.440892098500626e-16
+            },
+            "invariants": {
+              "fields_exercised": 12.0,
+              "maximum_normalized_rigid_energy": 4.540863808997106e-17,
+              "relative_stiffness_asymmetry": 1.0152498996535016e-17
+            },
+            "resolution": 27,
+            "steps": null,
+            "timestep": null
+          }
+        ],
+        "observed_orders": {},
+        "passed": true,
+        "spec": {
+          "assumptions": [
+            "homogeneous isotropic linear elasticity",
+            "analytic affine displacement prescribed on the boundary",
+            "zero body force",
+            "regular and distorted polyhedral cells"
+          ],
+          "case_id": "elasticity_linear_patch",
+          "domain": "2D distorted quadrilateral and 3D Cartesian patches",
+          "expected_order": null,
+          "minimum_order": null,
+          "name": "VEM linear-elasticity patch tests",
+          "units": {
+            "elastic_energy": "J",
+            "nodal_displacement": "m"
+          },
+          "variables": [
+            "nodal_displacement",
+            "elastic_energy"
+          ]
+        }
+      },
+      "hydrostatic_tpfa_column": {
+        "acceptance": {
+          "flux_absolute_tolerance_m3_s": 1e-15,
+          "pressure_absolute_tolerance_Pa": 1e-05
+        },
+        "levels": [
+          {
+            "characteristic_size": 3.0,
+            "errors": {
+              "l1_pressure_Pa": 5.774199962615967e-09,
+              "l2_pressure_Pa": 6.585445079827193e-09,
+              "linf_pressure_Pa": 9.313225746154785e-09
+            },
+            "invariants": {
+              "maximum_absolute_face_flux_m3_s": 8.102349378735388e-20
+            },
+            "resolution": 10,
+            "steps": null,
+            "timestep": null
+          },
+          {
+            "characteristic_size": 1.5,
+            "errors": {
+              "l1_pressure_Pa": 2.4214386940002442e-09,
+              "l2_pressure_Pa": 3.2795252020766976e-09,
+              "linf_pressure_Pa": 5.587935447692871e-09
+            },
+            "invariants": {
+              "maximum_absolute_face_flux_m3_s": 1.6408155093421296e-19
+            },
+            "resolution": 20,
+            "steps": null,
+            "timestep": null
+          },
+          {
+            "characteristic_size": 0.75,
+            "errors": {
+              "l1_pressure_Pa": 2.1560117602348326e-08,
+              "l2_pressure_Pa": 2.382620946590981e-08,
+              "linf_pressure_Pa": 3.3527612686157227e-08
+            },
+            "invariants": {
+              "maximum_absolute_face_flux_m3_s": 4.486810608697041e-19
+            },
+            "resolution": 40,
+            "steps": null,
+            "timestep": null
+          },
+          {
+            "characteristic_size": 0.375,
+            "errors": {
+              "l1_pressure_Pa": 1.3476237654685973e-07,
+              "l2_pressure_Pa": 1.5047734802321264e-07,
+              "linf_pressure_Pa": 2.0489096641540527e-07
+            },
+            "invariants": {
+              "maximum_absolute_face_flux_m3_s": 2.0023693863459645e-18
+            },
+            "resolution": 80,
+            "steps": null,
+            "timestep": null
+          }
+        ],
+        "observed_orders": {},
+        "passed": true,
+        "spec": {
+          "assumptions": [
+            "incompressible fluid",
+            "constant density",
+            "constant gravity",
+            "top Dirichlet pressure",
+            "no-flow remaining boundaries"
+          ],
+          "case_id": "hydrostatic_tpfa_column",
+          "domain": "1 m x 1 m x 30 m vertical Cartesian column",
+          "expected_order": null,
+          "minimum_order": null,
+          "name": "Single-phase hydrostatic TPFA column",
+          "units": {
+            "cell_pressure": "Pa",
+            "face_flux": "m^3/s"
+          },
+          "variables": [
+            "cell_pressure",
+            "face_flux"
+          ]
+        }
+      },
+      "mandel_cryer_coupling": {
+        "acceptance": {
+          "maximum_column_pressure_spread": 1e-06,
+          "maximum_finest_pressure_linf": 0.01,
+          "maximum_plate_force_relative_error": 1e-06,
+          "minimum_overshoot_ratio": 1.05,
+          "minimum_pressure_order": 0.8
+        },
+        "levels": [
+          {
+            "characteristic_size": 0.08333333333333333,
+            "errors": {
+              "pressure_l2": 0.009293274259966821,
+              "pressure_linf": 0.03791001900598012
+            },
+            "invariants": {
+              "centre_peak_pressure_ratio": 1.0926058687185936,
+              "final_plate_force_relative_error": 4.060994833707809e-09,
+              "maximum_column_pressure_spread": 5.9332538882017616e-12
+            },
+            "resolution": 12,
+            "steps": 40,
+            "timestep": 0.0375
+          },
+          {
+            "characteristic_size": 0.05,
+            "errors": {
+              "pressure_l2": 0.005557911100178965,
+              "pressure_linf": 0.021711855457967666
+            },
+            "invariants": {
+              "centre_peak_pressure_ratio": 1.0945567681488497,
+              "final_plate_force_relative_error": 3.496844321489334e-09,
+              "maximum_column_pressure_spread": 3.945066495703031e-12
+            },
+            "resolution": 20,
+            "steps": 50,
+            "timestep": 0.03
+          },
+          {
+            "characteristic_size": 0.03333333333333333,
+            "errors": {
+              "pressure_l2": 0.0034286333492379046,
+              "pressure_linf": 0.012539087406290617
+            },
+            "invariants": {
+              "centre_peak_pressure_ratio": 1.0958733198902808,
+              "final_plate_force_relative_error": 2.2701893467456103e-09,
+              "maximum_column_pressure_spread": 2.0459189897792385e-12
+            },
+            "resolution": 30,
+            "steps": 75,
+            "timestep": 0.02
+          },
+          {
+            "characteristic_size": 0.025,
+            "errors": {
+              "pressure_l2": 0.00247624431165041,
+              "pressure_linf": 0.008741224909397327
+            },
+            "invariants": {
+              "centre_peak_pressure_ratio": 1.0964742497652973,
+              "final_plate_force_relative_error": 1.6438685124740004e-09,
+              "maximum_column_pressure_spread": 1.0722046694944254e-08
+            },
+            "resolution": 40,
+            "steps": 100,
+            "timestep": 0.015
+          }
+        ],
+        "observed_orders": {
+          "pressure_l2": 1.1039601311822858,
+          "pressure_linf": 1.2270566229917148
+        },
+        "passed": true,
+        "spec": {
+          "assumptions": [
+            "linear poroelasticity",
+            "plane strain",
+            "constant plate load",
+            "far side drained",
+            "remaining boundaries sealed",
+            "moving rigid plate"
+          ],
+          "case_id": "mandel_cryer_coupling",
+          "domain": "10 m x 1 m poroelastic half-slab",
+          "expected_order": 1.0,
+          "minimum_order": 0.8,
+          "name": "Mandel constant-load poroelastic slab",
+          "units": {
+            "normalized_pressure": "1",
+            "plate_displacement": "m"
+          },
+          "variables": [
+            "normalized_pressure",
+            "plate_displacement"
+          ]
+        }
+      },
+      "manufactured_accumulation_flux_balance": {
+        "acceptance": {
+          "maximum_global_balance": 1e-20,
+          "maximum_jacobian_error": 1e-24,
+          "maximum_residual": 1e-20
+        },
+        "levels": [
+          {
+            "characteristic_size": 0.3333333333333333,
+            "errors": {
+              "maximum_jacobian_error": 0.0,
+              "maximum_residual": 0.0
+            },
+            "invariants": {
+              "expected_jacobian_nnz": 7.0,
+              "global_source_storage_balance": 7.444625512977249e-24,
+              "jacobian_nnz": 7.0,
+              "maximum_face_flux": 3.6e-08
+            },
+            "resolution": 3,
+            "steps": 1,
+            "timestep": 7200.0
+          },
+          {
+            "characteristic_size": 0.1111111111111111,
+            "errors": {
+              "maximum_jacobian_error": 0.0,
+              "maximum_residual": 0.0
+            },
+            "invariants": {
+              "expected_jacobian_nnz": 25.0,
+              "global_source_storage_balance": 8.271806125530277e-25,
+              "jacobian_nnz": 25.0,
+              "maximum_face_flux": 1.4721550856976585e-08
+            },
+            "resolution": 9,
+            "steps": 1,
+            "timestep": 7200.0
+          },
+          {
+            "characteristic_size": 0.030303030303030304,
+            "errors": {
+              "maximum_jacobian_error": 0.0,
+              "maximum_residual": 0.0
+            },
+            "invariants": {
+              "expected_jacobian_nnz": 97.0,
+              "global_source_storage_balance": 8.271806125530277e-25,
+              "jacobian_nnz": 97.0,
+              "maximum_face_flux": 3.882256173989177e-09
+            },
+            "resolution": 33,
+            "steps": 1,
+            "timestep": 7200.0
+          }
+        ],
+        "observed_orders": {},
+        "passed": true,
+        "spec": {
+          "assumptions": [
+            "one-dimensional Cartesian grid",
+            "constant compressibility",
+            "constant permeability",
+            "closed external boundary",
+            "source manufactured from the prescribed pressure field"
+          ],
+          "case_id": "manufactured_accumulation_flux_balance",
+          "domain": "1D cell-centred TPFA chains",
+          "expected_order": null,
+          "minimum_order": null,
+          "name": "Manufactured AD accumulation and TPFA flux balance",
+          "units": {
+            "cell_residual": "m^3/s",
+            "face_flux": "m^3/s",
+            "residual_jacobian": "m^3/(Pa s)"
+          },
+          "variables": [
+            "cell_residual",
+            "face_flux",
+            "residual_jacobian"
+          ]
+        }
+      },
+      "peng_robinson_flash_identities": {
+        "acceptance": {
+          "maximum_composition_closure": 1e-12,
+          "maximum_log_fugacity_ratio": 1e-08,
+          "maximum_material_balance": 1e-09,
+          "minimum_two_phase_fraction": 1.0
+        },
+        "levels": [
+          {
+            "characteristic_size": 0.125,
+            "errors": {
+              "fugacity_log_ratio": 2.3296919948707147e-12,
+              "liquid_closure": 2.220446049250313e-16,
+              "material_balance": 9.636735853746359e-14,
+              "vapour_closure": 2.220446049250313e-16
+            },
+            "invariants": {
+              "finite_outputs": 1.0,
+              "maximum_vapour_fraction": 0.23768900601044152,
+              "minimum_composition": 4.763184964887794e-06,
+              "minimum_vapour_fraction": 0.057277807400623715,
+              "two_phase_fraction": 1.0
+            },
+            "resolution": 8,
+            "steps": 10,
+            "timestep": null
+          },
+          {
+            "characteristic_size": 0.03125,
+            "errors": {
+              "fugacity_log_ratio": 4.162004074706126e-12,
+              "liquid_closure": 2.220446049250313e-16,
+              "material_balance": 1.1440848268762238e-13,
+              "vapour_closure": 2.220446049250313e-16
+            },
+            "invariants": {
+              "finite_outputs": 1.0,
+              "maximum_vapour_fraction": 0.23768900601044152,
+              "minimum_composition": 4.763184964887794e-06,
+              "minimum_vapour_fraction": 0.057277807400623715,
+              "two_phase_fraction": 1.0
+            },
+            "resolution": 32,
+            "steps": 10,
+            "timestep": null
+          },
+          {
+            "characteristic_size": 0.0078125,
+            "errors": {
+              "fugacity_log_ratio": 4.253486451934854e-12,
+              "liquid_closure": 2.220446049250313e-16,
+              "material_balance": 1.197930643570544e-13,
+              "vapour_closure": 2.220446049250313e-16
+            },
+            "invariants": {
+              "finite_outputs": 1.0,
+              "maximum_vapour_fraction": 0.23768900601044152,
+              "minimum_composition": 4.763184964887794e-06,
+              "minimum_vapour_fraction": 0.057277807400623715,
+              "two_phase_fraction": 1.0
+            },
+            "resolution": 128,
+            "steps": 10,
+            "timestep": null
+          }
+        ],
+        "observed_orders": {},
+        "passed": true,
+        "spec": {
+          "assumptions": [
+            "isothermal-isobaric equilibrium",
+            "three-component mixture",
+            "positive normalized feed",
+            "two-phase states selected explicitly"
+          ],
+          "case_id": "peng_robinson_flash_identities",
+          "domain": "pressure-temperature-composition state ensemble",
+          "expected_order": null,
+          "minimum_order": null,
+          "name": "Peng--Robinson two-phase flash identities",
+          "units": {
+            "component_fugacity": "Pa",
+            "liquid_composition": "1",
+            "vapour_composition": "1",
+            "vapour_fraction": "1"
+          },
+          "variables": [
+            "vapour_fraction",
+            "liquid_composition",
+            "vapour_composition",
+            "component_fugacity"
+          ]
+        }
+      },
+      "pressure_diffusion_1d": {
+        "acceptance": {
+          "maximum_finest_l2_error": 0.0002,
+          "maximum_storage_balance": 1e-10,
+          "minimum_l2_order": 1.9
+        },
+        "levels": [
+          {
+            "characteristic_size": 10.0,
+            "errors": {
+              "l1": 0.004809428311586078,
+              "l2": 0.006414297284425928,
+              "linf": 0.012360117345101007
+            },
+            "invariants": {
+              "maximum_pressure": 0.870084557966919,
+              "minimum_pressure": 0.00228927148192044,
+              "storage_boundary_balance": 1.7763568394002505e-14
+            },
+            "resolution": 10,
+            "steps": 25,
+            "timestep": 1000.0
+          },
+          {
+            "characteristic_size": 5.0,
+            "errors": {
+              "l1": 0.0011896553261369145,
+              "l2": 0.0015784815824390033,
+              "linf": 0.0030099337058077102
+            },
+            "invariants": {
+              "maximum_pressure": 0.9364800478239315,
+              "minimum_pressure": 0.0009309219781646533,
+              "storage_boundary_balance": 9.592326932761353e-14
+            },
+            "resolution": 20,
+            "steps": 100,
+            "timestep": 250.0
+          },
+          {
+            "characteristic_size": 2.5,
+            "errors": {
+              "l1": 0.0002966786127803045,
+              "l2": 0.0003931549678518214,
+              "linf": 0.0007502806306465826
+            },
+            "invariants": {
+              "maximum_pressure": 0.9684063926124995,
+              "minimum_pressure": 0.0004353958075452377,
+              "storage_boundary_balance": 6.501466032204917e-13
+            },
+            "resolution": 40,
+            "steps": 400,
+            "timestep": 62.5
+          },
+          {
+            "characteristic_size": 1.25,
+            "errors": {
+              "l1": 7.418022561419212e-05,
+              "l2": 9.819858031651957e-05,
+              "linf": 0.00018731783052233775
+            },
+            "invariants": {
+              "maximum_pressure": 0.984223638132772,
+              "minimum_pressure": 0.00021381504661692043,
+              "storage_boundary_balance": 3.1867841698840493e-12
+            },
+            "resolution": 80,
+            "steps": 1600,
+            "timestep": 15.625
+          }
+        ],
+        "observed_orders": {
+          "l1": 2.0059631657394275,
+          "l2": 2.009370316618859,
+          "linf": 2.013641067948921
+        },
+        "passed": true,
+        "spec": {
+          "assumptions": [
+            "constant diffusivity",
+            "zero initial excess pressure",
+            "unit left Dirichlet step",
+            "zero right Dirichlet pressure",
+            "cell-centred TPFA",
+            "backward Euler with dt proportional to dx^2"
+          ],
+          "case_id": "pressure_diffusion_1d",
+          "domain": "0 <= x <= 100 m",
+          "expected_order": 2.0,
+          "minimum_order": 1.9,
+          "name": "One-dimensional constant-coefficient pressure diffusion",
+          "units": {
+            "normalized_pressure": "1",
+            "time": "s",
+            "x": "m"
+          },
+          "variables": [
+            "normalized_pressure"
+          ]
+        }
+      },
+      "radial_pressure_bessel_transient": {
+        "acceptance": {
+          "maximum_finest_l2_error": 5e-06,
+          "maximum_storage_balance": 1e-10,
+          "minimum_l2_order": 1.85
+        },
+        "levels": [
+          {
+            "characteristic_size": 0.45,
+            "errors": {
+              "l1": 0.00010479419487620256,
+              "l2": 0.00019858484168024608,
+              "linf": 0.0006501077247117459
+            },
+            "invariants": {
+              "storage_boundary_balance": 1.4432899320127035e-14
+            },
+            "resolution": 20,
+            "steps": 5,
+            "timestep": 0.08
+          },
+          {
+            "characteristic_size": 0.225,
+            "errors": {
+              "l1": 2.8291811312669164e-05,
+              "l2": 5.5325034412072695e-05,
+              "linf": 0.00022227658773810166
+            },
+            "invariants": {
+              "storage_boundary_balance": 4.241051954068098e-14
+            },
+            "resolution": 40,
+            "steps": 20,
+            "timestep": 0.02
+          },
+          {
+            "characteristic_size": 0.1125,
+            "errors": {
+              "l1": 7.183639918266361e-06,
+              "l2": 1.4099019697247692e-05,
+              "linf": 6.172322554953702e-05
+            },
+            "invariants": {
+              "storage_boundary_balance": 4.440892098500626e-14
+            },
+            "resolution": 80,
+            "steps": 80,
+            "timestep": 0.005
+          },
+          {
+            "characteristic_size": 0.05625,
+            "errors": {
+              "l1": 1.8041647809420363e-06,
+              "l2": 3.5411310967407388e-06,
+              "linf": 1.616713899366129e-05
+            },
+            "invariants": {
+              "storage_boundary_balance": 4.671818487622659e-13
+            },
+            "resolution": 160,
+            "steps": 317,
+            "timestep": 0.0012618296529968455
+          }
+        ],
+        "observed_orders": {
+          "l1": 1.9557849239747986,
+          "l2": 1.9400541903216557,
+          "linf": 1.7837098123340296
+        },
+        "passed": true,
+        "spec": {
+          "assumptions": [
+            "constant diffusivity",
+            "axisymmetric flow",
+            "unit thickness",
+            "exact time-dependent Dirichlet data at both radii",
+            "cell-centred radial finite volumes",
+            "backward Euler"
+          ],
+          "case_id": "radial_pressure_bessel_transient",
+          "domain": "1 m <= r <= 10 m",
+          "expected_order": 2.0,
+          "minimum_order": 1.85,
+          "name": "Axisymmetric radial pressure transient on an annulus",
+          "units": {
+            "normalized_pressure": "1",
+            "r": "m",
+            "time": "s"
+          },
+          "variables": [
+            "normalized_pressure"
+          ]
+        }
+      },
+      "terzaghi_consolidation": {
+        "acceptance": {
+          "maximum_finest_pressure_linf": 0.001,
+          "maximum_finest_settlement_relative_error": 0.0005,
+          "minimum_pressure_order": 0.85
+        },
+        "levels": [
+          {
+            "characteristic_size": 0.025,
+            "errors": {
+              "pressure_l2": 0.004230407605838889,
+              "pressure_linf": 0.007918842740847708,
+              "settlement_linf_relative": 0.0023734968279566335
+            },
+            "invariants": {
+              "maximum_pressure_ratio": 0.9999885067965916,
+              "minimum_pressure_ratio": 0.002266877677086014,
+              "minimum_settlement_increment": 0.0026722449899929286
+            },
+            "resolution": 40,
+            "steps": 80,
+            "timestep": 0.03
+          },
+          {
+            "characteristic_size": 0.0125,
+            "errors": {
+              "pressure_l2": 0.0020944132634193023,
+              "pressure_linf": 0.003746822704592568,
+              "settlement_linf_relative": 0.0011847704616227484
+            },
+            "invariants": {
+              "maximum_pressure_ratio": 0.9999954546376363,
+              "minimum_pressure_ratio": 0.0010968306945447993,
+              "minimum_settlement_increment": 0.0026739207808185103
+            },
+            "resolution": 80,
+            "steps": 160,
+            "timestep": 0.015
+          },
+          {
+            "characteristic_size": 0.00625,
+            "errors": {
+              "pressure_l2": 0.0010423937513627708,
+              "pressure_linf": 0.0018751056034306494,
+              "settlement_linf_relative": 0.0005919426165951039
+            },
+            "invariants": {
+              "maximum_pressure_ratio": 0.9999975186960122,
+              "minimum_pressure_ratio": 0.0005392334327648515,
+              "minimum_settlement_increment": 0.002675233125855863
+            },
+            "resolution": 160,
+            "steps": 320,
+            "timestep": 0.0075
+          },
+          {
+            "characteristic_size": 0.003125,
+            "errors": {
+              "pressure_l2": 0.0005200392384929369,
+              "pressure_linf": 0.0009379756022371811,
+              "settlement_linf_relative": 0.00029586726307053693
+            },
+            "invariants": {
+              "maximum_pressure_ratio": 0.9999982674261849,
+              "minimum_pressure_ratio": 0.0002673174176217311,
+              "minimum_settlement_increment": 0.002676004631471905
+            },
+            "resolution": 320,
+            "steps": 640,
+            "timestep": 0.00375
+          }
+        ],
+        "observed_orders": {
+          "pressure_l2": 1.007895866100861,
+          "pressure_linf": 1.0231697788261338,
+          "settlement_linf_relative": 1.001305477040796
+        },
+        "passed": true,
+        "spec": {
+          "assumptions": [
+            "linear poroelasticity",
+            "top drained",
+            "bottom sealed",
+            "instantaneous constant vertical load",
+            "one-dimensional strain",
+            "backward Euler pressure diffusion"
+          ],
+          "case_id": "terzaghi_consolidation",
+          "domain": "20 m poroelastic column",
+          "expected_order": 1.0,
+          "minimum_order": 0.85,
+          "name": "Terzaghi one-dimensional consolidation",
+          "units": {
+            "excess_pressure": "Pa",
+            "top_settlement": "m"
+          },
+          "variables": [
+            "excess_pressure",
+            "top_settlement"
+          ]
+        }
+      }
+    },
+    "passed": true,
+    "total_edges": 39
+  }
+}

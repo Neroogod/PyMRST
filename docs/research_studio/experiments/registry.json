@@ -1,0 +1,136 @@
+{
+  "definitions": [
+    {
+      "base_case": {
+        "case_id": "case_spe1_blackoil",
+        "constructor": {
+          "configuration": {
+            "case": "spe1",
+            "report_steps": 2
+          },
+          "fingerprint": "",
+          "owner": "pymrst.modules.ad_blackoil.examples.blackoil_time_integration_example:run_blackoil_time_integration_example"
+        },
+        "content_hash": "88756d94a56eb8fb73705c087cba8dd02f0a1a8d4b30064f95b17c7979435ebf"
+      },
+      "datasets": [
+        {
+          "media_type": "application/x-eclipse-deck",
+          "name": "spe1_benchmark_deck",
+          "sha256": "88756d94a56eb8fb73705c087cba8dd02f0a1a8d4b30064f95b17c7979435ebf",
+          "size_bytes": 12242,
+          "source": "/Users/Shared/PyMRST_workspace/mrst-2024a-Geomech/examples/data/SPE1/BENCH_SPE1.DATA"
+        }
+      ],
+      "description": "A reproducible two-report-step FIM, explicit and AIM comparison anchored to the signed MRST 2024a qualification fixture.",
+      "execution_profile": {
+        "configuration": {
+          "checkpoint_every_report": true,
+          "failure_isolation": "member",
+          "workers": 1
+        },
+        "name": "quick"
+      },
+      "hypothesis": "Adaptive implicit transport preserves fully implicit pressure and production accuracy while reducing implicit transport work.",
+      "model": {
+        "configuration": {
+          "disgas": true,
+          "vapoil": false
+        },
+        "fingerprint": "",
+        "owner": "pymrst.modules.ad_blackoil.models:GenericBlackOilModel"
+      },
+      "name": "SPE1 time-integration formulation study",
+      "outputs": [
+        {
+          "cadence": "report_step",
+          "fields": [
+            "pressure",
+            "sW",
+            "sG",
+            "rs"
+          ],
+          "name": "reservoir"
+        },
+        {
+          "cadence": "report_step",
+          "fields": [
+            "bhp",
+            "qWs",
+            "qOs",
+            "qGs"
+          ],
+          "name": "wells"
+        },
+        {
+          "cadence": "report_step",
+          "fields": [
+            "iterations",
+            "ministeps",
+            "implicit_fraction"
+          ],
+          "name": "solver"
+        }
+      ],
+      "publication_artifacts": [
+        "evidence_graph",
+        "comparison_report"
+      ],
+      "random_seed": 20240803,
+      "schedule": {
+        "configuration": {
+          "controls": "deck",
+          "report_steps": 2
+        },
+        "fingerprint": "",
+        "owner": "pymrst.modules.ad_core.initialization:setupSPE1"
+      },
+      "schema_version": 1,
+      "tags": [
+        "blackoil",
+        "mrst-qualified",
+        "spe1",
+        "time-integration"
+      ],
+      "validation": [
+        {
+          "name": "mrst_time_integration",
+          "policy": {
+            "fixture": "examples/validation/ref_time_integration_spe1.mat",
+            "pressure_absolute_tolerance_pa": 100.0,
+            "saturation_absolute_tolerance": 1e-06
+          }
+        }
+      ],
+      "variants": [
+        {
+          "comparison_group": "time_integration",
+          "components": {
+            "time_integration": "fully-implicit"
+          },
+          "name": "fim",
+          "parameters": {}
+        },
+        {
+          "comparison_group": "time_integration",
+          "components": {
+            "time_integration": "explicit"
+          },
+          "name": "explicit",
+          "parameters": {}
+        },
+        {
+          "comparison_group": "time_integration",
+          "components": {
+            "time_integration": "adaptive-implicit"
+          },
+          "name": "aim",
+          "parameters": {
+            "aim.threshold": 0.05
+          }
+        }
+      ]
+    }
+  ],
+  "schema_version": 1
+}

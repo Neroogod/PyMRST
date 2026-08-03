@@ -1,0 +1,22 @@
+{
+  "accepted_elapsed_time": 518400.0,
+  "checkpoint_id": "checkpoint_golden",
+  "code_fingerprint": "code_golden",
+  "completed_report_steps": 2,
+  "control_index": null,
+  "model_fingerprint": "model_golden",
+  "schedule_fingerprint": "400491b6479d89dfaae6217e79e4133649fe4c73a6f2475592443b7c661bc897",
+  "schema_version": 1,
+  "solver_fingerprint": "solver_golden",
+  "source_run_id": "run_golden_v1",
+  "state": {
+    "pressure": [
+      27000000.0,
+      27000000.0
+    ],
+    "u": [
+      0.0,
+      1e-05
+    ]
+  }
+}

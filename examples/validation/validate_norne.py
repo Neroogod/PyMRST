@@ -49,7 +49,13 @@ _spec.loader.exec_module(norne)
 
 def run_python(mrst_bug: bool):
     """The example's case, with the correct or the MRST Biot term."""
-    g, model, st = norne.build_case("mini", verbose=False)
+    # This historical deep fixture predates the cR option in the Python
+    # runner and its MATLAB dump intentionally omitted cR.  Keep reproducing
+    # that exact recorded configuration; the six-case matrix validator uses
+    # runNorneExample.m's actual cR=4e-10 default.
+    g, model, st = norne.build_case(
+        "mini", verbose=False, rock_compressibility=0.0
+    )
     if mrst_bug:
         from pymrst.modules.ad_mechanics.poromech import (
             PoroMechanicalPoreVolume,
@@ -61,7 +67,10 @@ def run_python(mrst_bug: bool):
         st = model.seed_state(st)
 
     dts = [1.0 * DAY] + [5.0 * DAY] * 20
-    solver = NonLinearSolver(max_iterations=40)
+    # The physically corrected Biot storage makes the first coupled solve
+    # substantially stiffer than MRST's missing-volume formulation. Dynamic
+    # relaxation removes the otherwise persistent injector-control oscillation.
+    solver = NonLinearSolver(max_iterations=80, use_relaxation=True)
 
     p, sw, u, uz, divu, strain, eff_stress, total_stress, bhp = (
         [], [], [], [], [], [], [], [], []
@@ -187,7 +196,9 @@ def main() -> int:
     print("\n2. Both codes start in exact equilibrium (pRef confines pRef),")
     print("   which pins the boundary conditions on a non-flat corner-point")
     print("   surface - the thing easiest to get silently wrong:\n")
-    _, model0, st0 = norne.build_case("mini", verbose=False)
+    _, model0, st0 = norne.build_case(
+        "mini", verbose=False, rock_compressibility=0.0
+    )
     py_u0 = float(np.abs(st0["u"]).max())
     ml_u0 = float(np.abs(ml_uz0).max())
     print(f"  ok   initial |u_z|: PyMRST {py_u0:.2e} m, MRST {ml_u0:.2e} m")

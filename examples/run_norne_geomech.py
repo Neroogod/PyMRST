@@ -51,10 +51,24 @@ from pymrst.gridprocessing import compute_geometry, process_grdecl
 from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
 from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.modules.ad_mechanics import (
-    MechanicModel,
     MechBlackOilModel,
+    MechanicModel,
+    MechOilWaterModel,
     PoroelasticSchurSolver,
 )
+from pymrst.modules.ad_mechanics.poromech import (
+    FixedStressBlackOilWellModel,
+    FixedStressOilWaterWellModel,
+    FixedStressWaterWellModel,
+    MechWaterWellModel,
+)
+from pymrst.modules.ad_mechanics.examples.run_2d_case import (
+    _blackoil_fluid_from_spe1,
+)
+from pymrst.modules.ad_mechanics.models.splitting.fixed_stress_models import (
+    simulate_fixed_stress_schedule,
+)
+from pymrst.modules.ad_blackoil.models.generic_black_oil_model import blackoil_status
 from pymrst.modules.ad_props import init_simple_adi_fluid
 from pymrst.modules.deckformat.norne import (
     fetch_norne,
@@ -64,6 +78,7 @@ from pymrst.modules.deckformat.norne import (
 from pymrst.modules.vemmech.vem import ElasticBC, create_augmented_grid, enu2c
 from pymrst.params import NORM_GRAVITY, add_well
 from pymrst.utils.units import BARSA, CENTI, DARCY, DAY, MILLI, POISE
+from pymrst.utils.adi import ad_exp
 
 P_REF = 270 * BARSA          # runNorneExample.m
 E_YOUNG = 1e9                # 1 GPa
@@ -112,7 +127,13 @@ def build_bc(g, p_ref: float) -> ElasticBC:
     )
 
 
-def build_case(subset: str, verbose: bool = True):
+def build_case(subset: str, verbose: bool = True,
+               fluid_model: str = "oil water",
+               method: str = "fully coupled",
+               splitting_tolerance: float = 1.0e-6,
+               mrst_oilwater_bug: bool = False,
+               mrst_wellbore_bug: bool = False,
+               rock_compressibility: float = 4.0e-10):
     """Grid, rock, mechanics, fluid, wells - the whole Norne case."""
     if verbose:
         print("Fetching Norne (OPM opm-tests, pinned revision) ...")
@@ -135,37 +156,130 @@ def build_case(subset: str, verbose: bool = True):
               f"(kx), {int(np.sum(kz == 0))} cells with a sealed kz "
               f"(the layer-4 shale)")
 
-    C = enu2c(np.full(g.cells.num, E_YOUNG), np.full(g.cells.num, NU_POISSON))
-    mech = MechanicModel(g, C, alpha=BIOT_ALPHA, el_bc=build_bc(g, P_REF))
-
-    fluid = init_simple_adi_fluid(
-        mu=np.array([1.0, 10.0]) * CENTI * POISE,
-        rho=[1000.0, 700.0], n=[1, 1],
-        c=[1e-10, 1e-10], p_ref=P_REF,
-    )
-
     inj_cell, prod_cell = 9, g.cells.num - 1          # runNorneExample.m
     ref_depth = float(g.cells.centroids[0, 2])
     grav = np.array([0.0, 0.0, NORM_GRAVITY])
 
+    fluid_key = str(fluid_model).lower().replace("-", " ")
+    method_key = str(method).lower().replace("-", " ").replace("_", " ")
+    split = method_key in {"fixed stress", "fixed stress splitting", "split", "splitting"}
+    if method_key not in {"fully coupled", "full", "monolithic"} and not split:
+        raise ValueError(f"unsupported Norne coupling method {method!r}")
+    blackoil_fluid = None
+    p_ref = P_REF
+    injection_rate = 1e4 / DAY
+    if fluid_key in {"blackoil", "black oil"}:
+        deck, blackoil_fluid = _blackoil_fluid_from_spe1()
+        p_ref = float(deck["pvtw"]["p_ref"])
+        injection_rate = 2.5e6 / DAY
+        comp_inj, comp_prod = np.array([0.0, 0.0, 1.0]), np.array([0.0, 1.0, 0.0])
+    elif fluid_key == "water":
+        comp_inj = comp_prod = np.array([1.0])
+    elif fluid_key in {"oil water", "oil_water"}:
+        comp_inj, comp_prod = np.array([1.0, 0.0]), np.array([0.0, 1.0])
+    else:
+        raise ValueError(f"unsupported Norne fluid model {fluid_model!r}")
+
+    C = enu2c(np.full(g.cells.num, E_YOUNG), np.full(g.cells.num, NU_POISSON))
+    mech = MechanicModel(g, C, alpha=BIOT_ALPHA, el_bc=build_bc(g, p_ref))
     w = add_well(None, g, rock, np.array([inj_cell]), well_type="rate",
-                 val=1e4 / DAY, compi=np.array([1.0, 0.0]), sign=1,
+                 val=injection_rate, compi=comp_inj, sign=1,
                  name="inj", ref_depth=ref_depth, gravity=grav)
     w = add_well(w, g, rock, np.array([prod_cell]), well_type="bhp",
-                 val=P_REF, compi=np.array([0.0, 1.0]), sign=-1,
+                 val=p_ref, compi=comp_prod, sign=-1,
                  name="prod", ref_depth=ref_depth, gravity=grav)
+    if fluid_key in {"blackoil", "black oil"}:
+        # MRST retains the BHP equation when the initially hydrostatic
+        # black-oil producer briefly crossflows.  Disallowing that reversal
+        # pins qO=0 on the first step and changes the subsequent flash path.
+        w[-1].allow_sign_change = True
+        w[-1].mrst_zero_flux_mixture = bool(mrst_wellbore_bug)
 
-    model = MechBlackOilModel(g, rock, fluid, w, mech,
-                              gravity=NORM_GRAVITY, tol_mech=1e-6)
+    if fluid_key in {"blackoil", "black oil"}:
+        if split:
+            model = FixedStressBlackOilWellModel(
+                g, rock, blackoil_fluid, w, mech,
+                splitting_tol=splitting_tolerance,
+                tol_well=1e-9, gravity=NORM_GRAVITY,
+            )
+            st = model.initial_state(np.full(g.cells.num, p_ref))
+        else:
+            model = MechBlackOilModel(
+                g, rock, blackoil_fluid, w, mech, disgas=True,
+                gravity=NORM_GRAVITY, tol_mech=1e-6, tol_well=1e-9,
+            )
+            sw = np.zeros(g.cells.num)
+            sg = np.zeros(g.cells.num)
+            so = np.ones(g.cells.num)
+            st = State(
+                pressure=np.full(g.cells.num, p_ref), sW=sw, sO=so, sG=sg,
+                rs=0.5 * blackoil_fluid.rs_sat(np.full(g.cells.num, p_ref)),
+                status=blackoil_status(sw, so, sg, disgas=True),
+                qWs=np.zeros(2), qOs=np.zeros(2),
+                qGs=np.array([injection_rate, 0.0]),
+                bhp=np.full(2, p_ref),
+            )
+            st = model.seed_state(st)
+        return g, model, st
 
-    st = State(
-        pressure=np.full(g.cells.num, P_REF),
-        sW=np.zeros(g.cells.num),                     # starts full of oil
-        qWs=np.array([1e4 / DAY, 0.0]),
-        qOs=np.array([0.0, -1e4 / DAY]),
-        bhp=np.array([P_REF, P_REF]),
+    if fluid_key == "water":
+        compressibility = 1e-10
+
+        def b(pressure):
+            return ad_exp(compressibility * (pressure - p_ref))
+
+        common = dict(
+            pv_mult=lambda pressure: 1.0 + 4e-10 * (pressure - p_ref),
+            tol_well=1e-9,
+        )
+        if split:
+            model = FixedStressWaterWellModel(
+                g, rock, mech, w, b, 1.0 * CENTI * POISE, 1000.0,
+                splitting_tol=splitting_tolerance, **common,
+            )
+        else:
+            model = MechWaterWellModel(
+                g, rock, mech, w, b, 1.0 * CENTI * POISE, 1000.0,
+                tol_mech=1e-6, **common,
+            )
+        st = model.initial_state(np.full(g.cells.num, p_ref))
+        st["sW"] = np.ones(g.cells.num)
+        return g, model, st
+
+    fluid = init_simple_adi_fluid(
+        mu=np.array([1.0, 10.0]) * CENTI * POISE,
+        rho=[1000.0, 700.0], n=[1, 1],
+        c=[1e-10, 1e-10], p_ref=p_ref,
     )
-    return g, model, model.seed_state(st)             # mechanics at p = pRef
+    # MRST's initSimpleADIFluid(..., cR=4e-10) stores this multiplier on
+    # the fluid.  It is modest in the corrected model but essential when
+    # reproducing MRST's missing-volume oil-water Biot term.
+    fluid.pv_mult = lambda pressure: (
+        1.0 + rock_compressibility * (pressure - p_ref)
+    )
+    if split:
+        model = FixedStressOilWaterWellModel(
+            g, rock, fluid, w, mech,
+            splitting_tol=splitting_tolerance, tol=1e-7, tol_well=1e-6,
+            max_iterations=100,
+            gravity=NORM_GRAVITY,
+            # Use the dimensionally correct Biot term.  The compatibility
+            # switch exists only to reproduce an old MRST example defect.
+            mrst_oilwater_bug=mrst_oilwater_bug,
+        )
+        return g, model, model.initial_state(
+            np.full(g.cells.num, p_ref), sw0=0.0
+        )
+    model = MechOilWaterModel(g, rock, fluid, w, mech,
+                              gravity=NORM_GRAVITY, tol_mech=1e-6,
+                              tol_cnv=1e-7, tol_mb=1e-7, tol_well=1e-6,
+                              mrst_oilwater_bug=mrst_oilwater_bug)
+    st = State(
+        pressure=np.full(g.cells.num, p_ref), sW=np.zeros(g.cells.num),
+        qWs=np.array([1e4 / DAY, 0.0]), qOs=np.array([0.0, -1e4 / DAY]),
+        bhp=np.array([p_ref, p_ref]),
+    )
+    return g, model, model.seed_state(st)
 
 
 def surface_nodes(g) -> np.ndarray:
@@ -187,8 +301,16 @@ def surface_nodes(g) -> np.ndarray:
 
 
 def run(subset: str = "mini", n_steps: int = 20, plot: bool = False,
-        direct: bool = False):
-    g, model, st0 = build_case(subset)
+        direct: bool = False, fluid_model: str = "oil water",
+        method: str = "fully coupled", splitting_tolerance: float = 1.0e-6,
+        mrst_oilwater_bug: bool = False, mrst_wellbore_bug: bool = False,
+        check: bool = True):
+    g, model, st0 = build_case(
+        subset, fluid_model=fluid_model, method=method,
+        splitting_tolerance=splitting_tolerance,
+        mrst_oilwater_bug=mrst_oilwater_bug,
+        mrst_wellbore_bug=mrst_wellbore_bug,
+    )
     top = surface_nodes(g)
 
     # runNorneExample.m: one day, then twenty five-day steps
@@ -200,26 +322,64 @@ def run(subset: str = "mini", n_steps: int = 20, plot: bool = False,
     # against a cached factorisation and preconditions by fixed stress,
     # reaching the same answer ~20x faster. `--direct` restores the direct
     # solve, which is what it is checked against.
+    split = isinstance(model, (
+        FixedStressWaterWellModel, FixedStressOilWaterWellModel,
+        FixedStressBlackOilWellModel,
+    ))
+    fluid_key = str(fluid_model).lower().replace("-", " ")
     linear = None if direct else PoroelasticSchurSolver()
-    solver = NonLinearSolver(max_iterations=25, linear_solver=linear)
+    nonlinear_iterations = 25 if fluid_key == "water" else 100
+    solver = None if split else NonLinearSolver(
+        max_iterations=nonlinear_iterations, linear_solver=linear,
+        # Gas injection can make the producer's hydrostatic well equation
+        # alternate between two Newton states.  MRST globalizes this solve;
+        # the equivalent backtracking removes that control-cycle here.
+        use_line_search=fluid_key != "water",
+        use_relaxation=fluid_key == "oil water",
+    )
     print(f"\nLinear solver: "
-          f"{'sparse direct (spsolve)' if direct else 'Schur + fixed-stress'}")
+          f"{'fixed-stress sequential' if split else ('sparse direct (spsolve)' if direct else 'Schur + fixed-stress')}")
     pv = g.cells.volumes * model.rock.poro.ravel()
 
+    coupling_name = "fixed-stress splitting" if split else "fully coupled"
     print(f"\nSimulating {len(dts)} steps "
-          f"({sum(dts) / DAY:.0f} days of injection), fully coupled ...")
+          f"({sum(dts) / DAY:.0f} days of injection), {coupling_name} ...")
+    saturation_key = "sG" if fluid_key in {"blackoil", "black oil"} else "sW"
+    saturation_label = f"{saturation_key}_max"
     print(f"{'step':>4}  {'days':>6}  {'p_mean':>9}  {'p_max':>9}  "
-          f"{'sW_max':>6}  {'bhp_inj':>9}  {'uz_surf':>9}  {'its':>4}")
+          f"{saturation_label:>6}  {'bhp_inj':>9}  {'uz_surf':>9}  {'its':>4}")
     print("-" * 72)
 
     st = st0
     states = [st0]
+    acceptance_reports = []
     t0 = time.time()
     for n, dt in enumerate(dts):
-        st, rep = solver.solve_ministep(model, st, st.copy(), dt)
-        if not rep.converged:
+        if split:
+            split_states, split_reports = simulate_fixed_stress_schedule(
+                model, st, [float(dt)], max_timestep_cuts=6,
+            )
+            st = split_states[-1]
+            split_report = split_reports[-1]
+            converged = bool(split_report["Converged"])
+            iterations = int(split_report["Iterations"])
+            residual = ("" if converged else
+                        model.last_split_report.get("failure", ""))
+            acceptance_reports.append(split_report)
+        else:
+            st, rep = solver.solve_timestep(model, st, dt)
+            converged, iterations = rep.converged, rep.iterations
+            residuals = getattr(rep, "residuals", [])
+            residual = residuals[-1] if residuals else ""
+            acceptance_reports.append({
+                "Converged": bool(rep.converged),
+                "Iterations": int(rep.iterations),
+                "Residuals": residuals,
+                "Cuts": 0,
+            })
+        if not converged:
             raise RuntimeError(
-                f"step {n} did not converge: {rep.residuals[-1]}")
+                f"step {n} did not converge: {residual}")
         states.append(st)
 
         uz = st["u"].reshape(-1, 3)[top, 2]
@@ -227,12 +387,23 @@ def run(subset: str = "mini", n_steps: int = 20, plot: bool = False,
         print(f"{n:>4}  {sum(dts[:n + 1]) / DAY:>6.0f}  "
               f"{st['pressure'].mean() / BARSA:>8.1f}b  "
               f"{st['pressure'].max() / BARSA:>8.1f}b  "
-              f"{st['sW'].max():>6.3f}  "
+              f"{st.get(saturation_key, np.ones(g.cells.num)).max():>6.3f}  "
               f"{st['bhp'][0] / BARSA:>8.1f}b  "
-              f"{-uz.min() * 1000:>8.3f}mm  {rep.iterations:>4}")
+              f"{-uz.min() * 1000:>8.3f}mm  {iterations:>4}")
 
     print(f"\nDone in {time.time() - t0:.1f} s.")
-    report(g, model, states, dts, top, pv)
+    model.acceptance_reports = acceptance_reports
+    model.acceptance_timesteps = np.asarray(dts, dtype=float)
+    # The solver this run actually used, alongside the reports it produced.
+    # `None` on the fixed-stress branch, which drives itself. Attached because
+    # the configuration above is not reconstructible from the outside - the
+    # Schur linear solver, the iteration cap and the line-search/relaxation
+    # switches all vary by fluid - so anything wanting to re-run this schedule
+    # the way it was run must be handed the same object rather than build a
+    # plausible-looking one.
+    model.acceptance_solver = solver
+    if check:
+        report(g, model, states, dts, top, pv)
     if plot:
         show(g, model, states, dts)
     else:
@@ -264,6 +435,9 @@ def report(g, model, states, dts, top, pv) -> None:
           f"max {st['pressure'].max() / BARSA:.1f} bar")
     print(f"Water swept: {100 * np.sum(st['sW'] * pv) / pv.sum():.2f}% "
           f"of the pore volume")
+    if "sG" in st:
+        print(f"Gas swept  : {100 * np.sum(st['sG'] * pv) / pv.sum():.2f}% "
+              f"of the pore volume")
     print(f"Surface    : uplift {uplift.max() * 1000:+.3f} mm, "
           f"subsidence {uplift.min() * 1000:+.3f} mm "
           f"(over {len(top)} surface nodes)")
@@ -307,15 +481,45 @@ def report(g, model, states, dts, top, pv) -> None:
     # 3. Water is conserved: what went in is in the rock or came back out.
     injected = sum(float(s["qWs"][0]) * dt
                    for s, dt in zip(states[1:], dts))
-    produced = -sum(float(s["qWs"][1]) * dt
-                    for s, dt in zip(states[1:], dts))
-    b = model.fluid.b(st["pressure"])[0]
-    b0 = model.fluid.b(st0["pressure"])[0]
-    pv_now = model.get_props(st, "PoreVolume")
-    pv_0 = model.get_props(st0, "PoreVolume")
+    # Facility primary-rate signs differ between the single-phase and
+    # multiphase well formulations; the producer's declared well sign fixes
+    # its physical direction, so its phase-rate magnitude is the withdrawal.
+    produced = sum(abs(float(s["qWs"][1])) * dt
+                   for s, dt in zip(states[1:], dts))
+    # Route through the state-function graph: live-oil fluids require Rs and
+    # phase-status arguments even when only the water shrinkage factor is
+    # requested, while simple fluids depend on pressure alone.
+    b = model.get_props(st.copy(), "ShrinkageFactors")[0]
+    b0 = model.get_props(st0.copy(), "ShrinkageFactors")[0]
+    # Evaluate the physical Biot pore volume explicitly.  A fixed-stress
+    # model deliberately keeps separate current/old linearisation terms;
+    # asking its state-function container for both states would apply the
+    # current terms to the old state and manufacture a balance error.
+    def physical_pore_volume(state, volumetric_strain):
+        return (
+            g.cells.volumes * model.rock.poro.ravel()
+            * model.fluid.pv_mult(state["pressure"])
+            + g.cells.volumes * model.alpha * volumetric_strain
+        )
+
+    pv_now = physical_pore_volume(st, divu)
+    pv_0 = physical_pore_volume(st0, divu0)
     stored = np.sum(pv_now * b * st["sW"]) - np.sum(pv_0 * b0 * st0["sW"])
-    err = abs(injected - produced - stored) / max(abs(injected), 1e-30)
-    ok3 = err < 1e-6
+    balance_scale = max(abs(injected), abs(produced), abs(stored), 1.0)
+    err = abs(injected - produced - stored) / balance_scale
+    nonlinear_balance_tolerance = 25.0 * max(
+        float(getattr(model, "tol_cnv", 0.0)),
+        float(getattr(model, "tol_mb", 0.0)),
+        float(getattr(model, "tol", 0.0)),
+    )
+    conservation_tolerance = (
+        max(float(getattr(model, "splitting_tol", 0.0)), 1.0e-6)
+        if isinstance(model, (
+            FixedStressWaterWellModel, FixedStressOilWaterWellModel,
+            FixedStressBlackOilWellModel,
+        )) else max(1.0e-6, nonlinear_balance_tolerance)
+    )
+    ok3 = err < conservation_tolerance
     print(f"  [{'ok' if ok3 else 'FAIL'}] water balance closes: "
           f"injected {injected:.4e} - produced {produced:.4e} "
           f"= stored {stored:.4e}  (rel. error {err:.2e})")

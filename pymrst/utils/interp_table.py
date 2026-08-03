@@ -26,13 +26,32 @@ def _interp1(x_tab: np.ndarray, f_tab: np.ndarray,
 
 
 def interp_table(x_tab: np.ndarray, f_tab: np.ndarray,
-                 x: ArrayOrADI) -> ArrayOrADI:
-    """MRST interpTable: linear with extrapolation, ADI-transparent."""
+                 x: ArrayOrADI, spline: bool = False,
+                 return_derivative: bool = False) -> ArrayOrADI:
+    """MRST ``interpTable`` with linear/spline extrapolation.
+
+    ``return_derivative=True`` represents MATLAB's optional second output.
+    """
     xv = value(x)
-    f, df = _interp1(np.asarray(x_tab, float), np.asarray(f_tab, float), xv)
+    x_tab = np.asarray(x_tab, float).ravel()
+    f_tab = np.asarray(f_tab, float).ravel()
+    if x_tab.size != f_tab.size or x_tab.size < 2:
+        raise ValueError("x_tab and f_tab must contain at least two matching values")
+    if np.any(np.diff(x_tab) < 0):
+        x_tab, f_tab = x_tab[::-1], f_tab[::-1]
+    if np.any(np.diff(x_tab) == 0):
+        raise ValueError("x_tab values must be strictly monotone")
+    if spline:
+        from scipy.interpolate import CubicSpline
+        pp = CubicSpline(x_tab, f_tab)
+        f, df = pp(xv), pp.derivative()(xv)
+    else:
+        f, df = _interp1(x_tab, f_tab, xv)
     if isinstance(x, ADI):
-        return ADI(f, [_diag_mul(df, j) for j in x.jac])
-    return f
+        result = ADI(f, [_diag_mul(df, j) for j in x.jac])
+    else:
+        result = f
+    return (result, df) if return_derivative else result
 
 
 interpTable = interp_table

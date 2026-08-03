@@ -10,8 +10,8 @@ The CSV ledger is authoritative; filename presence does not make a guarded examp
 - Partial: **2**
 - Pending: **0**
 - Catalogs excluded: **9**
-- Reference-validated entries: **34**
-- Unvalidated entries: **23**
+- Reference-validated entries: **37**
+- Unvalidated entries: **20**
 
 ## Incomplete executable entries
 

@@ -9,15 +9,22 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import copy
 import numpy as np
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import blackoil_status
 from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
 from pymrst.modules.ad_core.statefunctions.state_function import State
-from pymrst.modules.ad_mechanics.mech_blackoil import MechBlackOilModel
-from pymrst.modules.ad_mechanics.mechanics import MechanicModel
-from pymrst.modules.ad_mechanics.poromech import (
+from pymrst.modules.ad_mechanics.models.fully_coupled.mech_black_oil_model import MechBlackOilModel
+from pymrst.modules.ad_mechanics.models.mechanic_model import MechanicModel
+from pymrst.modules.ad_mechanics.models.fully_coupled.mech_oil_water_model import (
+    MechOilWaterModel,
+)
+from pymrst.modules.ad_mechanics.models.splitting.fixed_stress_models import (
+    simulate_fixed_stress_schedule,
+)
+from pymrst.modules.ad_mechanics.models.poromechanics import (
     FixedStressBlackOilWellModel,
     FixedStressOilWaterWellModel,
     FixedStressSplitModel,
@@ -32,14 +39,6 @@ from pymrst.modules.vemmech.vem import ElasticBC, create_augmented_grid, enu2c_2
 from pymrst.params.rock import make_rock
 from pymrst.params.wells_and_bc import add_well
 from pymrst.utils.units import BARSA, CENTI, DARCY, DAY, GIGA, POISE
-
-
-class TwoDVEMNotPorted(NotImplementedError):
-    """Backward-compatible name for older callers.
-
-    The 2D VEM path and fully coupled oil-water wrapper are implemented.
-    Fixed-stress multiphase and black-oil variants still use this exception.
-    """
 
 
 @dataclass
@@ -184,6 +183,7 @@ def run_2d_case(
     rock_compressibility: float = 4e-10,
     p_ref: float = 270.0 * BARSA,
     mrst_oilwater_bug: bool = True,
+    max_timestep_cuts: int = 6,
 ) -> TwoDCaseResult:
     """Run a 2D plane-strain poromechanics case.
 
@@ -226,7 +226,7 @@ def run_2d_case(
             sign=1,
             ref_depth=float(np.min(g.cells.centroids[:, g.griddim - 1])),
         )
-        model = MechBlackOilModel(
+        model = MechOilWaterModel(
             g, rock, fluid, wells, mech,
             mrst_oilwater_bug=mrst_oilwater_bug,
         )
@@ -377,14 +377,33 @@ def run_2d_case(
         dts = np.concatenate([[1.0 * DAY], np.full(nsteps - 1, float(dts[0]))])
     for step, dti in enumerate(dts, start=1):
         if solver is None:
-            state, ok, its = model.step(states[-1], float(dti))
+            cut_states, cut_reports = simulate_fixed_stress_schedule(
+                model, states[-1], [float(dti)],
+                max_timestep_cuts=max_timestep_cuts,
+            )
+            state = cut_states[-1]
+            cut_report = cut_reports[-1]
+            ok, its = cut_report["Converged"], cut_report["Iterations"]
         else:
             state, rep = solver.solve_ministep(
                 model, states[-1], states[-1].copy(), float(dti)
             )
             ok, its = rep.converged, rep.iterations
         states.append(state)
-        reports.append({"step": step, "converged": ok, "iterations": its})
+        report = {"step": step, "converged": ok, "iterations": its}
+        if solver is not None and getattr(rep, "residuals", None):
+            # The per-iteration residual history, not just its length. An
+            # iteration count says a step took four Newtons; it cannot say how
+            # they converged, which is what a failure classifier reads. The
+            # fixed-stress branch already keeps this under "attempts".
+            report["residuals"] = [dict(r) for r in rep.residuals]
+        if solver is None:
+            report["cuts"] = cut_report["Cuts"]
+            report["attempts"] = copy.deepcopy(cut_report["Attempts"])
+            accepted = cut_report["AcceptedSubsteps"]
+            if accepted:
+                report["splitting"] = copy.deepcopy(accepted[-1]["Splitting"])
+        reports.append(report)
         if not ok:
             break
 
@@ -408,7 +427,7 @@ def run_2d_case(
     )
 
 
-__all__ = ["run_2d_case", "TwoDCaseResult", "TwoDVEMNotPorted"]
+__all__ = ["run_2d_case", "TwoDCaseResult"]
 
 
 if __name__ == "__main__":

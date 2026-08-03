@@ -29,12 +29,18 @@ schedule.step.control = schedule.step.control(1:2);
 modelNat = convertBlackOilModelToCompositionalModel(modelBO, 'interpolation', 'linear');
 modelNat.fluid.rhoSinj = [fluid.rhoWS, fluid.rhoOS, fluid.rhoGS];
 modelNat.FacilityModel = FacilityModel(modelNat);
-modelNat.FacilityModel.toleranceWellRate = 1e-3;
+% This used to run at toleranceWellRate = 1e-3 with MRST's default CNV of
+% 1e-3, and the reference it produced was not converged: the overall and
+% natural formulations of the same problem disagreed with each other by
+% 7.08e-02 bar, which is a property of where each run stopped rather than of
+% the physics. Tightening below collapses that spread to 6.3e-06 bar, at the
+% cost of more iterations ([4 7] and [9 10] rather than [3 4] and [4 5]).
+% Without this, phase 114's natural-variable tolerances have to be sized for
+% MRST's convergence slack rather than for real disagreement.
+modelNat.FacilityModel.toleranceWellRate = 1e-7;
 modelNat.dsMaxAbs = 0.2;
 modelNat.dzMaxAbs = inf;
 modelNat.incTolPressure = inf;
-
-[wsNat, statesNat, reportNat] = simulateScheduleAD(state0, modelNat, schedule);
 
 modelOverall = OverallCompositionCompositionalModel(G, rock, fluid, modelNat.EOSModel);
 modelOverall.fluid.rhoSinj = [fluid.rhoWS, fluid.rhoOS, fluid.rhoGS];
@@ -44,7 +50,17 @@ modelOverall.dsMaxAbs = modelNat.dsMaxAbs;
 modelOverall.dzMaxAbs = modelNat.dzMaxAbs;
 modelOverall.incTolPressure = modelNat.incTolPressure;
 
-[wsOverall, statesOverall, reportOverall] = simulateScheduleAD(state0, modelOverall, schedule);
+% Same tightening on both models - see the note above. Both are tightened and
+% the solver built before either is run, so the two formulations are compared
+% under identical settings.
+modelNat     = tightenP114(modelNat);
+modelOverall = tightenP114(modelOverall);
+p114solver = NonLinearSolver('maxIterations', 200);
+
+[wsNat, statesNat, reportNat] = simulateScheduleAD(state0, modelNat, schedule, ...
+    'NonLinearSolver', p114solver);
+[wsOverall, statesOverall, reportOverall] = simulateScheduleAD(state0, modelOverall, schedule, ...
+    'NonLinearSolver', p114solver);
 
 [overall_pressure, overall_components, overall_s, overall_bhp, overall_qOs, overall_qGs] = localPack(statesOverall, wsOverall);
 [natural_pressure, natural_components, natural_s, natural_bhp, natural_qOs, natural_qGs] = localPack(statesNat, wsNat);
@@ -62,6 +78,16 @@ save(out, 'overall_pressure', 'overall_components', 'overall_s', ...
 fprintf('Wrote ref_p114_spe1_native_compositional.mat to %s\n', fileparts(out));
 fprintf('  Native SPE1 compositional reference: %d cells, %d report steps\n', ...
     G.cells.num, numel(tsteps));
+end
+
+function m = tightenP114(m)
+    props = {'toleranceCNV', 1e-7; 'toleranceMB', 1e-11; ...
+             'nonlinearTolerance', 1e-9; 'incTolComposition', 1e-9};
+    for i = 1:size(props, 1)
+        if isprop(m, props{i,1})
+            m.(props{i,1}) = props{i,2};
+        end
+    end
 end
 
 function [pressure, components, sat, bhp, qOs, qGs] = localPack(states, wellSols)

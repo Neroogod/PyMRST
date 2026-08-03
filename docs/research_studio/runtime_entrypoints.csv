@@ -1,0 +1,12 @@
+entrypoint,owner,classification,current_return_contract,integration_strategy
+simulate_schedule_ad,pymrst/modules/ad_core/simulators/simulate_schedule_ad.py,direct runtime delegate,"(states, iterations)",optional session adapter preserving tuple
+NonLinearSolver.simulate_schedule,pymrst/modules/ad_core/simulators/nonlinear_solver.py,canonical numerical workflow,"(states, SimulationReport)",observation hooks only
+simulate_packed_problem,pymrst/modules/ad_core/simulators/sim_runner/simulate_packed_problem.py,specialized session adapter,"(bool, PackedSimulationStatus) or arrays",transactional store adapter
+simulate_packed_problem_background,pymrst/modules/ad_core/simulators/sim_runner/background.py,specialized process adapter,process metadata,child-run manifest and event log
+compositional._shared.run_schedule,pymrst/modules/compositional/examples/_shared.py,high-level example wrapper,example-specific tuple,delegate after characterization
+compositional._shared.simulate_packed_problem,pymrst/modules/compositional/examples/_shared.py,deprecated duplicate,"(states, reports)",migrate to packed adapter after parity tests
+ad_blackoil.examples.utils.run_schedule,pymrst/modules/ad_blackoil/examples/utils/schedule.py,high-level example wrapper,example-specific result,retain thin example wrapper
+ad_mechanics.adjoint.simulate_forward,pymrst/modules/ad_mechanics/adjoint/adjoint.py,intentionally specialized workflow,states and objective data,specialized evidence adapter
+optimization.adjoint.simulate_forward,pymrst/modules/optimization/adjoint.py,intentionally specialized workflow,states and well solutions,specialized evidence adapter
+optimization.simulation_solver_fun.simulate_forward,pymrst/modules/optimization/utils/simulation_solver_fun.py,intentionally specialized workflow,optimization callback result,specialized evidence adapter
+simulate_fixed_stress_schedule,pymrst/modules/ad_mechanics/models/splitting/fixed_stress_models/mech_fluid_fixed_stress_split_model.py,intentionally specialized workflow,"(states, reports) with per-report Attempts, Cuts, Iterations and Splitting",observation hook only; the splitting loop owns its own Newton iteration and rollback and must not be forced through a forward-only session kernel

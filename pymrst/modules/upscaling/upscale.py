@@ -46,58 +46,18 @@ def partition_cart_grid(cart_dims: Sequence[int],
     return np.ravel(p, order="F").astype(np.int64)
 
 
-@dataclass
-class CoarseGrid:
-    """A coarse grid and its mapping back to the fine model."""
-
-    g: Grid                       # the coarse grid itself
-    partition: np.ndarray         # (nc_fine,) coarse block of each fine cell
-    n_blocks: int
-    parent: Optional[Grid] = None
-
-    def blocks(self):
-        """Fine cells of each coarse block, in block order."""
-        order = np.argsort(self.partition, kind="stable")
-        counts = np.bincount(self.partition, minlength=self.n_blocks)
-        out, start = [], 0
-        for c in counts:
-            out.append(order[start:start + c])
-            start += c
-        return out
-
-
-def generate_coarse_grid(g: Grid, partition: np.ndarray) -> CoarseGrid:
-    """Build the coarse grid implied by a Cartesian partition."""
-    assert g.cartDims is not None, "coarsening needs a Cartesian fine grid"
-    partition = np.asarray(partition, dtype=np.int64).ravel()
-    n_blocks = int(partition.max()) + 1
-
-    # coarse block extents follow the fine coordinate lines
-    dims = list(g.cartDims) + [1] * (3 - len(g.cartDims))
-    ijk = np.array(np.unravel_index(np.arange(g.cells.num), dims, order="F")).T
-    lines = []
-    for d in range(len(g.cartDims)):
-        nodes = np.unique(g.nodes.coords[:, d])
-        # block boundaries: where the partition changes along axis d
-        edges = [nodes[0]]
-        for idx in range(1, dims[d]):
-            prev = partition[np.flatnonzero(ijk[:, d] == idx - 1)[0]]
-            cur = partition[np.flatnonzero(ijk[:, d] == idx)[0]]
-            if prev != cur:
-                edges.append(nodes[idx])
-        edges.append(nodes[-1])
-        lines.append(np.asarray(edges))
-
-    cg = compute_geometry(tensor_grid(*lines))
-    assert cg.cells.num == n_blocks, (
-        f"partition implies {n_blocks} blocks but the coarse grid has "
-        f"{cg.cells.num}; only rectangular Cartesian partitions are supported"
-    )
-    cg.parent = g
-    cg.partition = partition
-    return CoarseGrid(
-        g=cg, partition=partition, n_blocks=n_blocks, parent=g
-    )
+# `partition_cart_grid`, `CoarseGrid` and `generate_coarse_grid` used to be
+# defined here as a second copy, with their own `CoarseGrid` class. The two
+# classes were never interchangeable: `upscale_poro` annotated its argument
+# with this one while `upscale_rock` and `upscale_perm_fixed` annotated the
+# same argument with the one from `modules/coarsegrid`, and an object from
+# either path fails `isinstance` against the other. They are imported from the
+# single implementation now.
+from pymrst.modules.coarsegrid import (  # noqa: E402
+    CoarseGrid,
+    generate_coarse_grid,
+    partition_cart_grid,
+)
 
 
 def upscale_poro(g: Grid, rock: Rock, cg: CoarseGrid) -> np.ndarray:

@@ -1,0 +1,1231 @@
+{
+  "artifact": "pymrst_victory_surrogate_evidence_graph",
+  "artifact_schema_version": 1,
+  "graph": {
+    "edges": [
+      {
+        "accepted": true,
+        "claim": "PyMRST and MRST x1 agree",
+        "converged": true,
+        "edge_id": "pymrst_mrst_x1",
+        "evidence_class": "physics_flash_parity",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "absolute_tolerance": 0.0005,
+          "count": 9885.0,
+          "maximum_absolute_error": 0.00026813344280418594,
+          "rmse": 1.1016064545779104e-05
+        },
+        "shared_kernels": [
+          "Peng-Robinson formulation"
+        ],
+        "source": "mrst_physics",
+        "target": "pymrst_physics"
+      },
+      {
+        "accepted": true,
+        "claim": "PyMRST and MRST x3 agree",
+        "converged": true,
+        "edge_id": "pymrst_mrst_x3",
+        "evidence_class": "physics_flash_parity",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "absolute_tolerance": 0.0005,
+          "count": 9885.0,
+          "maximum_absolute_error": 5.909036064100093e-05,
+          "rmse": 2.204337750155022e-06
+        },
+        "shared_kernels": [
+          "Peng-Robinson formulation"
+        ],
+        "source": "mrst_physics",
+        "target": "pymrst_physics"
+      },
+      {
+        "accepted": true,
+        "claim": "PyMRST and MRST x14 agree",
+        "converged": true,
+        "edge_id": "pymrst_mrst_x14",
+        "evidence_class": "physics_flash_parity",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "absolute_tolerance": 0.0005,
+          "count": 9885.0,
+          "maximum_absolute_error": 0.00022707056772704182,
+          "rmse": 1.0775349586972803e-05
+        },
+        "shared_kernels": [
+          "Peng-Robinson formulation"
+        ],
+        "source": "mrst_physics",
+        "target": "pymrst_physics"
+      },
+      {
+        "accepted": true,
+        "claim": "PyMRST and MRST y1 agree",
+        "converged": true,
+        "edge_id": "pymrst_mrst_y1",
+        "evidence_class": "physics_flash_parity",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "absolute_tolerance": 0.0005,
+          "count": 3341.0,
+          "maximum_absolute_error": 0.00014234201926333068,
+          "rmse": 9.51907643985257e-06
+        },
+        "shared_kernels": [
+          "Peng-Robinson formulation"
+        ],
+        "source": "mrst_physics",
+        "target": "pymrst_physics"
+      },
+      {
+        "accepted": true,
+        "claim": "PyMRST and MRST y3 agree",
+        "converged": true,
+        "edge_id": "pymrst_mrst_y3",
+        "evidence_class": "physics_flash_parity",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "absolute_tolerance": 0.0005,
+          "count": 3341.0,
+          "maximum_absolute_error": 0.00012396598865505037,
+          "rmse": 8.087833124408863e-06
+        },
+        "shared_kernels": [
+          "Peng-Robinson formulation"
+        ],
+        "source": "mrst_physics",
+        "target": "pymrst_physics"
+      },
+      {
+        "accepted": true,
+        "claim": "PyMRST and MRST y14 agree",
+        "converged": true,
+        "edge_id": "pymrst_mrst_y14",
+        "evidence_class": "physics_flash_parity",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "absolute_tolerance": 0.0005,
+          "count": 3341.0,
+          "maximum_absolute_error": 4.108752861112577e-05,
+          "rmse": 1.6194039800886398e-06
+        },
+        "shared_kernels": [
+          "Peng-Robinson formulation"
+        ],
+        "source": "mrst_physics",
+        "target": "pymrst_physics"
+      },
+      {
+        "accepted": true,
+        "claim": "PyMRST and MRST L agree",
+        "converged": true,
+        "edge_id": "pymrst_mrst_l",
+        "evidence_class": "physics_flash_parity",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "absolute_tolerance": 0.002,
+          "count": 10000.0,
+          "maximum_absolute_error": 0.0012532188666154465,
+          "rmse": 3.9156584381548756e-05
+        },
+        "shared_kernels": [
+          "Peng-Robinson formulation"
+        ],
+        "source": "mrst_physics",
+        "target": "pymrst_physics"
+      },
+      {
+        "accepted": true,
+        "claim": "PyMRST and MRST Z_L agree",
+        "converged": true,
+        "edge_id": "pymrst_mrst_z_l",
+        "evidence_class": "physics_flash_parity",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "absolute_tolerance": 0.0005,
+          "count": 9978.0,
+          "maximum_absolute_error": 0.00020263779234519497,
+          "rmse": 8.440436400368972e-06
+        },
+        "shared_kernels": [
+          "Peng-Robinson formulation"
+        ],
+        "source": "mrst_physics",
+        "target": "pymrst_physics"
+      },
+      {
+        "accepted": true,
+        "claim": "PyMRST and MRST Z_V agree",
+        "converged": true,
+        "edge_id": "pymrst_mrst_z_v",
+        "evidence_class": "physics_flash_parity",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "absolute_tolerance": 0.0005,
+          "count": 2440.0,
+          "maximum_absolute_error": 0.00012824868181993132,
+          "rmse": 5.705729606029736e-06
+        },
+        "shared_kernels": [
+          "Peng-Robinson formulation"
+        ],
+        "source": "mrst_physics",
+        "target": "pymrst_physics"
+      },
+      {
+        "accepted": false,
+        "claim": "Victory ensemble x1 meets the declared production accuracy gate",
+        "converged": true,
+        "edge_id": "victory_reference_x1",
+        "evidence_class": "surrogate_accuracy_gate",
+        "exceptions": [
+          "phase class is supplied to Victory; stability is not tested"
+        ],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 0.39899330901074914,
+          "maximum_tolerance": 0.1,
+          "p95_absolute_error": 0.08094443893424354,
+          "rmse": 0.04884331576561394,
+          "rmse_tolerance": 0.01
+        },
+        "shared_kernels": [
+          "bundled scaler/test dataset"
+        ],
+        "source": "bundled_reference",
+        "target": "victory_ensemble"
+      },
+      {
+        "accepted": false,
+        "claim": "Victory ensemble x3 meets the declared production accuracy gate",
+        "converged": true,
+        "edge_id": "victory_reference_x3",
+        "evidence_class": "surrogate_accuracy_gate",
+        "exceptions": [
+          "phase class is supplied to Victory; stability is not tested"
+        ],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 0.6200047407584073,
+          "maximum_tolerance": 0.1,
+          "p95_absolute_error": 0.10681103762101977,
+          "rmse": 0.05665060965405115,
+          "rmse_tolerance": 0.01
+        },
+        "shared_kernels": [
+          "bundled scaler/test dataset"
+        ],
+        "source": "bundled_reference",
+        "target": "victory_ensemble"
+      },
+      {
+        "accepted": false,
+        "claim": "Victory ensemble x14 meets the declared production accuracy gate",
+        "converged": true,
+        "edge_id": "victory_reference_x14",
+        "evidence_class": "surrogate_accuracy_gate",
+        "exceptions": [
+          "phase class is supplied to Victory; stability is not tested"
+        ],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 0.6463258137309098,
+          "maximum_tolerance": 0.1,
+          "p95_absolute_error": 0.16993054186757095,
+          "rmse": 0.06930018224864132,
+          "rmse_tolerance": 0.01
+        },
+        "shared_kernels": [
+          "bundled scaler/test dataset"
+        ],
+        "source": "bundled_reference",
+        "target": "victory_ensemble"
+      },
+      {
+        "accepted": false,
+        "claim": "Victory ensemble y1 meets the declared production accuracy gate",
+        "converged": true,
+        "edge_id": "victory_reference_y1",
+        "evidence_class": "surrogate_accuracy_gate",
+        "exceptions": [
+          "phase class is supplied to Victory; stability is not tested"
+        ],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 0.2850511334248671,
+          "maximum_tolerance": 0.1,
+          "p95_absolute_error": 0.11136856180464648,
+          "rmse": 0.04848436889642609,
+          "rmse_tolerance": 0.01
+        },
+        "shared_kernels": [
+          "bundled scaler/test dataset"
+        ],
+        "source": "bundled_reference",
+        "target": "victory_ensemble"
+      },
+      {
+        "accepted": false,
+        "claim": "Victory ensemble y3 meets the declared production accuracy gate",
+        "converged": true,
+        "edge_id": "victory_reference_y3",
+        "evidence_class": "surrogate_accuracy_gate",
+        "exceptions": [
+          "phase class is supplied to Victory; stability is not tested"
+        ],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 0.2847683440174351,
+          "maximum_tolerance": 0.1,
+          "p95_absolute_error": 0.11147651108842525,
+          "rmse": 0.04845570498163924,
+          "rmse_tolerance": 0.01
+        },
+        "shared_kernels": [
+          "bundled scaler/test dataset"
+        ],
+        "source": "bundled_reference",
+        "target": "victory_ensemble"
+      },
+      {
+        "accepted": true,
+        "claim": "Victory ensemble y14 meets the declared production accuracy gate",
+        "converged": true,
+        "edge_id": "victory_reference_y14",
+        "evidence_class": "surrogate_accuracy_gate",
+        "exceptions": [
+          "phase class is supplied to Victory; stability is not tested"
+        ],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 0.011797633018378516,
+          "maximum_tolerance": 0.1,
+          "p95_absolute_error": 0.0011642969712570108,
+          "rmse": 0.000744719950877329,
+          "rmse_tolerance": 0.01
+        },
+        "shared_kernels": [
+          "bundled scaler/test dataset"
+        ],
+        "source": "bundled_reference",
+        "target": "victory_ensemble"
+      },
+      {
+        "accepted": false,
+        "claim": "Victory ensemble L meets the declared production accuracy gate",
+        "converged": true,
+        "edge_id": "victory_reference_l",
+        "evidence_class": "surrogate_accuracy_gate",
+        "exceptions": [
+          "phase class is supplied to Victory; stability is not tested"
+        ],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 0.885418062563377,
+          "maximum_tolerance": 0.1,
+          "p95_absolute_error": 0.118053343923179,
+          "rmse": 0.06044068942981007,
+          "rmse_tolerance": 0.01
+        },
+        "shared_kernels": [
+          "bundled scaler/test dataset"
+        ],
+        "source": "bundled_reference",
+        "target": "victory_ensemble"
+      },
+      {
+        "accepted": true,
+        "claim": "Victory fold 1 error is measured on the common held-out states",
+        "converged": true,
+        "edge_id": "fold_1_characterization",
+        "evidence_class": "surrogate_fold_characterization",
+        "exceptions": [
+          "characterization is not a production-accuracy claim"
+        ],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "mean_output_rmse": 0.04780338914535385,
+          "outputs": 7.0
+        },
+        "shared_kernels": [
+          "bundled scaler/test dataset"
+        ],
+        "source": "bundled_reference",
+        "target": "victory_fold_1"
+      },
+      {
+        "accepted": true,
+        "claim": "Victory fold 2 error is measured on the common held-out states",
+        "converged": true,
+        "edge_id": "fold_2_characterization",
+        "evidence_class": "surrogate_fold_characterization",
+        "exceptions": [
+          "characterization is not a production-accuracy claim"
+        ],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "mean_output_rmse": 0.049223356918779805,
+          "outputs": 7.0
+        },
+        "shared_kernels": [
+          "bundled scaler/test dataset"
+        ],
+        "source": "bundled_reference",
+        "target": "victory_fold_2"
+      },
+      {
+        "accepted": true,
+        "claim": "Victory fold 3 error is measured on the common held-out states",
+        "converged": true,
+        "edge_id": "fold_3_characterization",
+        "evidence_class": "surrogate_fold_characterization",
+        "exceptions": [
+          "characterization is not a production-accuracy claim"
+        ],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "mean_output_rmse": 0.04846721974132603,
+          "outputs": 7.0
+        },
+        "shared_kernels": [
+          "bundled scaler/test dataset"
+        ],
+        "source": "bundled_reference",
+        "target": "victory_fold_3"
+      },
+      {
+        "accepted": true,
+        "claim": "Victory fold 4 error is measured on the common held-out states",
+        "converged": true,
+        "edge_id": "fold_4_characterization",
+        "evidence_class": "surrogate_fold_characterization",
+        "exceptions": [
+          "characterization is not a production-accuracy claim"
+        ],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "mean_output_rmse": 0.04805621129957038,
+          "outputs": 7.0
+        },
+        "shared_kernels": [
+          "bundled scaler/test dataset"
+        ],
+        "source": "bundled_reference",
+        "target": "victory_fold_4"
+      },
+      {
+        "accepted": true,
+        "claim": "Victory fold 5 error is measured on the common held-out states",
+        "converged": true,
+        "edge_id": "fold_5_characterization",
+        "evidence_class": "surrogate_fold_characterization",
+        "exceptions": [
+          "characterization is not a production-accuracy claim"
+        ],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "mean_output_rmse": 0.05023925146280237,
+          "outputs": 7.0
+        },
+        "shared_kernels": [
+          "bundled scaler/test dataset"
+        ],
+        "source": "bundled_reference",
+        "target": "victory_fold_5"
+      },
+      {
+        "accepted": true,
+        "claim": "Victory fold 6 error is measured on the common held-out states",
+        "converged": true,
+        "edge_id": "fold_6_characterization",
+        "evidence_class": "surrogate_fold_characterization",
+        "exceptions": [
+          "characterization is not a production-accuracy claim"
+        ],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "mean_output_rmse": 0.049057472626671574,
+          "outputs": 7.0
+        },
+        "shared_kernels": [
+          "bundled scaler/test dataset"
+        ],
+        "source": "bundled_reference",
+        "target": "victory_fold_6"
+      },
+      {
+        "accepted": true,
+        "claim": "Victory fold 7 error is measured on the common held-out states",
+        "converged": true,
+        "edge_id": "fold_7_characterization",
+        "evidence_class": "surrogate_fold_characterization",
+        "exceptions": [
+          "characterization is not a production-accuracy claim"
+        ],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "mean_output_rmse": 0.04846768949335294,
+          "outputs": 7.0
+        },
+        "shared_kernels": [
+          "bundled scaler/test dataset"
+        ],
+        "source": "bundled_reference",
+        "target": "victory_fold_7"
+      },
+      {
+        "accepted": true,
+        "claim": "pymrst flash satisfies production physical gates",
+        "converged": true,
+        "edge_id": "pymrst_physical_safety",
+        "evidence_class": "physical_flash_safety",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "log_fugacity_rmse": 3.0151381546093607e-10,
+          "material_balance_max": 9.960365865424592e-11,
+          "material_balance_rmse": 2.157325021212512e-11,
+          "nonfinite_count": 0.0,
+          "out_of_bounds_count": 0.0
+        },
+        "shared_kernels": [],
+        "source": "physical_invariants",
+        "target": "pymrst_physics"
+      },
+      {
+        "accepted": true,
+        "claim": "mrst flash satisfies production physical gates",
+        "converged": true,
+        "edge_id": "mrst_physical_safety",
+        "evidence_class": "physical_flash_safety",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "log_fugacity_rmse": 3.21945709648745e-05,
+          "material_balance_max": 9.960365865424592e-11,
+          "material_balance_rmse": 2.157336414444152e-11,
+          "nonfinite_count": 0.0,
+          "out_of_bounds_count": 0.0
+        },
+        "shared_kernels": [],
+        "source": "physical_invariants",
+        "target": "mrst_physics"
+      },
+      {
+        "accepted": false,
+        "claim": "victory flash satisfies production physical gates",
+        "converged": true,
+        "edge_id": "victory_physical_safety",
+        "evidence_class": "physical_flash_safety",
+        "exceptions": [],
+        "independence": "independent",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "log_fugacity_rmse": 3.5220460715926767,
+          "material_balance_max": 0.13883439613922727,
+          "material_balance_rmse": 0.00638565341480382,
+          "nonfinite_count": 0.0,
+          "out_of_bounds_count": 0.0
+        },
+        "shared_kernels": [],
+        "source": "physical_invariants",
+        "target": "victory_ensemble"
+      },
+      {
+        "accepted": true,
+        "claim": "PyMRST and MRST make identical phase decisions",
+        "converged": true,
+        "edge_id": "pymrst_mrst_phase_decisions",
+        "evidence_class": "phase_classification_parity",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "states": 10000.0
+        },
+        "shared_kernels": [
+          "Peng-Robinson formulation"
+        ],
+        "source": "mrst_physics",
+        "target": "pymrst_physics"
+      },
+      {
+        "accepted": true,
+        "claim": "Warm Victory ensemble inference is faster than physical flash",
+        "converged": true,
+        "edge_id": "victory_inference_speed",
+        "evidence_class": "performance",
+        "exceptions": [
+          "Victory timing excludes stability classification"
+        ],
+        "independence": "shared_kernel",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "pymrst_seconds": 1.1236829590052366,
+          "speedup": 20.15708881709116,
+          "victory_seconds": 0.05574629199691117
+        },
+        "shared_kernels": [
+          "same hardware and state batch"
+        ],
+        "source": "pymrst_physics",
+        "target": "victory_ensemble"
+      },
+      {
+        "accepted": true,
+        "claim": "Ensemble spread has a positive error-ranking signal for every output",
+        "converged": true,
+        "edge_id": "victory_uncertainty_signal",
+        "evidence_class": "uncertainty_characterization",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "state_digest:sha256",
+          "component_name:exact",
+          "row_identity:exact"
+        ],
+        "metrics": {
+          "median_correlation": 0.39281577089058645,
+          "minimum_correlation": 0.23732277766817797
+        },
+        "shared_kernels": [
+          "bundled scaler/test dataset"
+        ],
+        "source": "bundled_reference",
+        "target": "victory_ensemble"
+      }
+    ],
+    "nodes": [
+      {
+        "kind": "manufactured",
+        "label": "Victory bundled phase-labelled test dataset",
+        "metadata": {
+          "input_digest": "f3434146000e15a80e154f58c446598c56d71a7adac22d301a902c1c1f263000",
+          "phase_flags_are_model_inputs": true,
+          "rows": 10000
+        },
+        "node_id": "bundled_reference",
+        "version": ""
+      },
+      {
+        "kind": "pymrst",
+        "label": "PyMRST Peng-Robinson stability and flash",
+        "metadata": {},
+        "node_id": "pymrst_physics",
+        "version": ""
+      },
+      {
+        "kind": "mrst",
+        "label": "MRST Peng-Robinson stability and flash",
+        "metadata": {},
+        "node_id": "mrst_physics",
+        "version": "MRST 2024a"
+      },
+      {
+        "kind": "pymrst",
+        "label": "Victory beta2.2 seven-fold ensemble",
+        "metadata": {
+          "experimental": true,
+          "folds": 7
+        },
+        "node_id": "victory_ensemble",
+        "version": ""
+      },
+      {
+        "kind": "invariant",
+        "label": "Flash material balance, closure, bounds and fugacity",
+        "metadata": {},
+        "node_id": "physical_invariants",
+        "version": ""
+      },
+      {
+        "kind": "pymrst",
+        "label": "Victory beta2.2 fold 1",
+        "metadata": {
+          "experimental": true
+        },
+        "node_id": "victory_fold_1",
+        "version": ""
+      },
+      {
+        "kind": "pymrst",
+        "label": "Victory beta2.2 fold 2",
+        "metadata": {
+          "experimental": true
+        },
+        "node_id": "victory_fold_2",
+        "version": ""
+      },
+      {
+        "kind": "pymrst",
+        "label": "Victory beta2.2 fold 3",
+        "metadata": {
+          "experimental": true
+        },
+        "node_id": "victory_fold_3",
+        "version": ""
+      },
+      {
+        "kind": "pymrst",
+        "label": "Victory beta2.2 fold 4",
+        "metadata": {
+          "experimental": true
+        },
+        "node_id": "victory_fold_4",
+        "version": ""
+      },
+      {
+        "kind": "pymrst",
+        "label": "Victory beta2.2 fold 5",
+        "metadata": {
+          "experimental": true
+        },
+        "node_id": "victory_fold_5",
+        "version": ""
+      },
+      {
+        "kind": "pymrst",
+        "label": "Victory beta2.2 fold 6",
+        "metadata": {
+          "experimental": true
+        },
+        "node_id": "victory_fold_6",
+        "version": ""
+      },
+      {
+        "kind": "pymrst",
+        "label": "Victory beta2.2 fold 7",
+        "metadata": {
+          "experimental": true
+        },
+        "node_id": "victory_fold_7",
+        "version": ""
+      }
+    ],
+    "schema_version": 1
+  },
+  "summary": {
+    "accepted_edges": 22,
+    "case": "victory_beta2.2_10000_conditional_flash",
+    "error_atlas": {
+      "ensemble_uncertainty_quartiles": [
+        {
+          "count": 2500,
+          "lower": 0.0017607702697142857,
+          "mean_absolute_error": {
+            "L": 0.06319139443422407,
+            "x1": 0.04304975279268271,
+            "x14": 0.07647835039193226,
+            "x3": 0.05515738430883643,
+            "y1": 0.025958483395338988,
+            "y14": 0.00025930934217555297,
+            "y3": 0.02586785702190172
+          },
+          "p95_absolute_error": {
+            "L": 0.237392661519746,
+            "x1": 0.22393593066592382,
+            "x14": 0.2852671516971995,
+            "x3": 0.25491337969288475,
+            "y1": 0.1068507118538118,
+            "y14": 0.0011443466152298945,
+            "y3": 0.10636471594169093
+          },
+          "upper": 0.011024138485317856
+        },
+        {
+          "count": 2500,
+          "lower": 0.011024138485317856,
+          "mean_absolute_error": {
+            "L": 0.010335241597219953,
+            "x1": 0.011847684431821177,
+            "x14": 0.01300327154000775,
+            "x3": 0.00829512907357308,
+            "y1": 0.10212845168301267,
+            "y14": 0.001127236595426811,
+            "y3": 0.10155771022148055
+          },
+          "p95_absolute_error": {
+            "L": 0.08541845160593164,
+            "x1": 0.09798491346160336,
+            "x14": 0.0826928762642086,
+            "x3": 0.060790684247046436,
+            "y1": 0.2658644973678469,
+            "y14": 0.004424079918646314,
+            "y3": 0.2653734452236292
+          },
+          "upper": 0.026326681467642853
+        },
+        {
+          "count": 2500,
+          "lower": 0.026326681467642853,
+          "mean_absolute_error": {
+            "L": 0.00034921815282104286,
+            "x1": 0.0009514526925676925,
+            "x14": 0.001697386144323036,
+            "x3": 0.0010669709772237327,
+            "y1": 0.2787289313682331,
+            "y14": 0.0010250120614993562,
+            "y3": 0.2777169659436785
+          },
+          "p95_absolute_error": {
+            "L": 0.0002923055000000504,
+            "x1": 0.0016316495024580875,
+            "x14": 0.0024600071599999696,
+            "x3": 0.0014161263925348466,
+            "y1": 0.4203060720054943,
+            "y14": 0.005078522789830344,
+            "y3": 0.4190525269245306
+          },
+          "upper": 0.03848919409296429
+        },
+        {
+          "count": 2500,
+          "lower": 0.03848919409296429,
+          "mean_absolute_error": {
+            "L": 0.00218282899939278,
+            "x1": 0.00825035646409338,
+            "x14": 0.006936716844126164,
+            "x3": 0.005089689547346072,
+            "y1": 0.31771288675578047,
+            "y14": 0.0001623019297438665,
+            "y3": 0.3168716730727388
+          },
+          "p95_absolute_error": {
+            "L": 0.0003101964999999526,
+            "x1": 0.0016767301849999988,
+            "x14": 0.002461894560000089,
+            "x3": 0.00175026251798645,
+            "y1": 0.4778086562165063,
+            "y14": 0.0007124089871528135,
+            "y3": 0.47667534086801155
+          },
+          "upper": 0.10831979810000002
+        }
+      ],
+      "pressure_quintiles": [
+        {
+          "count": 1929,
+          "lower_Pa": 101008.19434491648,
+          "mean_absolute_error": {
+            "L": 0.031682668189161795,
+            "x1": 0.05699906250102041,
+            "x14": 0.05027191461794047,
+            "x3": 0.023811554754493255,
+            "y1": 0.02642135376603947,
+            "y14": 0.0006007624088030567,
+            "y3": 0.026251164516822103
+          },
+          "p95_absolute_error": {
+            "L": 0.15254539920706928,
+            "x1": 0.2933529474868704,
+            "x14": 0.21924950705786161,
+            "x3": 0.10760797074982975,
+            "y1": 0.0814389482562952,
+            "y14": 0.0031210988234990997,
+            "y3": 0.08203462663654584
+          },
+          "upper_Pa": 6697804.0242281575
+        },
+        {
+          "count": 2011,
+          "lower_Pa": 6697804.0242281575,
+          "mean_absolute_error": {
+            "L": 0.013431733705086555,
+            "x1": 0.012526025993183252,
+            "x14": 0.017183259521029216,
+            "x3": 0.011201830217259614,
+            "y1": 0.09187807251599277,
+            "y14": 0.0013853508245695355,
+            "y3": 0.09117740053375686
+          },
+          "p95_absolute_error": {
+            "L": 0.06969661682436706,
+            "x1": 0.060347133173739576,
+            "x14": 0.08246793225020826,
+            "x3": 0.06293334007301235,
+            "y1": 0.2406547397644341,
+            "y14": 0.0057475235438626225,
+            "y3": 0.24170274120436186
+          },
+          "upper_Pa": 13641799.634631569
+        },
+        {
+          "count": 2016,
+          "lower_Pa": 13641799.634631569,
+          "mean_absolute_error": {
+            "L": 0.015283369611402859,
+            "x1": 0.0068685699387518945,
+            "x14": 0.017580528773344224,
+            "x3": 0.014756417760734492,
+            "y1": 0.21234567188422457,
+            "y14": 0.0010500629737353634,
+            "y3": 0.21129429988540657
+          },
+          "p95_absolute_error": {
+            "L": 0.10970875350093137,
+            "x1": 0.04529901894024996,
+            "x14": 0.12182244113570882,
+            "x3": 0.10949417700394039,
+            "y1": 0.3704479739677415,
+            "y14": 0.003982009225375515,
+            "y3": 0.36947865678446695
+          },
+          "upper_Pa": 20932995.02555515
+        },
+        {
+          "count": 2035,
+          "lower_Pa": 20932995.02555515,
+          "mean_absolute_error": {
+            "L": 0.020449765037367756,
+            "x1": 0.0040711613180941224,
+            "x14": 0.020243439138538852,
+            "x3": 0.01932467691678875,
+            "y1": 0.31413730421739955,
+            "y14": 0.00017116607601528507,
+            "y3": 0.3130853309018233
+          },
+          "p95_absolute_error": {
+            "L": 0.1663784774358915,
+            "x1": 0.029051085872875835,
+            "x14": 0.17179909811110874,
+            "x3": 0.15467227426949157,
+            "y1": 0.4570521108630203,
+            "y14": 0.0007155019438345014,
+            "y3": 0.456367914273443
+          },
+          "upper_Pa": 27876990.63595856
+        },
+        {
+          "count": 2009,
+          "lower_Pa": 27876990.63595856,
+          "mean_absolute_error": {
+            "L": 0.014730253635485763,
+            "x1": 0.0014809536273305707,
+            "x14": 0.018477605501337785,
+            "x3": 0.018162722423004412,
+            "y1": 0.2529766048584155,
+            "y14": 1.2239277044268819e-05,
+            "y3": 0.2528329068536457
+          },
+          "p95_absolute_error": {
+            "L": 0.0697078278270919,
+            "x1": 0.008079735425807574,
+            "x14": 0.15394988127152276,
+            "x3": 0.16224269372796418,
+            "y1": 0.4792473202338601,
+            "y14": 4.143290190152286e-05,
+            "y3": 0.47841910166302054
+          },
+          "upper_Pa": 34473786.4658418
+        }
+      ],
+      "reference_phase": {
+        "gas": {
+          "count": 22,
+          "mean_absolute_error": {
+            "L": 0.004964310114545455,
+            "x1": 0.32396996066551265,
+            "x14": 0.3884754833091615,
+            "x3": 0.10538782520196643,
+            "y1": 0.0008937166965730939,
+            "y14": 0.0007230290708255181,
+            "y3": 0.0010166513555696062
+          },
+          "p95_absolute_error": {
+            "L": 0.013480129199999998,
+            "x1": 0.45295281976403,
+            "x14": 0.5911593197973971,
+            "x3": 0.536983495505773,
+            "y1": 0.0025423200349999676,
+            "y14": 0.0022371505950000005,
+            "y3": 0.0031874330999999726
+          }
+        },
+        "liquid": {
+          "count": 7560,
+          "mean_absolute_error": {
+            "L": 9.569386640211655e-05,
+            "x1": 0.0005357330327513502,
+            "x14": 0.0010425003931843278,
+            "x3": 0.0005451678569372994,
+            "y1": 0.23038183563860057,
+            "y14": 0.0007665574436531453,
+            "y3": 0.22956683496004304
+          },
+          "p95_absolute_error": {
+            "L": 0.00024500000000005073,
+            "x1": 0.0015071649550000045,
+            "x14": 0.002326493785413529,
+            "x3": 0.0013400214124138854,
+            "y1": 0.45540520158961495,
+            "y14": 0.004123758794953383,
+            "y3": 0.45489563756881757
+          }
+        },
+        "two-phase": {
+          "count": 2418,
+          "mean_absolute_error": {
+            "L": 0.07829365074715658,
+            "x1": 0.061650386720707565,
+            "x14": 0.09464911029598759,
+            "x3": 0.069306424158213,
+            "y1": 0.028790547481707316,
+            "y14": 0.0002578862318188694,
+            "y3": 0.02873774897508319
+          },
+          "p95_absolute_error": {
+            "L": 0.24764123644549008,
+            "x1": 0.25826427830991294,
+            "x14": 0.290275826796487,
+            "x3": 0.26079357695841104,
+            "y1": 0.113255713252325,
+            "y14": 0.0011583787796154963,
+            "y3": 0.11326793741911569
+          }
+        }
+      }
+    },
+    "fold_mean_rmse": {
+      "1": 0.04780338914535385,
+      "2": 0.049223356918779805,
+      "3": 0.04846721974132603,
+      "4": 0.04805621129957038,
+      "5": 0.05023925146280237,
+      "6": 0.049057472626671574,
+      "7": 0.04846768949335294
+    },
+    "input_digest": "f3434146000e15a80e154f58c446598c56d71a7adac22d301a902c1c1f263000",
+    "physical_metrics": {
+      "mrst": {
+        "log_fugacity_max": 9.999988908351853e-05,
+        "log_fugacity_rmse": 3.21945709648745e-05,
+        "material_balance_max": 9.960365865424592e-11,
+        "material_balance_rmse": 2.157336414444152e-11,
+        "nonfinite_count": 0,
+        "out_of_bounds_count": 0,
+        "phase_counts": {
+          "gas": 115,
+          "liquid": 6659,
+          "two-phase": 3226
+        },
+        "x_closure_rmse": 4.224686731655425e-17,
+        "y_closure_rmse": 5.455930096734114e-17
+      },
+      "pymrst": {
+        "log_fugacity_max": 2.922506503466593e-08,
+        "log_fugacity_rmse": 3.0151381546093607e-10,
+        "material_balance_max": 9.960365865424592e-11,
+        "material_balance_rmse": 2.157325021212512e-11,
+        "nonfinite_count": 0,
+        "out_of_bounds_count": 0,
+        "phase_counts": {
+          "gas": 115,
+          "liquid": 6659,
+          "two-phase": 3226
+        },
+        "x_closure_rmse": 5.831577881329551e-17,
+        "y_closure_rmse": 6.567229613971937e-17
+      },
+      "reference": {
+        "log_fugacity_max": 8.764924504319643,
+        "log_fugacity_rmse": 2.7906614013726587,
+        "material_balance_max": 8.424541765861271e-06,
+        "material_balance_rmse": 5.481775061012422e-07,
+        "nonfinite_count": 0,
+        "out_of_bounds_count": 0,
+        "phase_counts": {
+          "gas": 22,
+          "liquid": 7560,
+          "two-phase": 2418
+        },
+        "x_closure_rmse": 9.640418839259551e-17,
+        "y_closure_rmse": 1.1914094977513224e-16
+      },
+      "victory": {
+        "log_fugacity_max": 14.113438080725285,
+        "log_fugacity_rmse": 3.5220460715926767,
+        "material_balance_max": 0.13883439613922727,
+        "material_balance_rmse": 0.00638565341480382,
+        "nonfinite_count": 0,
+        "out_of_bounds_count": 0,
+        "phase_counts": {
+          "gas": 22,
+          "liquid": 7560,
+          "two-phase": 2418
+        },
+        "x_closure_rmse": 0.0018732562894001603,
+        "y_closure_rmse": 0.0009932188550010324
+      }
+    },
+    "physics_parity_accepted": true,
+    "production_surrogate_accepted": false,
+    "qualification_completed": true,
+    "reason_stability_not_qualified": "Victory receives reference phase flags as inputs",
+    "source_artifacts": {
+      "fold_metrics.csv": "96040fb1872c345be7016c4da6f0a7b5605d4fee7c0f8013ddd047388a0c1bbf",
+      "inputs.mat": "152c36983e574f1bb7d71ce25ab2b34d27a2aefcf1170fab784f4d3c11846cca",
+      "mrst_results.mat": "5fa08a8c85f338a5f3b8be1b727e10319b21c4936b5b9ba7483d646d6e1a0c9f",
+      "per_output_metrics.csv": "878b83637bff070646cd6df35e80c7f11e5d72d97ecd866a008d6494e82e4ba4",
+      "predictions.csv": "25804a0bf5c4fbb57b5dacfb8248f4ecbd439b3bf737312a28cd99fb6f6d8283",
+      "summary.json": "993ee1f6724dc27660a33dfcd1042d17aaa771889c888f276c3481c4606b2374"
+    },
+    "speedup": 20.15708881709116,
+    "stability_classifier_qualified": false,
+    "surrogate_accuracy_accepted": false,
+    "timings_seconds": {
+      "mrst": 0.909419875,
+      "pymrst": 1.1236829590052366,
+      "reference": null,
+      "victory": 0.05574629199691117
+    },
+    "total_edges": 29
+  }
+}

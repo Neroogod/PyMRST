@@ -3,10 +3,11 @@
 from dataclasses import dataclass
 
 from pymrst.modules.ad_core.statefunctions.pvt_property_functions import blackoil_phase_fluid
+from pymrst.modules.ad_mechanics.models.fully_coupled.helpermodels.fluidhelpermodels._coupled_fluid_helper import CoupledFluidHelper
 
 
 @dataclass
-class BlackOilFluidModel:
+class BlackOilFluidModel(CoupledFluidHelper):
     """Black-oil helper surface for MRST-shaped mechanics imports."""
 
     G: object
@@ -15,19 +16,15 @@ class BlackOilFluidModel:
     disgas: bool = False
     vapoil: bool = False
 
+    primary_variable_names = ("pressure", "sW", "x")
+    variable_names = (
+        "wellSol", "pressure", "s", "rs", "rv", "sW", "sG", "sO",
+        "water", "oil", "gas",
+    )
+
     @classmethod
     def from_raw_fluid(cls, g, rock, raw_fluid, disgas=False, vapoil=False):
         return cls(g, rock, blackoil_phase_fluid(raw_fluid, vapoil=vapoil),
                    disgas=disgas, vapoil=vapoil)
-
-    def get_all_vars_names(self):
-        names = ["pressure", "sW"]
-        if self.disgas or self.vapoil:
-            names.append("rs_or_sG")
-        return names
-
-    def getAllVarsNames(self):
-        return self.get_all_vars_names()
-
 
 __all__ = ["BlackOilFluidModel"]

@@ -50,6 +50,12 @@ class CompositionalSPE1Result:
     iterations: np.ndarray
     native: bool = False
     substeps: np.ndarray | None = None
+    # The solver's own step reports, each carrying the per-iteration residual
+    # history. `iterations` is a count and cannot say *how* a step converged;
+    # the Milestone 1.9 failure classifier needs the history, and phase 114 is
+    # a case its gate names explicitly. Optional and defaulted, so nothing that
+    # constructs this result without one changes behaviour.
+    report: object | None = None
 
 
 @dataclass
@@ -130,6 +136,7 @@ def native_compositional_spe1_model(
     )
     model_cls = NaturalVariablesCompositionalModel if natural else OverallCompositionModel
     rho_s = (blackoil_model.fluid.rho_s[1], blackoil_model.fluid.rho_s[2])
+    water_b, rock_pv_mult, water_mu, water_rho_s = _deck_water_and_rock(deck)
     model = model_cls(
         blackoil_model.G,
         blackoil_model.rock,
@@ -138,6 +145,10 @@ def native_compositional_spe1_model(
         wells=_compositional_wells(blackoil_model.wells),
         rho_s=rho_s,
         water=True,
+        water_b=water_b,
+        water_mu=water_mu,
+        water_rho_s=water_rho_s,
+        rock_pv_mult=rock_pv_mult,
         eos_model=comp_model.eos_model,
         relperm_model=blackoil_model.fluid,
         gravity=NORM_GRAVITY,
@@ -149,6 +160,32 @@ def native_compositional_spe1_model(
         dp_max_rel=np.inf,
     )
     return deck, blackoil_model, state0, comp_state0, comp_model, well_components, model
+
+
+def _deck_water_and_rock(deck):
+    """Deck PVTW/ROCK curves for the compositional model's water and pore volume.
+
+    MRST's `convertBlackOilModelToCompositionalModel` strips `bO, bG, muO, muG`
+    from the fluid and keeps `bW` and `muW`, so the converted model still has
+    the deck's water compressibility and viscosity; `pvMultR` comes along with
+    the rock. Passing them here is what makes SPE1 agree with MATLAB - running
+    without them pins `sW` to its initial value and drops both the water and
+    rock contributions to system compressibility, which alone accounted for a
+    4.6 bar pressure difference (see `validate_phase114.py`).
+    """
+    w, r = deck["pvtw"], deck["rock_cp"]
+    assert w["viscosibility"] == 0.0, "water viscosibility not supported"
+
+    def water_b(p):
+        x = w["c"] * (p - w["p_ref"])
+        return (1.0 + x + 0.5 * x ** 2) / w["b_ref"]
+
+    def rock_pv_mult(p):
+        x = r["c"] * (p - r["p_ref"])
+        return 1.0 + x + 0.5 * x ** 2
+
+    return (water_b, rock_pv_mult, float(w["mu_ref"]),
+            float(np.asarray(deck["rhoS"]).ravel()[0]))
 
 
 def _native_initial_state(model, converted_state, *, natural: bool = False):
@@ -237,6 +274,7 @@ def run_compositional_spe1(
         compositional_model=comp_model,
         well_components=well_components,
         iterations=iterations,
+        report=report,
     )
 
 

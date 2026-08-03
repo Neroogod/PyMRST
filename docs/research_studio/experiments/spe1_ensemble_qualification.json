@@ -1,0 +1,603 @@
+{
+  "acceptance": {
+    "all_format_round_trips_passed": true,
+    "all_members_completed": true,
+    "all_physics_comparisons_passed": true
+  },
+  "aggregation": {
+    "completed_members": 3.0,
+    "failed_members": 0.0,
+    "simulation_seconds_maximum": 0.7736199579994718,
+    "simulation_seconds_mean": 0.6932093193330123,
+    "simulation_seconds_minimum": 0.6196555420010554,
+    "summed_member_elapsed_seconds": 2.0883824999964418,
+    "total_iterations_maximum": 8.0,
+    "total_iterations_mean": 8.0,
+    "total_iterations_minimum": 8.0
+  },
+  "comparisons": {
+    "aim": {
+      "performance": {
+        "candidate_member": "member_c0cfba8cb9e68b8176ebf253624096d03a0ea80a78ae650d4e8abbe728ec0757",
+        "comparison_group": "performance",
+        "passed": true,
+        "reference_member": "member_cca69992684cb62a8527aedafb86f8e33ca39d4f944ab10f74dbbf0459c25f9a",
+        "results": {
+          "performance.simulation_seconds": {
+            "candidate_unit": "dimensionless",
+            "compared_shape": [
+              1,
+              1
+            ],
+            "maximum_absolute_error": 0.08726750000096217,
+            "maximum_relative_error": 0.08726750000096217,
+            "maximum_scaled_error": 0.08726750000096217,
+            "passed": true,
+            "reference_unit": "dimensionless",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "simulation_seconds",
+            "worst_time": 1.0
+          },
+          "performance.total_iterations": {
+            "candidate_unit": "dimensionless",
+            "compared_shape": [
+              1,
+              1
+            ],
+            "maximum_absolute_error": 0.0,
+            "maximum_relative_error": 0.0,
+            "maximum_scaled_error": 0.0,
+            "passed": true,
+            "reference_unit": "dimensionless",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "total_iterations",
+            "worst_time": 1.0
+          }
+        },
+        "schema_version": 1
+      },
+      "physics": {
+        "candidate_member": "member_c0cfba8cb9e68b8176ebf253624096d03a0ea80a78ae650d4e8abbe728ec0757",
+        "comparison_group": "time_integration",
+        "passed": true,
+        "reference_member": "member_cca69992684cb62a8527aedafb86f8e33ca39d4f944ab10f74dbbf0459c25f9a",
+        "results": {
+          "conservation.finite_state": {
+            "candidate_unit": "dimensionless",
+            "compared_shape": [
+              2,
+              1
+            ],
+            "maximum_absolute_error": 0.0,
+            "maximum_relative_error": 0.0,
+            "maximum_scaled_error": 0.0,
+            "passed": true,
+            "reference_unit": "dimensionless",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "conservation.finite_state[0]",
+            "worst_time": 86400.0
+          },
+          "fields.pressure": {
+            "candidate_unit": "Pa",
+            "compared_shape": [
+              2,
+              300
+            ],
+            "maximum_absolute_error": 15754.148407064378,
+            "maximum_relative_error": 0.00042456013911655035,
+            "maximum_scaled_error": 15754.148407064378,
+            "passed": true,
+            "reference_unit": "Pa",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "fields.pressure[100]",
+            "worst_time": 259200.0
+          },
+          "fields.rs": {
+            "candidate_unit": "dimensionless",
+            "compared_shape": [
+              2,
+              300
+            ],
+            "maximum_absolute_error": 0.1395132158107799,
+            "maximum_relative_error": 0.0004697777094007028,
+            "maximum_scaled_error": 0.1395132158107799,
+            "passed": true,
+            "reference_unit": "dimensionless",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "fields.rs[0]",
+            "worst_time": 259200.0
+          },
+          "fields.sG": {
+            "candidate_unit": "dimensionless",
+            "compared_shape": [
+              2,
+              300
+            ],
+            "maximum_absolute_error": 0.00022084344836927408,
+            "maximum_relative_error": 0.00022084344836927408,
+            "maximum_scaled_error": 0.00022084344836927408,
+            "passed": true,
+            "reference_unit": "dimensionless",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "fields.sG[0]",
+            "worst_time": 259200.0
+          },
+          "fields.sW": {
+            "candidate_unit": "dimensionless",
+            "compared_shape": [
+              2,
+              300
+            ],
+            "maximum_absolute_error": 1.674614367369598e-06,
+            "maximum_relative_error": 1.674614367369598e-06,
+            "maximum_scaled_error": 1.674614367369598e-06,
+            "passed": true,
+            "reference_unit": "dimensionless",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "fields.sW[100]",
+            "worst_time": 259200.0
+          },
+          "regions.field_average_pressure": {
+            "candidate_unit": "Pa",
+            "compared_shape": [
+              2,
+              1
+            ],
+            "maximum_absolute_error": 39.937613163143396,
+            "maximum_relative_error": 1.2078204451553946e-06,
+            "maximum_scaled_error": 39.937613163143396,
+            "passed": true,
+            "reference_unit": "Pa",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "regions.field_average_pressure[0]",
+            "worst_time": 259200.0
+          },
+          "wells.bhp": {
+            "candidate_unit": "Pa",
+            "compared_shape": [
+              2,
+              2
+            ],
+            "maximum_absolute_error": 11593.56580042839,
+            "maximum_relative_error": 0.00037756647187869353,
+            "maximum_scaled_error": 11593.56580042839,
+            "passed": true,
+            "reference_unit": "Pa",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "wells.bhp[1]",
+            "worst_time": 259200.0
+          },
+          "wells.qGs": {
+            "candidate_unit": "dimensionless",
+            "compared_shape": [
+              2,
+              2
+            ],
+            "maximum_absolute_error": 0.0,
+            "maximum_relative_error": 0.0,
+            "maximum_scaled_error": 0.0,
+            "passed": true,
+            "reference_unit": "dimensionless",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "wells.qGs[0]",
+            "worst_time": 86400.0
+          },
+          "wells.qOs": {
+            "candidate_unit": "dimensionless",
+            "compared_shape": [
+              2,
+              2
+            ],
+            "maximum_absolute_error": 0.0,
+            "maximum_relative_error": 0.0,
+            "maximum_scaled_error": 0.0,
+            "passed": true,
+            "reference_unit": "dimensionless",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "wells.qOs[0]",
+            "worst_time": 86400.0
+          },
+          "wells.qWs": {
+            "candidate_unit": "dimensionless",
+            "compared_shape": [
+              2,
+              2
+            ],
+            "maximum_absolute_error": 9.434337474401526e-13,
+            "maximum_relative_error": 9.434337474401526e-13,
+            "maximum_scaled_error": 9.434337474401526e-13,
+            "passed": true,
+            "reference_unit": "dimensionless",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "wells.qWs[0]",
+            "worst_time": 259200.0
+          }
+        },
+        "schema_version": 1
+      }
+    },
+    "explicit": {
+      "performance": {
+        "candidate_member": "member_14d854a781e0061c07aa19b08d03bd91e549f421371f6898259a2698c79bff84",
+        "comparison_group": "performance",
+        "passed": true,
+        "reference_member": "member_cca69992684cb62a8527aedafb86f8e33ca39d4f944ab10f74dbbf0459c25f9a",
+        "results": {
+          "performance.simulation_seconds": {
+            "candidate_unit": "dimensionless",
+            "compared_shape": [
+              1,
+              1
+            ],
+            "maximum_absolute_error": 0.0666969159974542,
+            "maximum_relative_error": 0.0666969159974542,
+            "maximum_scaled_error": 0.0666969159974542,
+            "passed": true,
+            "reference_unit": "dimensionless",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "simulation_seconds",
+            "worst_time": 1.0
+          },
+          "performance.total_iterations": {
+            "candidate_unit": "dimensionless",
+            "compared_shape": [
+              1,
+              1
+            ],
+            "maximum_absolute_error": 0.0,
+            "maximum_relative_error": 0.0,
+            "maximum_scaled_error": 0.0,
+            "passed": true,
+            "reference_unit": "dimensionless",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "total_iterations",
+            "worst_time": 1.0
+          }
+        },
+        "schema_version": 1
+      },
+      "physics": {
+        "candidate_member": "member_14d854a781e0061c07aa19b08d03bd91e549f421371f6898259a2698c79bff84",
+        "comparison_group": "time_integration",
+        "passed": true,
+        "reference_member": "member_cca69992684cb62a8527aedafb86f8e33ca39d4f944ab10f74dbbf0459c25f9a",
+        "results": {
+          "conservation.finite_state": {
+            "candidate_unit": "dimensionless",
+            "compared_shape": [
+              2,
+              1
+            ],
+            "maximum_absolute_error": 0.0,
+            "maximum_relative_error": 0.0,
+            "maximum_scaled_error": 0.0,
+            "passed": true,
+            "reference_unit": "dimensionless",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "conservation.finite_state[0]",
+            "worst_time": 86400.0
+          },
+          "fields.pressure": {
+            "candidate_unit": "Pa",
+            "compared_shape": [
+              2,
+              300
+            ],
+            "maximum_absolute_error": 219107.10588492453,
+            "maximum_relative_error": 0.00590559970111806,
+            "maximum_scaled_error": 219107.10588492453,
+            "passed": true,
+            "reference_unit": "Pa",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "fields.pressure[0]",
+            "worst_time": 259200.0
+          },
+          "fields.rs": {
+            "candidate_unit": "dimensionless",
+            "compared_shape": [
+              2,
+              300
+            ],
+            "maximum_absolute_error": 2.080738821251799,
+            "maximum_relative_error": 0.00906298798942066,
+            "maximum_scaled_error": 2.080738821251799,
+            "passed": true,
+            "reference_unit": "dimensionless",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "fields.rs[100]",
+            "worst_time": 259200.0
+          },
+          "fields.sG": {
+            "candidate_unit": "dimensionless",
+            "compared_shape": [
+              2,
+              300
+            ],
+            "maximum_absolute_error": 0.008373817264912365,
+            "maximum_relative_error": 0.008373817264912365,
+            "maximum_scaled_error": 0.008373817264912365,
+            "passed": true,
+            "reference_unit": "dimensionless",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "fields.sG[0]",
+            "worst_time": 259200.0
+          },
+          "fields.sW": {
+            "candidate_unit": "dimensionless",
+            "compared_shape": [
+              2,
+              300
+            ],
+            "maximum_absolute_error": 2.328710920121435e-05,
+            "maximum_relative_error": 2.328710920121435e-05,
+            "maximum_scaled_error": 2.328710920121435e-05,
+            "passed": true,
+            "reference_unit": "dimensionless",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "fields.sW[0]",
+            "worst_time": 259200.0
+          },
+          "regions.field_average_pressure": {
+            "candidate_unit": "Pa",
+            "compared_shape": [
+              2,
+              1
+            ],
+            "maximum_absolute_error": 2572.7740713320673,
+            "maximum_relative_error": 7.780758232663432e-05,
+            "maximum_scaled_error": 2572.7740713320673,
+            "passed": true,
+            "reference_unit": "Pa",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "regions.field_average_pressure[0]",
+            "worst_time": 259200.0
+          },
+          "wells.bhp": {
+            "candidate_unit": "Pa",
+            "compared_shape": [
+              2,
+              2
+            ],
+            "maximum_absolute_error": 169819.15144317597,
+            "maximum_relative_error": 0.0031401421474828734,
+            "maximum_scaled_error": 169819.15144317597,
+            "passed": true,
+            "reference_unit": "Pa",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "wells.bhp[1]",
+            "worst_time": 259200.0
+          },
+          "wells.qGs": {
+            "candidate_unit": "dimensionless",
+            "compared_shape": [
+              2,
+              2
+            ],
+            "maximum_absolute_error": 1.7763568394002505e-15,
+            "maximum_relative_error": 2.1338571887497707e-16,
+            "maximum_scaled_error": 1.7763568394002505e-15,
+            "passed": true,
+            "reference_unit": "dimensionless",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "wells.qGs[0]",
+            "worst_time": 86400.0
+          },
+          "wells.qOs": {
+            "candidate_unit": "dimensionless",
+            "compared_shape": [
+              2,
+              2
+            ],
+            "maximum_absolute_error": 0.0,
+            "maximum_relative_error": 0.0,
+            "maximum_scaled_error": 0.0,
+            "passed": true,
+            "reference_unit": "dimensionless",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "wells.qOs[0]",
+            "worst_time": 86400.0
+          },
+          "wells.qWs": {
+            "candidate_unit": "dimensionless",
+            "compared_shape": [
+              2,
+              2
+            ],
+            "maximum_absolute_error": 9.877792131064946e-13,
+            "maximum_relative_error": 9.877792131064946e-13,
+            "maximum_scaled_error": 9.877792131064946e-13,
+            "passed": true,
+            "reference_unit": "dimensionless",
+            "sign_scale": 1.0,
+            "unit_scale": 1.0,
+            "worst_entity": "wells.qWs[0]",
+            "worst_time": 259200.0
+          }
+        },
+        "schema_version": 1
+      }
+    }
+  },
+  "ensemble": {
+    "effective_workers": 3,
+    "execution_backend": "process_pool",
+    "matrix_id": "matrix_3c7c7aec00ea0b7dc26b5cbfb3b7e6f49d8c5b61e2d92feac3f79d5474f5574d",
+    "memory_per_worker_bytes": 536870912,
+    "outcomes": [
+      {
+        "coordinate": {
+          "comparison_group": "time_integration",
+          "components": {
+            "time_integration": "fully-implicit"
+          },
+          "experiment_id": "experiment_06a02706a0f9858ca33c4ba05fe3ce2d513427564cc68ef376e388b6e3f1e643",
+          "member_id": "member_cca69992684cb62a8527aedafb86f8e33ca39d4f944ab10f74dbbf0459c25f9a",
+          "ordinal": 0,
+          "parameters": {},
+          "variant_name": "fim"
+        },
+        "elapsed_seconds": 0.6898149579992605,
+        "error_message": "",
+        "error_type": "",
+        "resumed": false,
+        "seed": 2337545716022286440,
+        "status": "completed",
+        "store_path": "results/research_studio/spe1_ensemble_final/members/matrix_3c7c7aec00ea0b7dc26b5cbfb3b7e6f49d8c5b61e2d92feac3f79d5474f5574d/member_cca69992684cb62a8527aedafb86f8e33ca39d4f944ab10f74dbbf0459c25f9a"
+      },
+      {
+        "coordinate": {
+          "comparison_group": "time_integration",
+          "components": {
+            "time_integration": "explicit"
+          },
+          "experiment_id": "experiment_06a02706a0f9858ca33c4ba05fe3ce2d513427564cc68ef376e388b6e3f1e643",
+          "member_id": "member_14d854a781e0061c07aa19b08d03bd91e549f421371f6898259a2698c79bff84",
+          "ordinal": 1,
+          "parameters": {},
+          "variant_name": "explicit"
+        },
+        "elapsed_seconds": 0.6224110829989513,
+        "error_message": "",
+        "error_type": "",
+        "resumed": false,
+        "seed": 5054219341071659283,
+        "status": "completed",
+        "store_path": "results/research_studio/spe1_ensemble_final/members/matrix_3c7c7aec00ea0b7dc26b5cbfb3b7e6f49d8c5b61e2d92feac3f79d5474f5574d/member_14d854a781e0061c07aa19b08d03bd91e549f421371f6898259a2698c79bff84"
+      },
+      {
+        "coordinate": {
+          "comparison_group": "time_integration",
+          "components": {
+            "time_integration": "adaptive-implicit"
+          },
+          "experiment_id": "experiment_06a02706a0f9858ca33c4ba05fe3ce2d513427564cc68ef376e388b6e3f1e643",
+          "member_id": "member_c0cfba8cb9e68b8176ebf253624096d03a0ea80a78ae650d4e8abbe728ec0757",
+          "ordinal": 2,
+          "parameters": {
+            "aim.threshold": 0.05
+          },
+          "variant_name": "aim"
+        },
+        "elapsed_seconds": 0.7761564589982299,
+        "error_message": "",
+        "error_type": "",
+        "resumed": false,
+        "seed": 8210840322351804976,
+        "status": "completed",
+        "store_path": "results/research_studio/spe1_ensemble_final/members/matrix_3c7c7aec00ea0b7dc26b5cbfb3b7e6f49d8c5b61e2d92feac3f79d5474f5574d/member_c0cfba8cb9e68b8176ebf253624096d03a0ea80a78ae650d4e8abbe728ec0757"
+      }
+    ],
+    "requested_workers": 3,
+    "runner": "pymrst.research_studio.experiments.runners:spe1_time_integration_member",
+    "schema_version": 1,
+    "summary": {
+      "completed": 3,
+      "failed": 0,
+      "resumed": 0
+    }
+  },
+  "format_round_trips": {
+    "aim": {
+      "csv_parquet_maximum_absolute_error": 6.938893903907228e-17,
+      "csv_parquet_metadata_equal": true,
+      "csv_parquet_within_one_ulp_scale": true,
+      "csv_sha256": "9db39eae04ad07b729dba58e967c32dfc98e7d159e46ccff179aaac0a9aff97e",
+      "parquet_sha256": "4fc72f5f5f8ba9ffaeb5f4efc915cc8236e96178b6edcb902c0df6ee5c74625d",
+      "tabular_rows": 26,
+      "zarr_array_checks": {
+        "conservation__finite_state": true,
+        "convergence__cuts": true,
+        "convergence__implicit_fraction": true,
+        "convergence__iterations": true,
+        "fields__pressure": true,
+        "fields__rs": true,
+        "fields__sG": true,
+        "fields__sW": true,
+        "regions__field_average_pressure": true,
+        "wells__bhp": true,
+        "wells__qGs": true,
+        "wells__qOs": true,
+        "wells__qWs": true
+      },
+      "zarr_arrays_bit_identical": true
+    },
+    "explicit": {
+      "csv_parquet_maximum_absolute_error": 6.938893903907228e-17,
+      "csv_parquet_metadata_equal": true,
+      "csv_parquet_within_one_ulp_scale": true,
+      "csv_sha256": "e9226af1942322167e901b63892d73390bcb64bb3ef5873cb11d15547945e306",
+      "parquet_sha256": "c78bdb612dfc4ba88bc125a53fee4c391331381eb09f794e21377758d2fcc938",
+      "tabular_rows": 26,
+      "zarr_array_checks": {
+        "conservation__finite_state": true,
+        "convergence__cuts": true,
+        "convergence__implicit_fraction": true,
+        "convergence__iterations": true,
+        "fields__pressure": true,
+        "fields__rs": true,
+        "fields__sG": true,
+        "fields__sW": true,
+        "regions__field_average_pressure": true,
+        "wells__bhp": true,
+        "wells__qGs": true,
+        "wells__qOs": true,
+        "wells__qWs": true
+      },
+      "zarr_arrays_bit_identical": true
+    },
+    "fim": {
+      "csv_parquet_maximum_absolute_error": 7.450580596923828e-09,
+      "csv_parquet_metadata_equal": true,
+      "csv_parquet_within_one_ulp_scale": true,
+      "csv_sha256": "584defdc5e15cbaa79c1510eaa319422fcc5e7afd522c984eefdf3d2596bfe4e",
+      "parquet_sha256": "6535aa80f51f9df4619b3f2271a659f6e4a7026e1a63f8ae7fcfe7556498adaa",
+      "tabular_rows": 26,
+      "zarr_array_checks": {
+        "conservation__finite_state": true,
+        "convergence__cuts": true,
+        "convergence__implicit_fraction": true,
+        "convergence__iterations": true,
+        "fields__pressure": true,
+        "fields__rs": true,
+        "fields__sG": true,
+        "fields__sW": true,
+        "regions__field_average_pressure": true,
+        "wells__bhp": true,
+        "wells__qGs": true,
+        "wells__qOs": true,
+        "wells__qWs": true
+      },
+      "zarr_arrays_bit_identical": true
+    }
+  },
+  "matrix_id": "matrix_3c7c7aec00ea0b7dc26b5cbfb3b7e6f49d8c5b61e2d92feac3f79d5474f5574d",
+  "schema_version": 1,
+  "work_packages": [
+    "M3.3",
+    "M3.4",
+    "M3.5"
+  ]
+}

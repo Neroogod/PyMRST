@@ -14,11 +14,24 @@ def _ensure_fraction(z, tol=1.0e-8):
 from pymrst.modules.compositional.utils.estimate_equilibrium_wilson import estimateEquilibriumWilson
 
 
+# What this function actually needs from a mixture. Checked by name rather
+# than by `isinstance`, because class identity is not stable here: running
+# `eos.py` directly makes its `Mixture` the one defined in `__main__`, while
+# this module imported `pymrst.modules.compositional.eos.Mixture` - two class
+# objects from one source, and `isinstance` between them is False. That made
+# `eos.py`'s own self-tests fail the moment `flash` started routing through
+# this test, while the same code worked perfectly on import.
+_MIXTURE_ATTRIBUTES = ("n", "Tcrit", "Pcrit", "acentric")
+
+
 def _mixture_from_eos(eos) -> Mixture:
     mix = getattr(eos, "CompositionalMixture", eos)
     mix = getattr(mix, "mixture", mix)
-    if not isinstance(mix, Mixture):
-        raise TypeError("phaseStabilityTest requires a Mixture or EquationOfStateModel-like object")
+    missing = [a for a in _MIXTURE_ATTRIBUTES if not hasattr(mix, a)]
+    if missing:
+        raise TypeError(
+            f"phaseStabilityTest needs a Mixture-like object; "
+            f"{type(mix).__name__} is missing {missing}")
     return mix
 
 

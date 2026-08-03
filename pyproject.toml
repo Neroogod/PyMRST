@@ -15,6 +15,9 @@ dependencies = [
     "scipy>=1.11",
 ]
 
+[project.scripts]
+pymrst = "pymrst.cli.main:main"
+
 [project.optional-dependencies]
 # the elliptic stage of CPR (ad_core.CPRSolver). Without it that stage falls
 # back to an incomplete factorisation, which still beats a direct solve but
@@ -26,6 +29,22 @@ browser = ["plotly>=5.20"]
 # blocking PyVista window when these are absent
 gui = ["pyvista>=0.43", "pyvistaqt>=0.11", "PyQt5>=5.15"]
 ml = ["torch>=2.0"]
+# reading MATLAB v7.3 (HDF5) .mat files in pymrst.io.mrst_mat. SciPy covers
+# v7 and earlier on its own; MRST writes -v7.3 once a case is large, and
+# without this those files raise an ImportError telling you to install it.
+mat73 = ["h5py>=3.0"]
+studio = ["h5py>=3.10", "xarray>=2024.1", "zarr>=2.17", "pandas>=2.0", "pyarrow>=15"]
+# the graph partitioner behind coarsegrid.partition_metis. Without it the
+# connection graph is still built and inspectable; only the partitioning call
+# raises. A substitute partitioner would produce different partitions, which
+# loses parity with MRST rather than preserving it.
+metis = ["pymetis>=2023.1"]
+# the Streamlit flash-prediction app under compositional/ML_models/Web_app.
+# Unlike the other optional integrations this one imports at module scope -
+# a Streamlit script is executed top to bottom by `streamlit run`, so there is
+# nothing to defer the import into. pandas and streamlit were undeclared until
+# the full-suite sweep tried to run the app as a module self-test.
+webapp = ["streamlit>=1.30", "pandas>=2.0", "plotly>=5.20"]
 
 [tool.setuptools.packages.find]
 include = ["pymrst*"]

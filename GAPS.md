@@ -40,14 +40,13 @@ second signal.
 | `ad-core` | 345 | 60 | 12,426 |
 | `co2lab-*` (4 dirs) | 216 | 27 | 5,209 |
 | `geothermal` | 105 | 32 | 1,320 |
-| `hfm` | 180 | 19 | 1,437 |
+| `hfm` + consolidated implemented `hfm_v2` subset | 360 | 19 | 1,437 |
 | `ensemble` | 68 | 19 | 843 |
 | `deckformat` | 112 | 15 | 956 |
 | `incomp` | 52 | 14 | 1,648 |
 | `ad-micp` | 77 | 13 | 702 |
 | `diagnostics` | 143 | 9 | 683 |
 | `mpsaw` | 91 | 7 | 439 |
-| `hfm_v2` | 180 | 4 | 60 |
 | `dfm` | 63 | 1 | 32 |
 | `shale` | 48 | 1 | 32 |
 
@@ -66,10 +65,9 @@ Read it in three bands:
   one reference and stops. This was once the description of the whole tree; it
   now describes about half of it.
 
-`hfm_v2`, `dfm` and `shale` sit in a fourth band of their own: they are
-**re-export shims**, 25-32 lines each, forwarding to `hfm`'s validated EDFM
-kernels under MRST's other module names. They add no independent capability
-and should not be read as three more ported modules. `mpsaw` is similar in
+`dfm` remains a re-export shim over `hfm`; the redundant `hfm_v2` shim was
+removed and its implemented public subset consolidated into `hfm`. This does
+not imply that MRST's much broader `hfm_v2` module is ported. `mpsaw` is similar in
 spirit - 439 lines, of which the `utils`, `models` and `statefunctions`
 subpackages are 5-8 line stubs.
 
@@ -1240,8 +1238,9 @@ The rest of `utils/` is MATLAB session plumbing (`mrstModule`, `merge_options`,
 
 Grouped by family. None of these have a `pymrst/modules` counterpart, with two
 qualifications: `mpsaw` has a 439-line landing module whose lower subpackages
-are stubs, and `hfm_v2`/`dfm`/`shale` exist only as re-export shims over `hfm`
-(see the fourth band above). Neither counts as a port.
+are stubs, while `dfm` remains a re-export shim over `hfm`. MRST `hfm_v2`
+coverage is counted as missing breadth in the consolidated `hfm` owner rather
+than represented by an empty Python package.
 
 - **Alternative discretizations:** Phase 387 adds an MPFA-O vertical slice
   (local transmissibility assembly), and Phase 388 extends its single-phase
@@ -1308,8 +1307,14 @@ are stubs, and `hfm_v2`/`dfm`/`shale` exist only as re-export shims over `hfm`
 ### Covered under a different name (not gaps)
 - `adjoint` -> folded into `optimization` (flow) and `ad_mechanics.adjoint`
   (surface uplift, coupled poromechanics)
-- `coarsegrid` -> folded into `upscaling`
 - `co2lab-common` / `-ve` / `-spillpoint` / `-mit` -> single `co2lab` package
+
+### Ported since this list was written
+- `coarsegrid` -> `pymrst/modules/coarsegrid`, a full MRST-shaped port: 34 of 37
+  files with 3 recorded exclusions, 323 self-tests, three MATLAB validators.
+  Previously listed here as "folded into `upscaling`", which was true of two
+  files and misleading about the module. `upscaling/coarsegrid` now re-exports
+  it.
 
 ### Declared not portable
 - `MICPMechModel` - `equationsMICPMech.m` is absent from the MRST tree (it

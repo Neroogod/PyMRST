@@ -12,6 +12,7 @@ from pymrst.modules.ad_core.utils.boundary_conditions import (
     compute_sources_and_boundary_conditions_ad,
 )
 from pymrst.params.wells_and_bc import BoundaryCondition, Source
+from pymrst.utils.adi import init_variables_adi
 
 
 def _model():
@@ -119,6 +120,23 @@ def test_phase_pressure_and_outside_properties_control_inflow():
     assert np.allclose(np.column_stack(out.phaseVolume), [[100.0, 280.0]])
     # Outside b=[.9, .8], not the cell's inside b=[1.1, .95].
     assert np.allclose(np.column_stack(out.phaseMass), [[90_000.0, 179_200.0]])
+
+
+def test_fixed_pressure_boundary_retains_cell_pressure_derivative():
+    model = _model()
+    pressure, sat, mob, rho = _props()
+    (p,) = init_variables_adi(pressure[0])
+    bc = BoundaryCondition(
+        face=np.array([0]), type=["pressure"], value=np.array([110.0]),
+        sat=np.array([[0.75, 0.25]]),
+    )
+    _, out = compute_sources_and_boundary_conditions_ad(
+        model, [p, p], sat, mob, rho, None, {"bc": bc}
+    )
+    # q_w = mobility_out*T*(p_bc-p_cell); p_bc has zero Jacobian.
+    derivative = out.phaseVolume[0].jac[0].toarray()
+    assert derivative[0, 0] == -6.0
+    assert derivative[0, 1] == 0.0
 
 
 def test_reservoir_flux_boundary_without_gravity():

@@ -34,6 +34,7 @@ from pymrst.utils.interp_table import interp_table
 from pymrst.utils.mcolon import mcolon
 from pymrst.utils.rldecode import rldecode
 from pymrst.utils.rlencode import rlencode
+from pymrst.utils.unique_stable import unique_stable
 
 __all__ = [
     "block_diag_index",
@@ -60,4 +61,5 @@ __all__ = [
     "multi_symm_eig",
     "rldecode",
     "rlencode",
+    "unique_stable",
 ]

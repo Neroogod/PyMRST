@@ -10,7 +10,21 @@ from pymrst.utils.inout.eclipse.deckinput_simple.apply_operator_simple import (
     apply_operator_simple,
 )
 
-ARRAY_KEYWORDS = {"COORD", "ZCORN", "ACTNUM", "PORO", "PERMX", "PERMY", "PERMZ", "NTG"}
+# Per-cell (or per-node) arrays a GRID section may declare. Corner-point decks
+# use COORD/ZCORN; block-centred decks such as the Egg model use DX/DY/DZ and
+# TOPS instead and carry no corner-point data at all, so a reader that knows
+# only the first group cannot read them.
+ARRAY_KEYWORDS = {
+    # corner-point geometry
+    "COORD", "ZCORN",
+    # block-centred geometry
+    "DX", "DY", "DZ", "DXV", "DYV", "DZV", "TOPS", "DEPTHZ",
+    # petrophysics
+    "ACTNUM", "PORO", "NTG", "PERMX", "PERMY", "PERMZ",
+    "PERMXY", "PERMXZ", "PERMYX", "PERMYZ", "PERMZX", "PERMZY",
+    # pore-volume and transmissibility modifiers
+    "MULTPV", "MULTX", "MULTY", "MULTZ", "PORV",
+}
 
 # Keywords that modify an array already read, rather than declaring one. These
 # used to be skipped silently, which meant a deck saying "MULTIPLY PERMX 0.1"
@@ -21,8 +35,19 @@ OPERATOR_KEYWORDS = ("ADD", "COPY", "EQUALS", "MAXVALUE", "MINVALUE",
 
 def read_keywords(path, keywords: Optional[Set[str]] = None) -> Dict:
     """Parse grid/petrophysics keywords from a GRDECL-style file."""
+    return read_keywords_text(Path(path).read_text(), keywords)
+
+
+def read_keywords_text(text: str, keywords: Optional[Set[str]] = None) -> Dict:
+    """Same as `read_keywords`, on deck text already in memory.
+
+    A GRID section usually arrives split across INCLUDE files, and an operator
+    such as `COPY` needs the `SPECGRID` from the parent deck to know the box
+    dimensions. Reading each file separately loses that context, so the caller
+    splices the text first and parses it once.
+    """
     known = ARRAY_KEYWORDS if keywords is None else set(keywords)
-    tokens = _tokens(Path(path))
+    tokens = _tokens_from_text(text)
     out: Dict = {}
     index = 0
     while index < len(tokens):
@@ -63,11 +88,31 @@ def _read_records(tokens: List[str], index: int):
 
 
 def _tokens(path: Path) -> List[str]:
+    return _tokens_from_text(path.read_text())
+
+
+def _tokens_from_text(text: str) -> List[str]:
     out: List[str] = []
-    for raw in path.read_text().splitlines():
+    for raw in text.splitlines():
         line = raw.split("--")[0].strip()
-        if line:
-            out.extend(line.replace("/", " / ").split())
+        if not line:
+            continue
+        # Commas separate values in ECLIPSE, and a slash is its own token.
+        fields = line.replace("/", " / ").replace(",", " ").split()
+        # Production decks annotate a record after its terminating slash, with
+        # no comment marker: Norne writes
+        #     'MULTZ' 0.005 6 14 11 18 10 10 /  C-3H
+        # where `C-3H` names the fault the line refers to. Carrying that token
+        # forward prepends it to the next record, which then has one field too
+        # many and is rejected. The main deck tokenizer already drops such
+        # text; this reader needs the same rule.
+        for position, token in enumerate(fields):
+            if token == "/" and position + 1 < len(fields):
+                following = fields[position + 1]
+                if following[:1].isalpha():
+                    fields = fields[:position + 1]
+                    break
+        out.extend(fields)
     return out
 
 

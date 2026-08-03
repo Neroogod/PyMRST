@@ -14,6 +14,7 @@ def vem_assemble(
     g: Grid,
     C: np.ndarray,
     alpha_scaling: float = 1.0,
+    stabilization=None,
 ) -> sp.csr_array:
     """Assemble the global VEM stiffness matrix for 2D/3D grids."""
     qc_all = calculate_qc(g)[0] if g.griddim == 3 else calculate_qf(g)[0]
@@ -29,12 +30,29 @@ def vem_assemble(
 
         tr_d = np.trace(D)
         dnc = np.sum(NC * NC, axis=0)
-        alpha = abs(tr_d * g.cells.volumes[cell] / dnc.sum()) * alpha_scaling
-
         I = np.eye(dofs.size)
+        if stabilization is None:
+            alpha = abs(tr_d * g.cells.volumes[cell] / dnc.sum()) * alpha_scaling
+            SE = alpha * I
+        else:
+            supplied = stabilization(cell, dofs) if callable(stabilization) else stabilization
+            if isinstance(supplied, (list, tuple)):
+                supplied = supplied[cell]
+            supplied = supplied.toarray() if sp.issparse(supplied) else np.asarray(supplied)
+            if supplied.ndim == 0:
+                SE = float(supplied) * I
+            elif supplied.shape == (dofs.size, dofs.size):
+                SE = supplied
+            elif supplied.shape == (dim * g.nodes.num, dim * g.nodes.num):
+                SE = supplied[np.ix_(dofs, dofs)]
+            else:
+                raise ValueError(
+                    "custom stabilization must be scalar, one local matrix per "
+                    "cell, a global displacement matrix, or callable(cell, dofs)"
+                )
         kh = (
             g.cells.volumes[cell] * (WC @ D @ WC.T)
-            + alpha * (I - PP).T @ (I - PP)
+            + (I - PP).T @ SE @ (I - PP)
         )
 
         rows.append(np.repeat(dofs, dofs.size))

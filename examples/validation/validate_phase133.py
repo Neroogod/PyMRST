@@ -54,8 +54,15 @@ def main() -> int:
                        and setup["problem"].name == "Natural"
                        and setup["schedule"].step.val.size == 2
                        and np.all(setup["schedule"].step.control == 1))
-    failures += _check("external simulator slots are explicit placeholders",
-                       setup["external_references"] == {"E300": None, "AD-GPRS": None})
+    # Asserted as an invariant rather than as one machine's configuration. The
+    # E300 and AD-GPRS histories come from MRST's optional `simplecomp`
+    # archive, which lives in the MRST tree rather than in this repo, so
+    # whether they load is a property of the checkout and not of the port. The
+    # previous form pinned both slots to None and so failed on any machine that
+    # actually had the dataset installed - which this one does. The module's own
+    # self-test was corrected the same way; this validator was not.
+    failures += _check("external simulator slots are present and typed",
+                       set(setup["external_references"]) == {"E300", "AD-GPRS"})
     failures += _check("packed runner returns MRST helper tuple shape",
                        packed["names"] == ["Natural"]
                        and len(packed["states"]) == 1
@@ -71,10 +78,12 @@ def main() -> int:
                        and both["overall"]["name"] == "Overall")
     failures += _check("comparison data exposes MRST/E300/AD-GPRS slots",
                        comparison["names"] == ("MRST", "E300", "AD-GPRS")
-                       and comparison["available"] == ("MRST",)
                        and comparison["data"]["MRST"] is packed["result"].states
-                       and comparison["data"]["E300"] is None
-                       and comparison["data"]["AD-GPRS"] is None)
+                       and "MRST" in comparison["available"]
+                       # listed as available exactly when its data loaded
+                       and all((name in comparison["available"])
+                               == (comparison["data"][name] is not None)
+                               for name in ("E300", "AD-GPRS")))
     failures += _check("ternary displacement paths match MRST map shape",
                        ternary["vertices"].shape == (4, 2)
                        and len(ternary["paths"]) == 2

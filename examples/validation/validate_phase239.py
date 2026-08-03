@@ -37,9 +37,13 @@ def main() -> int:
     failures += _check("runner returns all MRST validation plot sections",
                        set(sections) == {"component_comparison", "pressure_saturation_comparison",
                                          "state_toolbars", "ternary_diagram"})
+    # `available` is a property of the checkout, not of the port: the E300 and
+    # AD-GPRS histories load from MRST's optional `simplecomp` archive. Pinning
+    # it to ("MRST",) failed on any machine that had the dataset installed.
+    # The three checks below assert the invariant instead.
     failures += _check("component comparison carries MRST legend/axis metadata",
                        comp["names"] == ("MRST", "E300", "AD-GPRS")
-                       and comp["available"] == ("MRST",)
+                       and "MRST" in comp["available"]
                        and comp["markers"] == ("-", "--", "--")
                        and comp["line_widths"] == (0.5, 2.5, 5.0)
                        and comp["legend_location"] == "north"
@@ -50,16 +54,17 @@ def main() -> int:
                        len(comp["legend"]) == 3 * len(comp["component_names"])
                        and comp["legend"][0].startswith("MRST "))
     failures += _check("pressure/saturation detailed section mirrors MRST comparison",
-                       detailed["available"] == ("MRST",)
+                       "MRST" in detailed["available"]
                        and detailed["legend_location"] == "northoutside"
                        and detailed["legend_orientation"] == "horizontal"
                        and detailed["ylim"] == (0.0, 1.0)
                        and detailed["MRST"]["components"].shape[1] == len(comp["component_names"])
-                       and detailed["E300"] is None)
+                       and (("E300" in detailed["available"])
+                            == (detailed["E300"] is not None)))
     failures += _check("state toolbar sections represent all simulator slots",
                        tuple(t["name"] for t in toolbars) == ("MRST", "E300", "AD-GPRS")
                        and toolbars[0]["available"] is True
-                       and toolbars[1]["available"] is False
+                       and all(isinstance(t["available"], bool) for t in toolbars)
                        and all(t["plot1d"] is True for t in toolbars))
     failures += _check("ternary section carries MRST triangle metadata",
                        ternary["vertices"].shape == (4, 2)

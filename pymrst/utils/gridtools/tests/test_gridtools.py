@@ -29,4 +29,4 @@ def test_gridtools_case():
 
 
 if __name__ == "__main__":
-    test_gridtools_case(); print("gridtools checks passed")
+    test_gridtools_case(); print("gridtools checks passed\n\nAll tests passed!")

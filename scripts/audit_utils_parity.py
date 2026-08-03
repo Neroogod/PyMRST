@@ -39,8 +39,6 @@ EXCLUDED_DIRS = {
     "octave_only": "Octave compatibility shims for MATLAB builtins",
     "mex": "MEX compilation helpers; PyMRST has no compiled extensions",
     "paper_manager": "bibliography of MRST publications",
-    "dataset_manager": "MATLAB dataset download registry and GUI",
-    "settings_manager": "MATLAB settings persistence",
 }
 
 # Individual root files that are MATLAB-environment plumbing, not numerics.

@@ -403,6 +403,21 @@ class NaturalVariablesCompositionalModel(OverallCompositionModel):
         rho_g = props["rhoV"]
         return x_m, y_m, st0.sO, st0.sG, rho_o, rho_g
 
+    def _modify_natural_velocity(
+        self, phase, velocity, pressure, upwind, density, mobility
+    ):
+        """Extension hook for phase-velocity physics such as shale flow."""
+        _ = phase, pressure, upwind, density, mobility
+        return velocity
+
+    def _modify_natural_component_flux(
+        self, component, flux, vapor_mass_fractions, gas_density,
+        gas_saturation, gas_upwind,
+    ):
+        """Extension hook for component transport such as molecular diffusion."""
+        _ = component, vapor_mass_fractions, gas_density, gas_saturation, gas_upwind
+        return flux
+
     def assemble_natural(
         self,
         st0: NaturalVariablesState,
@@ -461,10 +476,17 @@ class NaturalVariablesCompositionalModel(OverallCompositionModel):
         up_g = value(dp_g) <= 0
         v_o = -ops.upw(up_o, mob_o) * ops.T * dp_o
         v_g = -ops.upw(up_g, mob_g) * ops.T * dp_g
+        v_o = self._modify_natural_velocity("oil", v_o, p, up_o, rho_o, mob_o)
+        v_g = self._modify_natural_velocity("gas", v_g, p, up_g, rho_g, mob_g)
         r_ovo = ops.upw(up_o, rho_o) * v_o
         r_gvg = ops.upw(up_g, rho_g) * v_g
 
         eqs = []
+        # Same water/pore-volume compressibility the overall-composition model
+        # uses - this class assembles its own residuals, so it needs its own
+        # copy. See `OverallCompositionModel._water_b_factors`.
+        b_w, b_w0 = self._water_b_factors(p, st0)
+        pvm, pvm0 = self._pore_volume_multipliers(p, st0)
         if self.water:
             assert kr_w is not None
             rho_w = self.water_rho_s
@@ -473,15 +495,23 @@ class NaturalVariablesCompositionalModel(OverallCompositionModel):
             dp_w = ops.grad(p_w) - rho_w * self.gdz
             up_w = value(dp_w) <= 0
             v_w = -ops.upw(up_w, mob_w) * ops.T * dp_w
-            acc_w = (pv * s_w - pv * st0.sW) / dt
-            eqs.append(acc_w + ops.div(v_w))
+            v_w = self._modify_natural_velocity(
+                "water", v_w, p, up_w,
+                p * 0.0 + rho_w, mob_w,
+            )
+            acc_w = (pv * pvm * b_w * s_w - pv * pvm0 * b_w0 * st0.sW) / dt
+            flux_w = v_w if self.water_b is None else ops.upw(up_w, b_w) * v_w
+            eqs.append(acc_w + ops.div(flux_w))
 
         for i in range(ncomp):
             acc = (1.0 / dt) * (
-                pv * rho_o * s_o * x_m[i] - pv * rho_o0 * s_o0 * x_m0[i]
-                + pv * rho_g * s_g * y_m[i] - pv * rho_g0 * s_g0 * y_m0[i]
+                pv * pvm * rho_o * s_o * x_m[i] - pv * pvm0 * rho_o0 * s_o0 * x_m0[i]
+                + pv * pvm * rho_g * s_g * y_m[i] - pv * pvm0 * rho_g0 * s_g0 * y_m0[i]
             )
             flux = r_ovo * ops.upw(up_o, x_m[i]) + r_gvg * ops.upw(up_g, y_m[i])
+            flux = self._modify_natural_component_flux(
+                i, flux, y_m, rho_g, s_g, up_g
+            )
             eqs.append(acc + ops.div(flux))
 
         bc_forces = self.bc if bc is None else bc

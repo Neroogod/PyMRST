@@ -69,9 +69,13 @@ if __name__ == "__main__":
         src = add_source(None, np.array([0, 3]), 1e-3)
         assert np.allclose(src.rate, 1e-3)
         assert src.cell.size == 2
+        # `add_source` raises ValueError, not AssertionError. Catching the
+        # wrong one let the raise escape and the self-test failed on a working
+        # rejection.
         try:
             add_source(src, np.array([3]), 0.0)
-        except AssertionError:
+        except ValueError as exc:
+            assert "conflict" in str(exc), exc
             print("ok test_add_source")
             return
         raise AssertionError("expected conflict rejection")

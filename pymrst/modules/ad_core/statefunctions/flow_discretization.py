@@ -117,14 +117,12 @@ class PhaseFlux(StateFunction):
 
     def __init__(self, model=None):
         super().__init__(model, label="v_\\alpha")
-        self.depends_on(["Transmissibility", "FaceMobility",
-                         "PhasePotentialDifference"])
+        self.depends_on(["FaceMobility", "PermeabilityPotentialGradient"])
 
     def evaluate_on_domain(self, model, state):
-        t = self.get_evaluated(state, "Transmissibility")
         mobf = self.get_evaluated(state, "FaceMobility")
-        pot = self.get_evaluated(state, "PhasePotentialDifference")
-        return [-t * mobf[i] * pot[i] for i in range(len(mobf))]
+        kgrad = self.get_evaluated(state, "PermeabilityPotentialGradient")
+        return [-mobf[i] * kgrad[i] for i in range(len(mobf))]
 
 
 class ComponentPhaseFlux(StateFunction):
@@ -132,30 +130,15 @@ class ComponentPhaseFlux(StateFunction):
 
     def __init__(self, model=None):
         super().__init__(model, label="v_{i\\alpha}")
-        self.depends_on(["PhaseFlux", "PhaseUpwindFlag"])
-        self.depends_on("ShrinkageFactors", "PVTPropertyFunctions")
-        if model is not None:
-            for key in model.component_state_keys():
-                self.depends_on(key, STATE)
+        self.depends_on(["PermeabilityPotentialGradient", "FaceComponentMobility"])
 
     def evaluate_on_domain(self, model, state):
-        v = self.get_evaluated(state, "PhaseFlux")
-        flag = self.get_evaluated(state, "PhaseUpwindFlag")
-        b = self.get_evaluated_external(model, state, "PVTPropertyFunctions",
-                                        "ShrinkageFactors")
-        rs = state["rs"] if model.fluid.disgas else None
-        rv = state["rv"] if model.fluid.vapoil else None
-        upw = model.operators.upw
+        kgrad = self.get_evaluated(state, "PermeabilityPotentialGradient")
+        component_mobility = self.get_evaluated(state, "FaceComponentMobility")
         scale = model._basis_scale()
-
-        out = []
-        for c, comp in enumerate(model.components):
-            rho = comp.component_density(model, state, b, rs, rv)
-            out.append([
-                None if rho[ph] is None else scale[c] * upw(flag[ph], rho[ph]) * v[ph]
-                for ph in range(len(v))
-            ])
-        return out
+        return [[None if mobility is None else -scale[c] * mobility * kgrad[ph]
+                 for ph, mobility in enumerate(row)]
+                for c, row in enumerate(component_mobility)]
 
 
 class ComponentTotalFlux(StateFunction):
@@ -179,6 +162,12 @@ class FlowDiscretization(StateFunctionGrouping):
         from pymrst.modules.ad_core.statefunctions.flux.flow_state.flow_state_builder import (  # noqa: E501
             ImplicitFlowStateBuilder,
         )
+        from pymrst.modules.ad_core.statefunctions.flux.face_component_mobility import (
+            FaceComponentMobility,
+        )
+        from pymrst.modules.ad_core.statefunctions.flux.permeability_potential_gradient import (
+            PermeabilityPotentialGradient,
+        )
 
         super().__init__("FluxDisc")
         self.FlowStateBuilder = ImplicitFlowStateBuilder()
@@ -188,8 +177,12 @@ class FlowDiscretization(StateFunctionGrouping):
                                 GravityPotentialDifference(model))
         self.set_state_function("PhasePotentialDifference",
                                 PhasePotentialDifference(model))
+        self.set_state_function("PermeabilityPotentialGradient",
+                                PermeabilityPotentialGradient(model))
         self.set_state_function("PhaseUpwindFlag", PhaseUpwindFlag(model))
         self.set_state_function("FaceMobility", FaceMobility(model))
+        self.set_state_function("FaceComponentMobility",
+                                FaceComponentMobility(model))
         self.set_state_function("PhaseFlux", PhaseFlux(model))
         self.set_state_function("ComponentPhaseFlux", ComponentPhaseFlux(model))
         self.set_state_function("ComponentTotalFlux", ComponentTotalFlux(model))

@@ -959,10 +959,63 @@ Round-trip tests cover 2-D and 3-D grids, anisotropic rock, map data, malformed
 record counts, sources, and wells.
 
 After this increment, `inout` has 18 ported owners and zero missing runtime
-entries. The complete utility suite reports 136 passing tests. The only five
-pending ledger rows are MRST's own equilibrium/gridtools test and example
-scaffolding, which will be retained at matching layout paths rather than counted
-as runtime gaps.
+entries. The five remaining MRST equilibrium/gridtools test and example files
+have also been ported at matching layout paths. `gridAddHelpers` is now a real
+MRST-shaped owner with lazy plotting closures and grid-query helpers rather
+than an environment exclusion. Headless diagnostic ports for
+`plotSingleCellInfo` and `plotSingleFaceInfo` return inspectable geometry and
+optionally render on supplied Matplotlib axes.
+
+The ledger now reports 97 ported owners, 60 consolidated owners, and zero
+pending in-scope entries. The utility test suite contains 173 passing tests;
+its executable-module self-test gate independently reports 95 passing modules.
+The core MATLAB fixture additionally covers `blockDiagIndex`, `interpTable`,
+`dinterpTable`, `dinterpq1`, `discspace1`, `formatTimeRange`, dimension-aware
+`rlencode`, subset arithmetic, `numelValue`, `reduceToDouble`, and
+`uniqueStable`. This validation exposed and closed the missing spline option,
+dimension argument, stable-unique owner, and MRST-specific time-limit semantics.
+The second MATLAB fixture validates blockwise `multiEig`/`multiSymmEig`,
+projection, sorting, concatenation and field replacement for `IndexArray`, the
+`TensorProd` dispatch/evaluation path, and the final `SparseTensor` matrix.
+It also records MRST 2024a's reproducible `compIndexArray` crash while testing
+PyMRST's corrected documented behavior. Overall reference coverage is now
+**127 of 157** in-scope utilities.
+
+The grid-query MATLAB fixture then validates packed cell-face, cell-node and
+face-node extraction, indirection lookup, logical Cartesian indices,
+geometrical/topological/NNC neighbourships, connectivity matrices,
+node-sharing neighbours, connected subsets, and translated geometry. It
+explicitly accounts for MRST's cell-zero versus PyMRST's outside-cell `-1`
+convention. Every in-scope `gridtools` entry now has reference evidence and
+overall coverage is **139 of 157** utilities.
+
+The remaining-numerics fixture validates `lMultdiag`, `cellDimsCG`, cyclic
+`getSortedCellNodes`, `incompHydrostaticPressure`, `isCoarseGrid`, and all
+fields of all four `getUnitSystem` variants. MATLAB exposed two observable
+contracts that are now reproduced: coarse status depends on the presence of
+`parent` and `partition` even when empty, and the hydrostatic sampler stores
+its second depth at two increments while advancing pressure by one. Reference
+coverage is now **145 of 157**; the final twelve entries are all deck/cache
+I/O utilities.
+
+## Expanded infrastructure scope
+
+The earlier 157-file runtime scope excluded MRST's entire `dataset_manager`
+and `settings_manager` trees. That exclusion was too broad for literal layout
+and end-to-end reservoir-workflow parity and has been removed from the audit.
+The new Python packages contain direct implementations—not forwarding
+wrappers—of persistent typed settings, mapping migration, dataset metadata and
+discovery, availability/path resolution, download policy, and safe ZIP/TAR
+installation. Reservoir-critical definitions currently exist at MRST-shaped
+paths for SPE1, SPE3, SPE9, SPE10, EGG, Norne, and the Norne field model.
+
+That expanded backlog is now retired. All 39 MRST dataset definitions have
+direct metadata modules; the four pinned Norne/SPE10 installers, bulk-download
+and example-list utilities, testable dataset browser, and runnable example are
+also implemented. `dataset_manager` and `settings_manager` now report **55
+ported, 2 consolidated, and zero pending** entries together. Downloads use
+atomic temporary files and reject archive path traversal; persistent settings
+are written atomically and validated before use.
 
 ## Phase 6: `tensorAssembly`
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 import numpy as np
-from .plot_single_face_info import plot_single_face_info
+from pymrst.utils.gridtools.tests.plot_single_face_info import plot_single_face_info
 
 
 def plot_single_cell_info(grid, cell: int, *, plot_face_info=None, ax=None, **kwargs):

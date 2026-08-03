@@ -1,0 +1,277 @@
+{
+  "artifact": "pymrst_ad_finite_difference_evidence_graph",
+  "artifact_schema_version": 1,
+  "graph": {
+    "edges": [
+      {
+        "accepted": true,
+        "claim": "AD full residual derivative agrees with finite differences",
+        "converged": true,
+        "edge_id": "full_residual_ad_vs_fd",
+        "evidence_class": "finite_difference_derivative",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "dimensionless_variable_scaling:v1",
+          "central_richardson:v1"
+        ],
+        "metrics": {
+          "directions": 16.0,
+          "maximum_absolute_l2_error": 6.390294583979994e-05,
+          "maximum_fd_refinement_error": 1.1415305382876966e-09,
+          "maximum_relative_l2_error": 3.5001084804981733e-09,
+          "maximum_scaled_component_error": 8.452418820964274e-09
+        },
+        "shared_kernels": [
+          "residual value implementation",
+          "case setup"
+        ],
+        "source": "fd_full_residual",
+        "target": "pymrst_ad"
+      },
+      {
+        "accepted": true,
+        "claim": "AD reservoir mass derivative agrees with finite differences",
+        "converged": true,
+        "edge_id": "reservoir_mass_ad_vs_fd",
+        "evidence_class": "finite_difference_derivative",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "dimensionless_variable_scaling:v1",
+          "central_richardson:v1"
+        ],
+        "metrics": {
+          "directions": 16.0,
+          "maximum_absolute_l2_error": 2.7286810418025163e-13,
+          "maximum_fd_refinement_error": 1.1415305382876966e-09,
+          "maximum_relative_l2_error": 2.0368709072468616e-09,
+          "maximum_scaled_component_error": 2.8362808739694028e-09
+        },
+        "shared_kernels": [
+          "residual value implementation",
+          "case setup"
+        ],
+        "source": "fd_reservoir_mass",
+        "target": "pymrst_ad"
+      },
+      {
+        "accepted": true,
+        "claim": "AD well closure derivative agrees with finite differences",
+        "converged": true,
+        "edge_id": "well_closure_ad_vs_fd",
+        "evidence_class": "finite_difference_derivative",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "dimensionless_variable_scaling:v1",
+          "central_richardson:v1"
+        ],
+        "metrics": {
+          "directions": 16.0,
+          "maximum_absolute_l2_error": 6.089888223499024e-14,
+          "maximum_fd_refinement_error": 2.0958398426336103e-10,
+          "maximum_relative_l2_error": 1.495320302845643e-09,
+          "maximum_scaled_component_error": 8.452418820964274e-09
+        },
+        "shared_kernels": [
+          "residual value implementation",
+          "case setup"
+        ],
+        "source": "fd_well_closure",
+        "target": "pymrst_ad"
+      },
+      {
+        "accepted": true,
+        "claim": "AD well controls derivative agrees with finite differences",
+        "converged": true,
+        "edge_id": "well_controls_ad_vs_fd",
+        "evidence_class": "finite_difference_derivative",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "dimensionless_variable_scaling:v1",
+          "central_richardson:v1"
+        ],
+        "metrics": {
+          "directions": 16.0,
+          "maximum_absolute_l2_error": 6.390294583979994e-05,
+          "maximum_fd_refinement_error": 2.9692099234395314e-19,
+          "maximum_relative_l2_error": 3.500108480498174e-09,
+          "maximum_scaled_component_error": 3.500108480498174e-09
+        },
+        "shared_kernels": [
+          "residual value implementation",
+          "case setup"
+        ],
+        "source": "fd_well_controls",
+        "target": "pymrst_ad"
+      },
+      {
+        "accepted": true,
+        "claim": "AD source and boundary-condition derivatives agree with finite differences",
+        "converged": true,
+        "edge_id": "forces_ad_vs_fd",
+        "evidence_class": "finite_difference_derivative",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "dimensionless_variable_scaling:v1",
+          "central_richardson:v1"
+        ],
+        "metrics": {
+          "directions": 12.0,
+          "maximum_absolute_l2_error": 1.4025139444883117e-07,
+          "maximum_fd_refinement_error": 0.0069153003668114025,
+          "maximum_relative_l2_error": 0.0023051001222704672,
+          "maximum_scaled_component_error": 0.006431098710768742
+        },
+        "shared_kernels": [
+          "force value implementation",
+          "two-cell force setup"
+        ],
+        "source": "fd_forces",
+        "target": "pymrst_ad"
+      },
+      {
+        "accepted": true,
+        "claim": "Adjoint objective gradient agrees with full-simulation finite differences",
+        "converged": true,
+        "edge_id": "objective_gradient_adjoint_vs_fd",
+        "evidence_class": "finite_difference_derivative",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "dimensionless_variable_scaling:v1",
+          "central_richardson:v1"
+        ],
+        "metrics": {
+          "controls": 4.0,
+          "maximum_absolute_error": 0.04040605574846268,
+          "maximum_relative_error": 1.381890855055999e-08
+        },
+        "shared_kernels": [
+          "forward reservoir model",
+          "objective definition"
+        ],
+        "source": "fd_objective",
+        "target": "pymrst_ad"
+      }
+    ],
+    "nodes": [
+      {
+        "kind": "pymrst",
+        "label": "PyMRST sparse AD derivatives",
+        "metadata": {
+          "cells": 12,
+          "equations": 30,
+          "unknowns": 30,
+          "wells": 2
+        },
+        "node_id": "pymrst_ad",
+        "version": "working-tree"
+      },
+      {
+        "kind": "finite_difference",
+        "label": "Richardson finite difference: full_residual",
+        "metadata": {},
+        "node_id": "fd_full_residual",
+        "version": ""
+      },
+      {
+        "kind": "finite_difference",
+        "label": "Richardson finite difference: reservoir_mass",
+        "metadata": {},
+        "node_id": "fd_reservoir_mass",
+        "version": ""
+      },
+      {
+        "kind": "finite_difference",
+        "label": "Richardson finite difference: well_closure",
+        "metadata": {},
+        "node_id": "fd_well_closure",
+        "version": ""
+      },
+      {
+        "kind": "finite_difference",
+        "label": "Richardson finite difference: well_controls",
+        "metadata": {},
+        "node_id": "fd_well_controls",
+        "version": ""
+      },
+      {
+        "kind": "finite_difference",
+        "label": "Finite difference: source and boundary fluxes",
+        "metadata": {},
+        "node_id": "fd_forces",
+        "version": ""
+      },
+      {
+        "kind": "finite_difference",
+        "label": "Full forward rerun finite-difference objective gradient",
+        "metadata": {},
+        "node_id": "fd_objective",
+        "version": ""
+      }
+    ],
+    "schema_version": 1
+  },
+  "summary": {
+    "case": "oil_water_residual_wells_forces_and_objective",
+    "force_derivatives": {
+      "directions": 12,
+      "maximum_absolute_l2_error": 1.4025139444883117e-07,
+      "maximum_fd_refinement_error": 0.0069153003668114025,
+      "maximum_relative_l2_error": 0.0023051001222704672,
+      "maximum_scaled_component_error": 0.006431098710768742,
+      "passed": true
+    },
+    "model": {
+      "cells": 12,
+      "equations": 30,
+      "unknowns": 30,
+      "wells": 2
+    },
+    "objective_gradient": {
+      "controls": 4,
+      "maximum_absolute_error": 0.04040605574846268,
+      "maximum_relative_error": 1.381890855055999e-08,
+      "passed": true
+    },
+    "passed": true,
+    "residual_derivatives": {
+      "full_residual": {
+        "directions": 16,
+        "maximum_absolute_l2_error": 6.390294583979994e-05,
+        "maximum_fd_refinement_error": 1.1415305382876966e-09,
+        "maximum_relative_l2_error": 3.5001084804981733e-09,
+        "maximum_scaled_component_error": 8.452418820964274e-09,
+        "passed": true
+      },
+      "reservoir_mass": {
+        "directions": 16,
+        "maximum_absolute_l2_error": 2.7286810418025163e-13,
+        "maximum_fd_refinement_error": 1.1415305382876966e-09,
+        "maximum_relative_l2_error": 2.0368709072468616e-09,
+        "maximum_scaled_component_error": 2.8362808739694028e-09,
+        "passed": true
+      },
+      "well_closure": {
+        "directions": 16,
+        "maximum_absolute_l2_error": 6.089888223499024e-14,
+        "maximum_fd_refinement_error": 2.0958398426336103e-10,
+        "maximum_relative_l2_error": 1.495320302845643e-09,
+        "maximum_scaled_component_error": 8.452418820964274e-09,
+        "passed": true
+      },
+      "well_controls": {
+        "directions": 16,
+        "maximum_absolute_l2_error": 6.390294583979994e-05,
+        "maximum_fd_refinement_error": 2.9692099234395314e-19,
+        "maximum_relative_l2_error": 3.500108480498174e-09,
+        "maximum_scaled_component_error": 3.500108480498174e-09,
+        "passed": true
+      }
+    }
+  }
+}

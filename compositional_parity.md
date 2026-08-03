@@ -129,10 +129,122 @@ validate_phase124.py  sequential wells with water
 validate_phase336.py  SimpleWell helper behavior
 ```
 
-Important qualification: phase 114 currently accepts pressure differences of
-up to 5 bar and observed about 4.6 bar. This is useful workflow evidence, but
-the native SPE1 numerical gap should be diagnosed and the acceptance envelope
-tightened before declaring full parity.
+Blocker 4 (phase 114's broad SPE1 envelope) is **resolved**. It previously
+accepted 5 bar and observed 4.6; the overall-composition model now agrees with
+MATLAB to 4.6e-04 bar and the envelope has been tightened accordingly. The full
+account is in the `validate_phase114.py` docstring; in summary:
+
+* The previous attribution to "pseudo-component composition interpolation" was
+  **wrong**. Phase 111 matches every K-value and property table to 1e-13 or
+  better, and rebuilding the tables on MRST's literal raw coordinates makes the
+  gap worse (32 bar) - the normalization is load-bearing.
+* Also ruled out by measurement: timestep control, convergence (the gap was
+  fixed at 4.5726 bar from tol 1e-5 to 1e-11), and transmissibility, well
+  index, relperm and initial state (phase 24 matches WI to 4e-28 and the
+  black-oil history to ~1e-14; phase 110 matches the initial state).
+* The actual cause: **the compositional model carried no rock or water
+  compressibility**. `self.pv` is fixed at construction, and the accumulation
+  terms used that same constant pore volume at both time levels, so `pvMultR`
+  cancelled out; the water equation was `pv (sW - sW0)/dt` with no `b_w`, which
+  pins `sW` exactly wherever water is immobile. MRST keeps the deck's
+  `bW`/`muW` through the conversion and carries `pvMultR` with the rock.
+* Restoring both (`water_b`, `rock_pv_mult`, wired from the deck's PVTW/ROCK)
+  moved the overall model from 4.5726 bar to 4.6e-04, and `sW` spread from
+  2.8e-17 to 7.32e-04 against MATLAB's 7.32e-04. Rock was the larger term
+  (4.57 -> 0.40 alone); water closed the remainder.
+
+Both are opt-in - a model constructed without them behaves exactly as before -
+so no other compositional result moved. All 20 compositional validators pass.
+
+A second discrepancy surfaced and turned out to be **in the reference, not in
+PyMRST**. The natural-variable model sat at 7.0e-02 bar against the old .mat,
+150x looser than the overall model. But PyMRST's two formulations agreed with
+each other to 1.0e-10 bar while MATLAB's two disagreed by 7.08e-02 bar: the
+reference had been dumped at MRST's default 1e-3 tolerances and was not
+converged. `dump_phase114_reference.m` now tightens to 1e-7 (CNV, well rate)
+before running either model; MATLAB's internal spread drops to 6.3e-06 bar and
+both PyMRST models match it to ~6e-05 bar. No PyMRST code changed for this.
+
+Tightened phase 114 tolerances - one budget, both formulations, since they now
+agree:
+
+| check | old | now | achieved |
+|---|---|---|---|
+| pressure | 5 bar | 5e-3 bar | 6.1e-05 bar |
+| components | 1e-3 | 1e-7 | 4.1e-09 |
+| saturations | 5e-3 | 1e-6 | 8.9e-08 |
+| well BHP | 3 bar | 5e-3 bar | 6.3e-05 bar |
+| oil rate | 1.2e-3 | 5e-8 | 2.5e-09 |
+
+Newton iterations are now checked as a direction (PyMRST must not exceed
+MATLAB) rather than an equality: converged MRST needs [4 7] and [9 10] where
+PyMRST needs [3 4], so equality would fail on PyMRST being faster.
+
+A separate defect was found and fixed during this diagnosis: the K-value
+Rachford-Rice solver decided phase state from whether every `K_i` sat on one
+side of 1, which is necessary but not sufficient, and then bisected `[0, 1]`
+without checking that a root existed there. Single-phase liquid with
+`K_oil < 1 < K_gas` - ordinary undersaturated oil - collapsed onto `V = 1` and
+was reported as **all vapour**. On a sweep of that regime it hit 176 of 4000
+states, each with the maximum possible error. SPE1 never reaches the branch
+(0 of 22200 evaluations), so no existing validator moved, but any case that
+does reach it was silently wrong. Fixed in `kvalue_model.py` with the endpoint
+sign test `f(0) > 0 > f(1)`, plus self-tests.
+
+**The same defect had a second copy**, found later by writing the missing
+self-tests for `models/eos/equilibrium_constant_model.py`. Its `_rachford_rice`
+bisected `[0, 1]` with no bracket check, so `z = [0.5, 0.5]`, `K = [1.6, 0.2]` -
+where `f(0) = -0.10` and `f(1) = -1.81`, so no root exists and the feed is
+entirely liquid - returned `V = 1.0`. Fixed with the same guard.
+
+All four Rachford-Rice implementations were then checked against that case
+rather than assumed correct, because a defect present in two of four copies is
+exactly the kind that hides in the others:
+
+| implementation | before |
+|---|---|
+| `fluids/blackoil/kvalue_model._rachford_rice_k` | wrong, fixed |
+| `models/eos/equilibrium_constant_model._rachford_rice` | wrong, fixed |
+| `utils/solve_rachford_rice_vle` | already correct |
+| `eos.rachford_rice` | already correct |
+
+Four separate implementations of one equation is itself the finding. Each is
+small, and each is a place the next bracket bug can appear independently.
+
+## Module self-tests
+
+120 of 121 compositional modules pass their own `__main__` tests (counting the
+one argparse CLI the standard harness skips). The remaining one,
+`ML_models/Web_app/app.py`, needs `streamlit`, which is an optional dependency
+rather than a defect.
+
+Two long-standing assertion failures were resolved, and in both cases the test
+was wrong rather than the code:
+
+* `compositional_validation_simple.py` asserted `qGs[0] > 0` for the injector.
+  MRST's `setupSimpleCompositionalExample` sets `compi = [1, 0]` under the
+  comment "Injection is pure gas", but the phases are (Oil, Gas), so `[1, 0]`
+  selects oil - and MRST itself reports `INJ qOs=1.5828141e-05 qGs=0` when run.
+  The assertion had encoded MRST's stale comment rather than its behavior. The
+  same test also pinned `available == ("MRST",)`, asserting that the optional
+  E300/AD-GPRS datasets are absent; they live in MRST's `simplecomp` archive
+  outside this repo and are installed here, so the check now asserts the
+  invariant (available exactly when loaded) rather than one machine's state.
+* `model.py`'s separator test failed on convergence, not on physics. The
+  separator conversion is correct - 1 kg/s of methane returns 1.531 m3/s
+  against an ideal-gas 1.5345 - and the mass stream fed to it matches the plain
+  model's mass balance exactly. It differs from the non-separator path by ~117x
+  only because the separator does a real flash at 1 atm (~1.1 kg/m3) where the
+  plain path uses the model's nominal `rho_s[1] = 100 kg/m3`. What failed was
+  the default `tol_well = 1e-10`: with a separator flash inside the residual
+  the attainable floor sits just under 1e-10, so the model converges in 6
+  iterations at 1e-9 and never at 1e-10, regardless of iteration count or
+  timestep (30 days down to 0.1 does not help). The test now runs both models
+  at 1e-9.
+
+That last one is the same signature as the Norne case (`tol_well = 1e-10`
+missed by a small factor while every other residual passes) and is worth
+treating as one repo-wide tolerance decision rather than case by case.
 
 ## Explicitly known blockers to “complete”
 
@@ -142,7 +254,14 @@ tightened before declaring full parity.
    evidence in a machine-readable ledger.
 3. Full-size example comparison, restart/summary, and complete performance
    acceptance is missing.
-4. SPE1 passes a broad rather than tight numerical envelope.
+4. ~~SPE1 passes a broad rather than tight numerical envelope.~~ **Resolved.**
+   The cause was missing rock and water compressibility in the compositional
+   model, not interpolation; the overall-composition model now matches MATLAB
+   to 4.6e-04 bar and the envelope is tightened to match. See the phase 114
+   notes above. A second discrepancy found during the same work (the
+   natural-variable model at 7.0e-02 bar) was traced to the MATLAB reference
+   being under-converged, not to PyMRST; the reference has been regenerated and
+   both formulations now agree with it to ~6e-05 bar.
 
 ## Completion declaration rule
 

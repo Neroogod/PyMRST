@@ -1,0 +1,312 @@
+{
+  "acceptance": {
+    "all_surrogate_calls_accounted": true,
+    "component_stack_compatible": true,
+    "gradient_fd_passed": true,
+    "ood_fallback_recorded": true,
+    "qualified_backends_passed": true,
+    "scipy_solvers_passed": true
+  },
+  "backend_qualification": {
+    "hardware": {
+      "numpy": "2.4.6",
+      "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+      "processor": "arm",
+      "scipy": "1.17.1"
+    },
+    "measurements": {
+      "bincount": {
+        "backend": {
+          "cache_state": "cold",
+          "compiler": "none",
+          "device": "cpu",
+          "name": "bincount",
+          "precision": "float64",
+          "reference": false,
+          "version": "2.4.6"
+        },
+        "cold_seconds": 3.045799894607626e-05,
+        "maximum_absolute_error": 0.0,
+        "maximum_relative_error": 0.0,
+        "output_shape": [
+          200
+        ],
+        "passed": true,
+        "peak_bytes": 1720,
+        "warm_seconds_mean": 2.1583600027952343e-05,
+        "warm_seconds_minimum": 2.1375002688728273e-05
+      },
+      "sorted-segment": {
+        "backend": {
+          "cache_state": "cold",
+          "compiler": "none",
+          "device": "cpu",
+          "name": "sorted-segment",
+          "precision": "float64",
+          "reference": false,
+          "version": "2.4.6"
+        },
+        "cold_seconds": 0.0009441660004085861,
+        "maximum_absolute_error": 1.2434497875801753e-14,
+        "maximum_relative_error": 5.7870375158586285e-15,
+        "output_shape": [
+          200
+        ],
+        "passed": true,
+        "peak_bytes": 645256,
+        "warm_seconds_mean": 0.0008410081994952634,
+        "warm_seconds_minimum": 0.0007996660024218727
+      }
+    },
+    "name": "duplicate reduction",
+    "passed": true,
+    "reference_backend": "np.add.at",
+    "sparse_construction": {
+      "canonical_csr_copy_false": {
+        "mean_seconds": 5.533399962587282e-06,
+        "minimum_seconds": 4.499997885432094e-06
+      },
+      "check_format": {
+        "mean_seconds": 1.1899999663000926e-05,
+        "minimum_seconds": 7.165999704739079e-06
+      },
+      "coo_to_csr": {
+        "mean_seconds": 6.76585994369816e-05,
+        "minimum_seconds": 5.645900091622025e-05
+      }
+    }
+  },
+  "capabilities": {
+    "backend": {
+      "component_id": "numpy-scipy-reference",
+      "conflicts": [],
+      "derivatives": [
+        "none",
+        "adi",
+        "sparse"
+      ],
+      "devices": [
+        "cpu"
+      ],
+      "features": [
+        "mrst-parity",
+        "materialized-jacobian"
+      ],
+      "input_schemas": [],
+      "kind": "backend",
+      "output_schemas": [],
+      "owner": "pymrst.modules.ad_core.backends.sparse.sparse_auto_diff_backend:SparseAutoDiffBackend",
+      "phases": [
+        "water",
+        "oil",
+        "gas"
+      ],
+      "physics": [
+        "black-oil",
+        "compositional",
+        "poromechanics"
+      ],
+      "precisions": [
+        "float64"
+      ],
+      "requires": {},
+      "restart": true,
+      "schema_version": 1,
+      "version": "1"
+    },
+    "linear_solver": {
+      "component_id": "scipy-direct",
+      "conflicts": [],
+      "derivatives": [
+        "none",
+        "adi",
+        "sparse",
+        "diagonal"
+      ],
+      "devices": [
+        "cpu"
+      ],
+      "features": [],
+      "input_schemas": [],
+      "kind": "linear_solver",
+      "output_schemas": [],
+      "owner": "pymrst.modules.ad_core.solvers.concrete_solvers:BackslashSolverAD",
+      "phases": [],
+      "physics": [],
+      "precisions": [
+        "float64"
+      ],
+      "requires": {},
+      "restart": true,
+      "schema_version": 1,
+      "version": "1"
+    },
+    "model": {
+      "component_id": "ad-blackoil-reference",
+      "conflicts": [],
+      "derivatives": [
+        "none",
+        "adi",
+        "sparse",
+        "diagonal"
+      ],
+      "devices": [
+        "cpu"
+      ],
+      "features": [
+        "wells",
+        "fim",
+        "aim",
+        "explicit"
+      ],
+      "input_schemas": [],
+      "kind": "model",
+      "output_schemas": [],
+      "owner": "pymrst.modules.ad_blackoil.models:GenericBlackOilModel",
+      "phases": [
+        "water",
+        "oil",
+        "gas"
+      ],
+      "physics": [
+        "black-oil"
+      ],
+      "precisions": [
+        "float64"
+      ],
+      "requires": {},
+      "restart": true,
+      "schema_version": 1,
+      "version": "1"
+    }
+  },
+  "differentiation": {
+    "constraints": {
+      "normalized pressure": 1.0305768450217863e-10
+    },
+    "evidence": {
+      "source": "integrated M4 qualification"
+    },
+    "finite_difference_gradient": [
+      1.9999999998354667,
+      1.000000000139778
+    ],
+    "gradient": [
+      2.0,
+      1.0
+    ],
+    "maximum_fd_error": 1.645332758926088e-10,
+    "problem_id": "optimization_e4ed6ee68aac6319ad92a609cc0837d700a78e950dd25bfb80c4125e2baba328",
+    "value": 5.5
+  },
+  "guarded_surrogate": {
+    "calls": 2,
+    "device": "cpu",
+    "estimated_accumulated_error": 1e-07,
+    "events": [
+      {
+        "batch_size": 3,
+        "call_index": 0,
+        "device": "cpu",
+        "elapsed_seconds": 0.00015541699758614413,
+        "estimated_accumulated_error": 1e-07,
+        "fallback_reason": "",
+        "invariant_failures": [],
+        "maximum_reference_error": 1e-07,
+        "ood_reasons": [],
+        "reference_samples": 2,
+        "used_surrogate": true
+      },
+      {
+        "batch_size": 1,
+        "call_index": 1,
+        "device": "cpu",
+        "elapsed_seconds": 1.6166999557754025e-05,
+        "estimated_accumulated_error": 1e-07,
+        "fallback_reason": "out_of_domain",
+        "invariant_failures": [],
+        "maximum_reference_error": 0.0,
+        "ood_reasons": [
+          "input outside [-2.0, 2.0]"
+        ],
+        "reference_samples": 1,
+        "used_surrogate": false
+      }
+    ],
+    "fallback_calls": 1,
+    "invariant_failures": 0,
+    "ood_events": 1,
+    "surrogate_calls": 1,
+    "surrogate_id": "m4-qualified-linear-surrogate"
+  },
+  "schema_version": 1,
+  "solver_qualification": {
+    "amgx": {
+      "available": false,
+      "elapsed_seconds": null,
+      "maximum_reference_error": null,
+      "passed": false,
+      "reason": "optional dependency unavailable: pyamgx",
+      "relative_residual": null,
+      "solver_id": "amgx"
+    },
+    "cupy": {
+      "available": false,
+      "elapsed_seconds": null,
+      "maximum_reference_error": null,
+      "passed": false,
+      "reason": "optional dependency unavailable: cupy",
+      "relative_residual": null,
+      "solver_id": "cupy"
+    },
+    "petsc": {
+      "available": false,
+      "elapsed_seconds": null,
+      "maximum_reference_error": null,
+      "passed": false,
+      "reason": "optional dependency unavailable: petsc4py",
+      "relative_residual": null,
+      "solver_id": "petsc"
+    },
+    "scipy-cg": {
+      "available": true,
+      "elapsed_seconds": 0.00037275000067893416,
+      "maximum_reference_error": 1.7927881401647028e-12,
+      "passed": true,
+      "reason": "",
+      "relative_residual": 5.964042438879552e-13,
+      "solver_id": "scipy-cg"
+    },
+    "scipy-direct": {
+      "available": true,
+      "elapsed_seconds": 7.466600072802976e-05,
+      "maximum_reference_error": 0.0,
+      "passed": true,
+      "reason": "",
+      "relative_residual": 2.315553705957619e-16,
+      "solver_id": "scipy-direct"
+    },
+    "scipy-gmres": {
+      "available": true,
+      "elapsed_seconds": 0.0009631670000089798,
+      "maximum_reference_error": 1.8038903704109543e-12,
+      "passed": true,
+      "reason": "",
+      "relative_residual": 7.817061032130169e-13,
+      "solver_id": "scipy-gmres"
+    }
+  },
+  "undefined_work_packages": [
+    "M4.7",
+    "M4.8",
+    "M4.9"
+  ],
+  "work_packages": [
+    "M4.1",
+    "M4.2",
+    "M4.3",
+    "M4.4",
+    "M4.5",
+    "M4.6"
+  ]
+}

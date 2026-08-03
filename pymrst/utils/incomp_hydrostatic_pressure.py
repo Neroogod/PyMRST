@@ -10,11 +10,12 @@ code needs to evaluate at depths that are not cell centres.
 contact, then one per contact. Getting that off by one puts every fluid in the
 wrong compartment, so the lengths are checked rather than assumed.
 
-The integration is a running sum over `n_samples` uniform depths, not an
-analytic piecewise expression. That matters at a contact: the switch happens
-at the first sample below it, so the contact is resolved to the sample
-spacing. MRST does the same, and the default of 1000 samples is its default
-too.
+The integration reproduces MRST's running sample loop exactly, including its
+indexing quirk: after the first point at ``z_min``, the next stored depth is
+``z_min + 2*h`` while pressure advances by only one ``h``. The last stored
+depth is consequently ``z_max + h``. This is observable near the top and in
+reference results, so correcting it here would break parity. MRST also linearly
+extrapolates outside this sampled interval.
 """
 
 import numpy as np
@@ -48,13 +49,25 @@ def incomp_hydrostatic_pressure(g, contacts, densities, top_pressure=0.0,
     pressures = np.empty(n_samples)
     samples[0], pressures[0] = z_min, float(top_pressure)
     for i in range(1, n_samples):
-        samples[i] = z_min + step * i
+        samples[i] = z_min + step * (i + 1)
         below = np.flatnonzero(contacts < samples[i])
         index = below[-1] + 1 if below.size else 0
         pressures[i] = pressures[i - 1] + densities[index] * step * magnitude
 
     def depth_to_pressure(z):
-        return np.interp(np.asarray(z, dtype=float), samples, pressures)
+        query = np.asarray(z, dtype=float)
+        flat = query.ravel()
+        result = np.interp(flat, samples, pressures)
+        low = flat < samples[0]
+        high = flat > samples[-1]
+        if np.any(low):
+            slope = (pressures[1] - pressures[0]) / (samples[1] - samples[0])
+            result[low] = pressures[0] + slope * (flat[low] - samples[0])
+        if np.any(high):
+            slope = (pressures[-1] - pressures[-2]) / \
+                (samples[-1] - samples[-2])
+            result[high] = pressures[-1] + slope * (flat[high] - samples[-1])
+        return result.reshape(query.shape)
 
     return depth_to_pressure(depth), depth_to_pressure
 
@@ -86,7 +99,8 @@ if __name__ == "__main__":
     def test_the_top_pressure_is_honoured() -> None:
         p, fn = incomp_hydrostatic_pressure(GRID, [], [1000.0],
                                             top_pressure=1.0e5)
-        assert np.isclose(fn(0.0), 1.0e5), fn(0.0)
+        zmin = np.asarray(GRID.cells.centroids)[:, 2].min()
+        assert np.isclose(fn(zmin), 1.0e5), fn(zmin)
         print("ok test_the_top_pressure_is_honoured")
 
     def test_the_gradient_changes_at_a_contact() -> None:

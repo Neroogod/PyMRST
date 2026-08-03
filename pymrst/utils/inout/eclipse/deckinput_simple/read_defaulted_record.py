@@ -117,7 +117,12 @@ def tokenize_with_lines(text: str) -> Tuple[List[str], List[int]]:
         line = line.split("--", 1)[0]
         if not line.strip():
             continue
-        matches = list(re.finditer(r"'[^']*'|\"[^\"]*\"|\S+", line))
+        # ECLIPSE treats a comma as a separator, exactly like whitespace, so a
+        # table row may be written `0.1000,  0.0000e+00,  8.0e-01  0`. Matching
+        # bare `\S+` glues the comma onto the number and the value then fails to
+        # parse. Quoted strings keep their commas because the quoted
+        # alternatives are tried first.
+        matches = list(re.finditer(r"'[^']*'|\"[^\"]*\"|[^\s,]+", line))
         for position, match in enumerate(matches):
             token = match.group(0)
             # a trailing slash is its own token, however it is written
@@ -224,6 +229,20 @@ if __name__ == "__main__":
         assert tokens == ["SWOF", "0.1", "0.2", "/", "/"], tokens
         print("ok test_tokenize_drops_comments_and_splits_slashes")
 
+    def test_commas_separate_values_like_whitespace() -> None:
+        """ECLIPSE allows a comma as a separator, and real decks use it.
+
+        The Egg model writes `0.1000,  0.0000e+00,  8.0e-01  0` in SWOF.
+        Matching `\\S+` glued the comma onto the number, so the whole deck
+        failed to load on `float('0.1000,')`. Quoted text keeps its commas,
+        because the quoted alternatives are tried first.
+        """
+        assert tokenize("0.1000,  0.0000e+00,  8.0e-01  0") == [
+            "0.1000", "0.0000e+00", "8.0e-01", "0"]
+        assert tokenize("1,2,3") == ["1", "2", "3"]
+        assert tokenize("'A,B' 4") == ["'A,B'", "4"]
+        print("ok test_commas_separate_values_like_whitespace")
+
     def test_tokenize_keeps_quoted_strings_whole() -> None:
         tokens = tokenize("WELSPECS\n 'PROD A' 'G1' 10 10 /\n")
         assert "'PROD A'" in tokens, tokens
@@ -318,6 +337,7 @@ if __name__ == "__main__":
     test_keyword_strips_a_terminating_slash()
     test_tokenize_drops_comments_and_splits_slashes()
     test_tokenize_drops_free_text_after_record_slash()
+    test_commas_separate_values_like_whitespace()
     test_tokenize_keeps_quoted_strings_whole()
     test_record_stops_at_the_slash()
     test_defaults_shift_later_fields()

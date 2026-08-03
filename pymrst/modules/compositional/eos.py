@@ -144,16 +144,39 @@ def _pr_ab(mix: Mixture, T: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 
 
 def _cubic_roots(A: np.ndarray, B: np.ndarray) -> np.ndarray:
-    """Real roots of the PR cubic, one row per cell (padded with NaN)."""
+    """Vectorized positive real roots of the PR cubic.
+
+    This is the closed-form ``cubicPositive`` algorithm used by MRST.  The old
+    implementation called ``numpy.roots`` once per cell, which dominated large
+    flash batches with Python/LAPACK dispatch overhead.
+    """
     c2 = -(1.0 - B)
     c1 = A - 3.0 * B**2 - 2.0 * B
     c0 = -(A * B - B**2 - B**3)
-    out = np.full((A.size, 3), np.nan)
-    for i in range(A.size):
-        r = np.roots([1.0, c2[i], c1[i], c0[i]])
-        r = r[np.abs(r.imag) < 1e-10].real
-        out[i, :r.size] = np.sort(r)
-    return out
+    Q = (c2**2 - 3.0 * c1) / 9.0
+    R = (2.0 * c2**3 - 9.0 * c2 * c1 + 27.0 * c0) / 54.0
+    M = R**2 - Q**3
+    roots = np.full((A.size, 3), np.nan, dtype=float)
+
+    three = M < 0.0
+    if np.any(three):
+        q = np.maximum(Q[three], 0.0)
+        denom = np.sqrt(q**3)
+        ratio = np.divide(R[three], denom, out=np.zeros_like(denom), where=denom > 0.0)
+        theta = np.arccos(np.clip(ratio, -1.0, 1.0))
+        sqrt_q = np.sqrt(q)
+        aa = c2[three]
+        roots[three, 0] = -(2.0 * sqrt_q * np.cos(theta / 3.0)) - aa / 3.0
+        roots[three, 1] = -(2.0 * sqrt_q * np.cos((theta + 2.0 * np.pi) / 3.0)) - aa / 3.0
+        roots[three, 2] = -(2.0 * sqrt_q * np.cos((theta - 2.0 * np.pi) / 3.0)) - aa / 3.0
+
+    one = ~three
+    if np.any(one):
+        sqrt_m = np.sqrt(np.maximum(M[one], 0.0))
+        S = -np.sign(R[one]) * np.cbrt(np.abs(R[one]) + sqrt_m)
+        Troot = np.divide(Q[one], S, out=np.zeros_like(S), where=S != 0.0)
+        roots[one, 0] = S + Troot - c2[one] / 3.0
+    return roots
 
 
 def fugacity_coefficients(mix: Mixture, p: np.ndarray, T: np.ndarray,
@@ -174,13 +197,13 @@ def fugacity_coefficients(mix: Mixture, p: np.ndarray, T: np.ndarray,
     B = b_mix * p / (R_GAS * T)
 
     roots = _cubic_roots(A, B)
-    Z = np.empty(p.size)
-    for i in range(p.size):
-        r = roots[i][np.isfinite(roots[i])]
-        r = r[r > B[i]]
-        if r.size == 0:
-            r = roots[i][np.isfinite(roots[i])]
-        Z[i] = r.max() if vapour else r.min()
+    physical = np.where(np.isfinite(roots) & (roots > B[:, None]), roots, np.nan)
+    # A positive PR root must exist. The fallback protects only against a root
+    # landing at B within floating-point roundoff.
+    missing = np.all(~np.isfinite(physical), axis=1)
+    if np.any(missing):
+        physical[missing] = np.where(np.isfinite(roots[missing]), roots[missing], np.nan)
+    Z = np.nanmax(physical, axis=1) if vapour else np.nanmin(physical, axis=1)
 
     sum_xa = np.einsum("cij,cj->ci", aij, x)              # (nc, n)
     with np.errstate(divide="ignore", invalid="ignore"):
@@ -206,33 +229,56 @@ def wilson_k(mix: Mixture, p: np.ndarray, T: np.ndarray) -> np.ndarray:
 
 def rachford_rice(z: np.ndarray, K: np.ndarray, tol: float = 1e-12,
                   max_it: int = 100) -> np.ndarray:
-    """Vapour molar fraction V solving sum_i z_i (K_i - 1)/(1 + V(K_i-1)) = 0."""
-    nc = z.shape[0]
-    V = np.zeros(nc)
-    for c in range(nc):
-        k, zz = K[c], z[c]
-        if k.max() <= 1.0 or k.min() >= 1.0:      # single phase for this K
-            V[c] = 1.0 if k.min() >= 1.0 else 0.0
-            continue
-        lo = 1.0 / (1.0 - k.max()) + 1e-12        # Rachford-Rice bracket
-        hi = 1.0 / (1.0 - k.min()) - 1e-12
-        lo, hi = max(lo, 0.0), min(hi, 1.0)
-        f = lambda v: np.sum(zz * (k - 1.0) / (1.0 + v * (k - 1.0)))
-        a, b = lo, hi
-        fa, fb = f(a), f(b)
-        if fa * fb > 0:                            # no root in (0, 1)
-            V[c] = 1.0 if fa > 0 else 0.0
-            continue
-        for _ in range(max_it):                    # bisection: unconditionally
-            m = 0.5 * (a + b)                      # stable for this function
-            fm = f(m)
-            if abs(fm) < tol or (b - a) < tol:
-                break
-            if fa * fm < 0:
-                b, fb = m, fm
-            else:
-                a, fa = m, fm
-        V[c] = 0.5 * (a + b)
+    """Vectorized vapour fraction solve for the Rachford--Rice equation."""
+    z = np.atleast_2d(np.asarray(z, dtype=float))
+    K = np.atleast_2d(np.asarray(K, dtype=float))
+    if K.shape[0] == 1 and z.shape[0] > 1:
+        K = np.repeat(K, z.shape[0], axis=0)
+    if z.shape != K.shape:
+        raise ValueError(f"z and K must have matching shapes, got {z.shape} and {K.shape}")
+    kmax = K.max(axis=1)
+    kmin = K.min(axis=1)
+    all_liquid = kmax <= 1.0
+    all_vapour = kmin >= 1.0
+    V = np.where(all_vapour, 1.0, 0.0)
+    candidates = ~(all_liquid | all_vapour)
+    if not np.any(candidates):
+        return V
+
+    idx = np.flatnonzero(candidates)
+    kk = K[idx]
+    zz = z[idx]
+    delta = kk - 1.0
+    left = np.maximum(1.0 / (1.0 - kk.max(axis=1)) + 1e-12, 0.0)
+    right = np.minimum(1.0 / (1.0 - kk.min(axis=1)) - 1e-12, 1.0)
+
+    def objective(v):
+        return np.sum(zz * delta / (1.0 + v[:, None] * delta), axis=1)
+
+    f_left = objective(left)
+    f_right = objective(right)
+    bracketed = f_left * f_right <= 0.0
+    if np.any(~bracketed):
+        V[idx[~bracketed]] = (f_left[~bracketed] > 0.0).astype(float)
+    active = bracketed.copy()
+    midpoint = 0.5 * (left + right)
+    for _ in range(max_it):
+        if not np.any(active):
+            break
+        local = np.flatnonzero(active)
+        midpoint[local] = 0.5 * (left[local] + right[local])
+        f_mid = objective(midpoint)[local]
+        converged = (np.abs(f_mid) < tol) | ((right[local] - left[local]) < tol)
+        update = local[~converged]
+        f_update = f_mid[~converged]
+        go_right = f_left[update] * f_update < 0.0
+        right[update[go_right]] = midpoint[update[go_right]]
+        f_right[update[go_right]] = f_update[go_right]
+        go_left = ~go_right
+        left[update[go_left]] = midpoint[update[go_left]]
+        f_left[update[go_left]] = f_update[go_left]
+        active[local[converged]] = False
+    V[idx[bracketed]] = 0.5 * (left[bracketed] + right[bracketed])
     return V
 
 
@@ -251,66 +297,89 @@ class FlashResult:
 
 
 def flash(mix: Mixture, p: np.ndarray, T: np.ndarray, z: np.ndarray,
-          tol: float = 1e-10, max_it: int = 200) -> FlashResult:
-    """Two-phase PR flash by successive substitution."""
+          tol: float = 1e-10, max_it: int = 200,
+          stability: str = "mrst") -> FlashResult:
+    """Peng--Robinson flash with MRST stability initialization and active SSI.
+
+    ``stability='mrst'`` performs the fugacity-based tangent-plane-style test
+    used by MRST before flashing only unstable rows. ``'wilson'`` retains the
+    former inexpensive phase screen for controlled compatibility experiments.
+    """
     p = np.atleast_1d(np.asarray(p, float))
     T = np.atleast_1d(np.asarray(T, float))
     z = np.atleast_2d(np.asarray(z, float))
     p, T = np.broadcast_arrays(p, T)
     if z.shape[0] == 1 and p.size > 1:
         z = np.repeat(z, p.size, axis=0)
+    if z.shape != (p.size, mix.n):
+        raise ValueError(f"z must have shape {(p.size, mix.n)}, got {z.shape}")
+    z = np.maximum(z, 1.0e-8)
+    z /= z.sum(axis=1, keepdims=True)
 
     K = wilson_k(mix, p, T)
+    mode = str(stability).lower()
+    if mode == "mrst":
+        # Lazy import avoids an eos <-> utilities import cycle at module load.
+        from pymrst.modules.compositional.utils.phase_stability_test import phaseStabilityTest
 
-    # Phase check before flashing. The Rachford-Rice function at V = 0 and
-    # V = 1 brackets the two-phase region: if sum(z K) <= 1 the mixture is
-    # below its bubble point (all liquid); if sum(z / K) <= 1 it is above
-    # its dew point (all vapour). Without this, successive substitution can
-    # drift to the trivial solution K = 1 in the single-phase region.
-    # (A rigorous tangent-plane stability test is stronger; this Wilson-based
-    # check is the standard cheap screen and is exact away from the critical
-    # region.)
-    single_liquid = np.sum(z * K, axis=1) <= 1.0
-    single_vapour = np.sum(z / K, axis=1) <= 1.0
-    active = ~(single_liquid | single_vapour)
-
-    V = rachford_rice(z, K)
-    V[single_liquid] = 0.0
-    V[single_vapour] = 1.0
+        stable, x_guess, y_guess = phaseStabilityTest(mix, z, p, T, K=K)
+        active = ~stable
+        if np.any(active):
+            K[active] = np.divide(
+                y_guess[active], x_guess[active],
+                out=K[active].copy(), where=x_guess[active] > 0.0,
+            )
+        # MRST/Li single-phase labeling based on pseudo-critical temperature.
+        weighted_volume = z * np.asarray(mix.Vcrit, dtype=float)[None, :]
+        critical_temperature = np.sum(
+            weighted_volume * np.asarray(mix.Tcrit, dtype=float)[None, :], axis=1
+        ) / np.sum(weighted_volume, axis=1)
+        stable_liquid = stable & (T < critical_temperature)
+        stable_vapour = stable & ~stable_liquid
+        V = np.zeros(p.size)
+        V[stable_vapour] = 1.0
+        if np.any(active):
+            V[active] = rachford_rice(z[active], K[active])
+    elif mode == "wilson":
+        single_liquid = np.sum(z * K, axis=1) <= 1.0
+        single_vapour = np.sum(z / K, axis=1) <= 1.0
+        active = ~(single_liquid | single_vapour)
+        V = rachford_rice(z, K)
+        V[single_liquid] = 0.0
+        V[single_vapour] = 1.0
+        stable = ~active
+    else:
+        raise ValueError("stability must be 'mrst' or 'wilson'")
 
     it = 0
     for it in range(1, max_it + 1):
-        x = z / (1.0 + V[:, None] * (K - 1.0))
-        y = K * x
-        x = x / x.sum(axis=1, keepdims=True)
-        y = y / y.sum(axis=1, keepdims=True)
-
-        ln_phi_l, Z_L = fugacity_coefficients(mix, p, T, x, vapour=False)
-        ln_phi_v, Z_V = fugacity_coefficients(mix, p, T, y, vapour=True)
-
-        K_new = np.exp(ln_phi_l - ln_phi_v)
-        err = float(np.abs(np.log(K_new[active] / K[active])).max()
-                    if active.any() else 0.0)
-        K[active] = K_new[active]
-
-        # a collapsing K is the trivial solution: the cell is single phase
-        trivial = np.sum(np.log(K) ** 2, axis=1) < 1e-8
-        newly_single = active & trivial
-        if newly_single.any():
-            liq = np.sum(z * K, axis=1) <= 1.0
-            V[newly_single & liq] = 0.0
-            V[newly_single & ~liq] = 1.0
-            active = active & ~newly_single
-
-        Vn = rachford_rice(z, K)
-        V[active] = Vn[active]
-        if err < tol or not active.any():
+        if not np.any(active):
+            it -= 1
             break
+        idx = np.flatnonzero(active)
+        k_local = K[idx]
+        v_local = V[idx]
+        x_local = z[idx] / (1.0 + v_local[:, None] * (k_local - 1.0))
+        y_local = k_local * x_local
+        x_local /= x_local.sum(axis=1, keepdims=True)
+        y_local /= y_local.sum(axis=1, keepdims=True)
+        ln_phi_l, _ = fugacity_coefficients(mix, p[idx], T[idx], x_local, vapour=False)
+        ln_phi_v, _ = fugacity_coefficients(mix, p[idx], T[idx], y_local, vapour=True)
+        k_new = np.exp(ln_phi_l - ln_phi_v)
+        row_error = np.max(np.abs(k_new / k_local - 1.0), axis=1)
+        K[idx] = k_new
+        V[idx] = rachford_rice(z[idx], k_new)
+        boundary = (V[idx] <= 1.0e-12) | (V[idx] >= 1.0 - 1.0e-12)
+        converged = (row_error <= tol) | boundary
+        active[idx[converged]] = False
 
     x = z / (1.0 + V[:, None] * (K - 1.0))
     y = K * x
     x = x / x.sum(axis=1, keepdims=True)
     y = y / y.sum(axis=1, keepdims=True)
+    # MRST convention for stable rows: both phase compositions equal z.
+    x[stable] = z[stable]
+    y[stable] = z[stable]
     ln_phi_l, Z_L = fugacity_coefficients(mix, p, T, x, vapour=False)
     ln_phi_v, Z_V = fugacity_coefficients(mix, p, T, y, vapour=True)
     two_phase = (V > 1e-8) & (V < 1.0 - 1e-8)

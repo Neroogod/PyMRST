@@ -92,8 +92,8 @@ map straight onto the Python code:
 | `pymrst/modules/vemmech` | `modules/vemmech/` | 2D/3D VEM linear elasticity, Biot poroelasticity, strain/stress operators |
 | `pymrst/modules/ad_mechanics` | `modules/ad-mechanics/` | coupled flow + geomechanics: single-phase and multiphase fully-coupled poroelasticity, fixed-stress splitting, surface-uplift adjoint gradients, the Mandel benchmark |
 | `pymrst/modules/ad_micp` | `modules/ad-micp/` | MICP reactive transport |
-| `pymrst/modules/hfm` | `modules/hfm/` | embedded discrete fractures (EDFM) |
-| `pymrst/modules/hfm_v2` | `modules/hfm_v2/` | MRST-shaped HFM v2 compatibility surface over the validated HFM kernels |
+| `pymrst/modules/hfm` | `modules/hfm/` and implemented `modules/hfm_v2/` subsets | consolidated embedded-discrete-fracture implementation; no duplicate `hfm_v2` façade |
+| `pymrst/modules/adfne15` | `modules/ADFNE15/` | native ADFNE geometry, stochastic DFN generation and topology foundation; graph-flow/geostatistics breadth in progress |
 | `pymrst/modules/dfm` | `modules/dfm/` | DFM compatibility helpers over the validated EDFM/projection kernels |
 | `pymrst/modules/shale` | `modules/shale/` | shale/HFM compatibility helpers over the validated EDFM/projection kernels |
 | `pymrst/modules/co2lab` | `modules/co2lab-common`, `-ve`, `-spillpoint`, `-mit` | CO2/H2 properties (sampled tables **and** correlations), brine-gas model, vertical equilibrium with dissolution, trap analysis, trapping inventory, injection-point ranking, the NPD Storage Atlas |
@@ -189,7 +189,7 @@ in dependency order, with the validation each one needs.
    `validate_phase104.py` checks 3D elastoplastic VEM coupling;
    `validate_phase105.py` checks MPSA-W interaction-region assembly
    invariants;
-   `validate_phase106.py` checks the hfm_v2/DFM/shale compatibility surfaces
+   `validate_phase106.py` checks the consolidated HFM/DFM/shale surfaces
    and toughness-driven propagation;
    `validate_phase107.py` checks 3D planar EDFM physical parity against a
    MATLAB MRST HFM dump;

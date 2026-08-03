@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "work_packages": ["M3.6", "M3.7", "M3.8", "M3.9"],
+  "base_ensemble": {
+    "execution_backend": "process_pool",
+    "completed": 3,
+    "failed": 0,
+    "resumed": 0
+  },
+  "branching": {
+    "parent_variant": "fim",
+    "branch_point": "last persisted report state",
+    "fim_branch_id": "branch_636a57ae18d87969671eeb2d3717853bb6c53b44ede2817a29e9ee6c5053eca1",
+    "aim_branch_id": "branch_126e3638cd8df3bc7e7346131f8c1944600fc1431658fd2d30493a915b46be68",
+    "comparison_passed": true,
+    "maximum_absolute_errors": {
+      "pressure": 0.0,
+      "sW": 0.0,
+      "sG": 0.0,
+      "rs": 0.0,
+      "bhp": 0.0,
+      "qWs": 0.0,
+      "qOs": 0.0,
+      "qGs": 0.0
+    },
+    "interpretation": "For this one-report-step continuation AIM selected the same implicit equations as FIM; equality is measured evidence, not a general equivalence claim."
+  },
+  "research_package": {
+    "package_id": "package_b425aa657da62482a41f2c4006b80933a5a0ed47722566fd64b3328718671427",
+    "inventoried_files": 11,
+    "reproduction_recipe_executed": true,
+    "portable_case_reconstructed": true
+  },
+  "eclipse_export": {
+    "subset": "single-phase water without wells",
+    "sections": ["RUNSPEC", "GRID", "PROPS", "SOLUTION", "SUMMARY", "SCHEDULE"],
+    "provenance_manifest_written": true,
+    "external_simulator_executed": false,
+    "cmg_export_available": false
+  },
+  "portable_case": {
+    "content_hash": "b2500f176647709bea951667bc65bc4fff874234ba382b2434bbb70c456075ad",
+    "reproduction_output": "bit-identical in the dedicated two-step SPE1 test"
+  }
+}

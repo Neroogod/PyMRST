@@ -14,11 +14,9 @@ A cell marked implicit keeps its full AD derivative; a cell marked explicit is
 frozen at the old value.
 
 Which cells are implicit is a CFL decision (`estimateSaturationCFL` /
-`estimateCompositionCFL`), which is AC21 and not yet ported. So `prepare_timestep`
-sets the mask from, in order of precedence: an explicit mask argument, an
-injected CFL estimator, or - on the first step - `first_step_implicit`. Well
-cells are always forced implicit. The *blending* mechanism is complete and
-validated here; only the automatic CFL-driven cell selection waits on AC21.
+`estimateCompositionCFL`). As in MRST, a state without accepted fluxes is
+handled before CFL estimation and uses `first_step_implicit`; later states use
+the injected estimator. Well cells are always forced implicit.
 """
 
 from __future__ import annotations
@@ -61,6 +59,8 @@ class AdaptiveImplicitFlowStateBuilder(ExplicitFlowStateBuilder):
         nc = model.G.cells.num
         if mask is not None:
             implicit = np.asarray(mask, bool).copy()
+        elif self.is_first_timestep(state):
+            implicit = np.full(nc, self.first_step_implicit, bool)
         elif self.cfl_estimator is not None:
             cfl_s, cfl_c = self.cfl_estimator(model, state, dt, forces)
             sat = np.asarray(cfl_s, dtype=float)
@@ -72,7 +72,10 @@ class AdaptiveImplicitFlowStateBuilder(ExplicitFlowStateBuilder):
             implicit = sat >= self.saturation_cfl
             implicit |= comp >= self.composition_cfl
         else:
-            implicit = np.full(nc, self.first_step_implicit, bool)
+            # A non-initial state without an estimator cannot be partitioned
+            # safely. This branch is retained for direct builder use; the
+            # public set_time_discretization helper installs the estimator.
+            implicit = np.ones(nc, bool)
         if self.implicit_wells and forces is not None:
             for w in _iter_wells(forces):
                 implicit[np.asarray(w, int)] = True

@@ -22,4 +22,4 @@ def test_simple_equilibrium_case():
 
 if __name__ == "__main__":
     test_simple_equilibrium_case()
-    print("simpleEquilibrium example passed")
+    print("simpleEquilibrium example passed\n\nAll tests passed!")

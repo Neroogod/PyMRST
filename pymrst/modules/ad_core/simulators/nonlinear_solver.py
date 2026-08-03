@@ -23,6 +23,7 @@ debuggable instead of merely broken.
 """
 
 from dataclasses import dataclass, field
+from time import perf_counter
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -30,6 +31,20 @@ import scipy.sparse.linalg as spla
 
 from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.utils.adi import combine_equations, value
+
+
+@dataclass
+class LinearSolveDiagnostic:
+    """One Newton linear solve, independent of the concrete solver API."""
+
+    solver: str
+    converged: bool
+    iterations: int
+    residual_norm: float
+    relative_residual: float
+    rhs_norm: float
+    wall_seconds: float
+    degrees_of_freedom: int
 
 
 @dataclass
@@ -45,6 +60,17 @@ class StepReport:
     # the ministeps a report step was actually taken in, when a selector chose
     # them - `[dt1, dt2, ...]`, summing to dt
     ministeps: List[float] = field(default_factory=list)
+    # One entry per Newton correction. Direct solvers report zero Krylov
+    # iterations; their factorization is represented by wall time and residual.
+    linear_solves: List[LinearSolveDiagnostic] = field(default_factory=list)
+
+    @property
+    def linear_iterations(self) -> List[int]:
+        return [solve.iterations for solve in self.linear_solves]
+
+    @property
+    def total_linear_iterations(self) -> int:
+        return sum(self.linear_iterations)
 
     def __repr__(self) -> str:
         status = "converged" if self.converged else "FAILED"
@@ -72,6 +98,10 @@ class SimulationReport:
     def total_cuts(self) -> int:
         return sum(s.cuts for s in self.steps)
 
+    @property
+    def total_linear_iterations(self) -> int:
+        return sum(s.total_linear_iterations for s in self.steps)
+
 
 class NonLinearSolver:
     """Newton with relaxation, line search, and timestep cutting."""
@@ -88,6 +118,7 @@ class NonLinearSolver:
         linear_solver=None,
         timestep_selector=None,
         verbose: bool = False,
+        observer=None,
     ):
         self.max_iterations = max_iterations
         self.max_timestep_cuts = max_timestep_cuts
@@ -106,12 +137,31 @@ class NonLinearSolver:
         # cost - see `ad_core.timesteps`.
         self.timestep_selector = timestep_selector
         self.verbose = verbose
+        # Optional, dependency-free observation hook. It receives only copied
+        # scalar/report metadata and cannot participate in solver decisions.
+        # Failures are isolated and retained for diagnostics.
+        self.observer = observer
+        self.observer_failures: List[Dict[str, str]] = []
+        self._observation_context: Dict[str, int] = {}
+
+    def _observe(self, event: str, **payload) -> None:
+        if self.observer is None:
+            return
+        try:
+            self.observer(event, {**self._observation_context, **payload})
+        except Exception as error:
+            self.observer_failures.append({
+                "event": event,
+                "type": type(error).__name__,
+                "message": str(error),
+            })
 
     # -- one Newton loop at a fixed dt --------------------------------------
     def solve_ministep(self, model, state0: State, state: State,
                        dt: float) -> Tuple[State, StepReport]:
         """Newton to convergence at this dt, or report failure."""
         report = StepReport(converged=False, iterations=0, dt=dt)
+        self._observe("ministep_started", dt=float(dt))
         st = state
         relax = 1.0
         prev_norm = np.inf
@@ -121,6 +171,13 @@ class NonLinearSolver:
             converged, res = model.get_convergence(eqs, dt)
             report.residuals.append(res)
             report.iterations = it
+            self._observe(
+                "nonlinear_iteration_completed",
+                iteration=int(it), dt=float(dt), converged=bool(converged),
+                residuals={str(name): float(number)
+                           for name, number in res.items()},
+                relaxation=float(relax),
+            )
 
             if converged:
                 report.converged = True
@@ -135,6 +192,19 @@ class NonLinearSolver:
 
             try:
                 increment = self._solve_linear(eqs, model, st, dt)
+                diagnostic = self._last_linear_diagnostic
+                report.linear_solves.append(diagnostic)
+                self._observe(
+                    "linear_solve_completed",
+                    iteration=int(it), dt=float(dt),
+                    wall_seconds=diagnostic.wall_seconds,
+                    increment_norm=float(np.linalg.norm(increment)),
+                    degrees_of_freedom=diagnostic.degrees_of_freedom,
+                    solver=diagnostic.solver,
+                    linear_iterations=diagnostic.iterations,
+                    residual_norm=diagnostic.residual_norm,
+                    relative_residual=diagnostic.relative_residual,
+                )
             except RuntimeError as error:
                 # Iterative field solvers can fail on an oversized ministep.
                 # That is a timestep failure, not a simulation crash: return
@@ -142,6 +212,21 @@ class NonLinearSolver:
                 # cut dt and retry from the last converged state.
                 report.residuals[-1] = dict(report.residuals[-1])
                 report.residuals[-1]["linear_failure"] = float("inf")
+                diagnostic = getattr(self, "_last_linear_diagnostic", None)
+                if diagnostic is None:
+                    diagnostic = LinearSolveDiagnostic(
+                        solver="unknown", converged=False, iterations=0,
+                        residual_norm=float("inf"), relative_residual=float("inf"),
+                        rhs_norm=float("nan"), wall_seconds=0.0,
+                        degrees_of_freedom=0,
+                    )
+                report.linear_solves.append(diagnostic)
+                self._observe(
+                    "linear_solve_failed", iteration=int(it), dt=float(dt),
+                    error_type=type(error).__name__, message=str(error),
+                    solver=diagnostic.solver,
+                    linear_iterations=diagnostic.iterations,
+                )
                 if self.verbose:
                     print(f"  linear solve failed at dt={dt:.3g} s: {error}")
                 return st, report
@@ -158,6 +243,13 @@ class NonLinearSolver:
         eqs = model.get_equations(state0, st, dt)
         converged, res = model.get_convergence(eqs, dt)
         report.residuals.append(res)
+        self._observe(
+            "nonlinear_iteration_completed",
+            iteration=int(self.max_iterations), dt=float(dt),
+            converged=bool(converged),
+            residuals={str(name): float(number) for name, number in res.items()},
+            relaxation=float(relax),
+        )
         report.converged = converged
         report.iterations = self.max_iterations
         if converged and hasattr(model, "after_convergence"):
@@ -167,10 +259,44 @@ class NonLinearSolver:
     def _solve_linear(self, eqs, model=None, state=None,
                       dt: Optional[float] = None) -> np.ndarray:
         eq = combine_equations(*eqs)
-        if self.linear_solver is not None:
-            return self.linear_solver.solve(eq.jac[0], -eq.val, model, state,
-                                            dt)
-        return spla.spsolve(eq.jac[0].tocsc(), -eq.val)
+        matrix = eq.jac[0]
+        rhs = -np.asarray(eq.val, dtype=float).reshape(-1)
+        solver = self.linear_solver
+        solver_name = ("scipy.sparse.linalg.spsolve" if solver is None else
+                       (solver.get_description() if hasattr(solver, "get_description")
+                        else type(solver).__name__))
+        started = perf_counter()
+        try:
+            if solver is not None:
+                increment = solver.solve(
+                    matrix, rhs, model=model, state=state, dt=dt,
+                )
+                iterations = int(getattr(solver, "last_iterations", 0))
+            else:
+                increment = spla.spsolve(matrix.tocsc(), rhs)
+                iterations = 0
+        except Exception:
+            elapsed = perf_counter() - started
+            self._last_linear_diagnostic = LinearSolveDiagnostic(
+                solver=solver_name, converged=False,
+                iterations=int(getattr(solver, "last_iterations", 0)) if solver is not None else 0,
+                residual_norm=float("inf"), relative_residual=float("inf"),
+                rhs_norm=float(np.linalg.norm(rhs)), wall_seconds=float(elapsed),
+                degrees_of_freedom=int(rhs.size),
+            )
+            raise
+        elapsed = perf_counter() - started
+        increment = np.asarray(increment, dtype=float).reshape(-1)
+        residual_norm = float(np.linalg.norm(matrix @ increment - rhs))
+        rhs_norm = float(np.linalg.norm(rhs))
+        relative = residual_norm / max(rhs_norm, np.finfo(float).tiny)
+        self._last_linear_diagnostic = LinearSolveDiagnostic(
+            solver=solver_name, converged=bool(np.isfinite(relative)),
+            iterations=iterations, residual_norm=residual_norm,
+            relative_residual=relative, rhs_norm=rhs_norm,
+            wall_seconds=float(elapsed), degrees_of_freedom=int(rhs.size),
+        )
+        return increment
 
     def _update_relaxation(self, relax: float, norm: float,
                            prev_norm: float) -> float:
@@ -214,32 +340,60 @@ class NonLinearSolver:
             if not isinstance(builder, ImplicitFlowStateBuilder):
                 return self._solve_flow_discretized(model, state0, dt, flow)
 
+        self._observation_context.update(attempt_index=0, ministep_index=0)
         st, report = self.solve_ministep(model, state0, state0.copy(), dt)
         if report.converged:
             return st, report
 
+        # The residual history of the most recent attempt that failed. Both
+        # exits below used to build a fresh StepReport and leave `residuals`
+        # at its empty default, so a step that converged only after cutting -
+        # and, worse, a step that failed outright - reported no history at all.
+        # Failure analysis reads exactly that history, so the one path where a
+        # classification is wanted was the one path with nothing to classify:
+        # a starved solve on Norne came back `converged=False` with zero
+        # residuals and was classified `unknown`.
+        last_failure = report
+
         for cut in range(1, self.max_timestep_cuts + 1):
             n_sub = 2 ** cut
             dt_sub = dt / n_sub
+            self._observe(
+                "timestep_cut", cut=int(cut), subdivisions=int(n_sub),
+                report_dt=float(dt), trial_dt=float(dt_sub),
+            )
             if self.verbose:
                 print(f"  step failed; cutting to {n_sub} x {dt_sub:.3g} s")
 
             st = state0
             ok = True
             iters = 0
-            for _ in range(n_sub):
+            residuals: List[Dict[str, float]] = []
+            linear_solves: List[LinearSolveDiagnostic] = []
+            for substep in range(n_sub):
+                self._observation_context.update(
+                    attempt_index=cut, ministep_index=substep,
+                )
                 st_new, rep = self.solve_ministep(model, st, st.copy(), dt_sub)
                 iters += rep.iterations
+                # Concatenated across the sub-steps, matching `iterations`,
+                # which is already their sum.
+                residuals.extend(rep.residuals)
+                linear_solves.extend(rep.linear_solves)
                 if not rep.converged:
                     ok = False
+                    last_failure = rep
                     break
                 st = st_new
             if ok:
                 return st, StepReport(converged=True, iterations=iters, dt=dt,
-                                      cuts=cut)
+                                      cuts=cut, residuals=residuals,
+                                      linear_solves=linear_solves)
 
         return st, StepReport(converged=False, iterations=report.iterations,
-                              dt=dt, cuts=self.max_timestep_cuts)
+                              dt=dt, cuts=self.max_timestep_cuts,
+                              residuals=list(last_failure.residuals),
+                              linear_solves=list(last_failure.linear_solves))
 
     def _solve_flow_discretized(self, model, state0, dt, flow):
         """Cross one report step using the flow builder's CFL/ministep policy."""
@@ -247,6 +401,7 @@ class NonLinearSolver:
         elapsed = 0.0
         total_iterations = cuts = 0
         ministeps: List[float] = []
+        linear_solves: List[LinearSolveDiagnostic] = []
         forces = {"W": list(getattr(getattr(model, "facility", None),
                                     "wells", []))}
         floor = float(dt) / 2.0 ** self.max_timestep_cuts
@@ -260,7 +415,11 @@ class NonLinearSolver:
             if not np.isfinite(dt_try) or dt_try <= 0.0:
                 dt_try = remaining
 
+            attempt = 0
             while True:
+                self._observation_context.update(
+                    attempt_index=attempt, ministep_index=len(ministeps),
+                )
                 guess = st.copy()
                 flow, guess = flow.prepare_timestep(
                     model, guess, st, dt_try, forces
@@ -269,22 +428,26 @@ class NonLinearSolver:
                     model, st, guess, dt_try
                 )
                 total_iterations += rep.iterations
+                linear_solves.extend(rep.linear_solves)
                 if rep.converged:
                     st = candidate
                     elapsed += dt_try
                     ministeps.append(dt_try)
                     break
                 cuts += 1
+                attempt += 1
                 dt_try *= 0.5
                 if dt_try < floor:
                     return st, StepReport(
                         converged=False, iterations=total_iterations, dt=dt,
                         cuts=cuts, ministeps=ministeps,
+                        linear_solves=linear_solves,
                     )
 
         return st, StepReport(
             converged=True, iterations=total_iterations, dt=dt,
             cuts=cuts, ministeps=ministeps,
+            linear_solves=linear_solves,
         )
 
     def _solve_adaptive(self, model, state0: State, dt: float,
@@ -313,6 +476,8 @@ class NonLinearSolver:
         failed = False
         total_its = cuts = 0
         taken: List[float] = []
+        linear_solves: List[LinearSolveDiagnostic] = []
+        attempt = 0
 
         while t_local < dt * (1.0 - 1e-12):
             pick = sel.cut_timestep if failed else sel.pick_timestep
@@ -322,8 +487,13 @@ class NonLinearSolver:
             is_final = dt_sel >= remaining * (1.0 - 1e-12)
             dt_try = remaining if is_final else dt_sel
 
+            self._observation_context.update(
+                attempt_index=attempt, ministep_index=len(taken),
+            )
             st_new, rep = self.solve_ministep(model, st, st.copy(), dt_try)
+            attempt += 1
             total_its += rep.iterations
+            linear_solves.extend(rep.linear_solves)
 
             # Do not let a *trimmed* final ministep into the history. It was
             # cut short to land on the report time, not because the physics
@@ -347,12 +517,14 @@ class NonLinearSolver:
                               f"floor ({dt_min:.3g} s); giving up")
                     return st, StepReport(converged=False,
                                           iterations=total_its, dt=dt,
-                                          cuts=cuts, ministeps=taken)
+                                          cuts=cuts, ministeps=taken,
+                                          linear_solves=linear_solves)
                 if self.verbose:
                     print(f"  ministep of {dt_try:.3g} s failed; cutting")
 
         return st, StepReport(converged=True, iterations=total_its, dt=dt,
-                              cuts=cuts, ministeps=taken)
+                              cuts=cuts, ministeps=taken,
+                              linear_solves=linear_solves)
 
     # -- a whole schedule ----------------------------------------------------
     def simulate_schedule(self, model, state0: State,
@@ -365,16 +537,36 @@ class NonLinearSolver:
         wells / boundary / sources as time advances. The structured form is
         what lets a well open partway through a run, or a rate step down.
         """
+        states, report = [], SimulationReport()
+        for st, rep in self.iter_schedule(model, state0, schedule):
+            states.append(st)
+            report.steps.append(rep)
+        return states, report
+
+    def iter_schedule(self, model, state0: State, schedule):
+        """Yield each completed report boundary using native solver semantics.
+
+        Yielding occurs before the next report step begins. Consumers may
+        persist the accepted state or stop iteration; the existing
+        ``simulate_schedule`` method simply consumes this generator and keeps
+        its historical return contract.
+        """
         from pymrst.modules.ad_core.utils.schedule import Schedule
 
         if not isinstance(schedule, Schedule):
-            return self._simulate_timesteps(model, state0,
-                                            np.atleast_1d(schedule))
+            yield from self._iter_timesteps(model, state0, np.atleast_1d(schedule))
+            return
 
-        states, report = [], SimulationReport()
         st = state0
         last_control = -1
         for i in range(schedule.n_steps):
+            self._observation_context = {
+                "report_step_index": int(i),
+                "control_index": int(schedule.step_control[i]),
+            }
+            self._observe(
+                "report_step_started", dt=float(schedule.step_val[i]),
+            )
             c = int(schedule.step_control[i])
             if c != last_control:              # a new control period begins
                 old_wells = list(getattr(getattr(model, "facility", None),
@@ -390,26 +582,39 @@ class NonLinearSolver:
                 model, st, float(schedule.step_val[i]),
                 schedule.controls[c],
             )
-            report.steps.append(rep)
-            states.append(st)
+            yield st, rep
+            self._observe(
+                "step_accepted" if rep.converged else "step_rejected",
+                dt=float(schedule.step_val[i]), iterations=int(rep.iterations),
+                cuts=int(rep.cuts),
+            )
             if not rep.converged:
                 if self.verbose:
                     print(f"  step {i} did not converge; stopping")
                 break
-        return states, report
 
     def _simulate_timesteps(self, model, state0, dts):
         states, report = [], SimulationReport()
-        st = state0
-        for dt in dts:
-            st, rep = self.solve_timestep(model, st, float(dt))
-            report.steps.append(rep)
+        for st, rep in self._iter_timesteps(model, state0, dts):
             states.append(st)
+            report.steps.append(rep)
+        return states, report
+
+    def _iter_timesteps(self, model, state0, dts):
+        st = state0
+        for index, dt in enumerate(dts):
+            self._observation_context = {"report_step_index": int(index)}
+            self._observe("report_step_started", dt=float(dt))
+            st, rep = self.solve_timestep(model, st, float(dt))
+            yield st, rep
+            self._observe(
+                "step_accepted" if rep.converged else "step_rejected",
+                dt=float(dt), iterations=int(rep.iterations), cuts=int(rep.cuts),
+            )
             if not rep.converged:
                 if self.verbose:
                     print(f"  step of {dt:.3g} s did not converge; stopping")
                 break
-        return states, report
 
     @staticmethod
     def _apply_control(model, control) -> None:

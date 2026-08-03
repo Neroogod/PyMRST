@@ -194,6 +194,21 @@ def _normalize(x):
 
 
 def _rachford_rice_k(z, K, tol: float = 1.0e-12, max_it: int = 100):
+    """Vapour fraction `V` from `z` and `K`, by bisection on Rachford-Rice.
+
+        f(V) = sum_i z_i (K_i - 1) / (1 + V (K_i - 1))
+
+    `f` is strictly decreasing in `V`, so the mixture is two-phase exactly when
+    `f(0) > 0 > f(1)`; those two endpoint signs are what decide the phase state.
+    Checking instead whether every `K_i` sits on one side of 1 is necessary but
+    not sufficient: a mixture with `K_oil < 1 < K_gas` can still be single
+    phase, which is the ordinary situation for undersaturated oil carrying a
+    little dissolved gas. Bisecting `[0, 1]` in that case searches a bracket
+    holding no root - `f` keeps one sign throughout, every step moves the same
+    end, the interval collapses on `V = 1`, and an all-liquid cell is reported
+    as all vapour. On a sweep of the physical `K_oil < 1 < K_gas` regime that
+    mistake hits about 4% of states, each with the maximum possible error.
+    """
     z = np.asarray(z, dtype=float)
     K = np.asarray(K, dtype=float)
     out = np.zeros(z.shape[0])
@@ -206,19 +221,33 @@ def _rachford_rice_k(z, K, tol: float = 1.0e-12, max_it: int = 100):
         if np.all(k >= 1.0):
             out[c] = 1.0
             continue
+        if np.sum(zz * (k - 1.0)) <= 0.0:
+            out[c] = 0.0          # f(0) <= 0: bubble point not reached
+            continue
+        # f(1) = sum z_i (K_i - 1)/K_i. A component with K_i = 0 cannot enter
+        # the vapour at all, which drives f(1) to -inf - two-phase, and worth
+        # spelling out rather than dividing by zero for the same answer.
+        absent = k <= 0.0
+        if np.any(absent & (zz > 0.0)):
+            f1 = -np.inf
+        else:
+            safe = np.where(absent, 1.0, k)
+            f1 = np.sum(np.where(absent, 0.0, zz * (k - 1.0) / safe))
+        if f1 >= 0.0:
+            out[c] = 1.0          # f(1) >= 0: past the dew point
+            continue
         lo, hi = 0.0, 1.0
-        fa = np.sum(zz * (k - 1.0) / (1.0 + lo * (k - 1.0)))
         for _ in range(max_it):
             mid = 0.5 * (lo + hi)
             fm = np.sum(zz * (k - 1.0) / (1.0 + mid * (k - 1.0)))
             if abs(fm) < tol or hi - lo < tol:
                 lo = hi = mid
                 break
-            if fa * fm <= 0.0:
-                hi = mid
-            else:
+            # f decreases in V, so a positive residual puts the root above mid.
+            if fm > 0.0:
                 lo = mid
-                fa = fm
+            else:
+                hi = mid
         out[c] = 0.5 * (lo + hi)
     return out
 
@@ -244,5 +273,53 @@ if __name__ == "__main__":
         assert np.allclose(fr.y.sum(axis=1), 1.0)
         print("ok test_kvalue_model_evaluates_spe1_tables")
 
+    def test_single_phase_liquid_with_mixed_k_values():
+        """Undersaturated oil must flash to V = 0, not V = 1.
+
+        `K_oil < 1 < K_gas` puts the mixture past neither the `all K <= 1` nor
+        the `all K >= 1` shortcut, yet with little enough gas it is still single
+        phase liquid - `f(0) <= 0`. Bisecting `[0, 1]` there searches a bracket
+        with no root and lands on V = 1, turning an all-liquid cell into an
+        all-vapour one.
+        """
+        z = np.array([[0.9957, 0.0043], [0.9101, 0.0899], [0.9976, 0.0024]])
+        K = np.array([[0.0448, 2.141], [0.0652, 7.401], [0.7590, 15.885]])
+        assert np.all(np.sum(z * (K - 1.0), axis=1) <= 0.0), "these must be liquid"
+        V = _rachford_rice_k(z, K)
+        assert np.allclose(V, 0.0), f"expected all-liquid, got V = {V}"
+        print("ok test_single_phase_liquid_with_mixed_k_values")
+
+    def test_rachford_rice_endpoints_and_root():
+        # past the dew point: f(1) >= 0 => all vapour
+        z = np.array([[0.02, 0.98]])
+        K = np.array([[0.9, 40.0]])
+        assert np.sum(z[0] * (K[0] - 1.0) / K[0]) >= 0.0
+        assert np.allclose(_rachford_rice_k(z, K), 1.0)
+        # a genuine two-phase state: the returned V must zero the residual
+        z2 = np.array([[0.6, 0.4]])
+        K2 = np.array([[0.2, 5.0]])
+        V = _rachford_rice_k(z2, K2)
+        assert 0.0 < V[0] < 1.0, V
+        f = np.sum(z2[0] * (K2[0] - 1.0) / (1.0 + V[0] * (K2[0] - 1.0)))
+        assert abs(f) < 1e-9, f
+        # the one-sided shortcuts still hold
+        assert np.allclose(_rachford_rice_k(np.array([[0.5, 0.5]]),
+                                            np.array([[0.3, 0.8]])), 0.0)
+        assert np.allclose(_rachford_rice_k(np.array([[0.5, 0.5]]),
+                                            np.array([[1.2, 3.0]])), 1.0)
+        print("ok test_rachford_rice_endpoints_and_root")
+
+    def test_zero_k_component_is_two_phase_not_a_divide_by_zero():
+        """K_i = 0 means component i cannot enter the vapour: f(1) = -inf."""
+        z = np.array([[0.5, 0.5]])
+        K = np.array([[0.0, 4.0]])
+        with np.errstate(divide="raise", invalid="raise"):
+            V = _rachford_rice_k(z, K)
+        assert 0.0 < V[0] < 1.0, V
+        print("ok test_zero_k_component_is_two_phase_not_a_divide_by_zero")
+
     test_kvalue_model_evaluates_spe1_tables()
+    test_single_phase_liquid_with_mixed_k_values()
+    test_rachford_rice_endpoints_and_root()
+    test_zero_k_component_is_two_phase_not_a_divide_by_zero()
     print("\nAll tests passed!")

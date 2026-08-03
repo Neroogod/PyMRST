@@ -15,6 +15,8 @@ def add_derived_quantities(model, state, *, copy: bool = True):
     """
     out = state.copy() if copy and hasattr(state, "copy") else dict(state)
     mech = getattr(model, "mech", None) or getattr(model, "mechModel", None)
+    if mech is None and hasattr(model, "diagnostics"):
+        mech = model
     if mech is None:
         raise AttributeError("model must expose a 'mech' or 'mechModel'")
 

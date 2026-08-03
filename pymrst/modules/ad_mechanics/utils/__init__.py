@@ -16,8 +16,10 @@ from pymrst.modules.ad_mechanics.utils.equations_water_mech import (
     MechWaterModel,
 )
 from pymrst.modules.ad_mechanics.utils.poro_params import (
+    PARAMETER_NAMES,
     consolidation_coefficient,
     poro_params,
+    solve_poro_params,
 )
 
 __all__ = [
@@ -26,6 +28,8 @@ __all__ = [
     "MechBlackOilModel",
     "MechanicModel",
     "MechWaterModel",
+    "PARAMETER_NAMES",
     "consolidation_coefficient",
     "poro_params",
+    "solve_poro_params",
 ]

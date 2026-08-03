@@ -109,8 +109,19 @@ def apply_operator_simple(sect: Dict, records: Sequence[Sequence], keyword: str,
         if len(record) < 2:
             raise ValueError(
                 f"a {keyword} record needs a target and a value, got {record}")
-        target = str(record[0]).strip().strip("'\"")
-        value = record[1]
+        # For every operator but one, a record reads `TARGET VALUE [box]`.
+        # `COPY` is the exception: ECLIPSE writes `COPY source target [box]`,
+        # and MRST's implementation spells the direction out as `y <- x` with
+        # `x = rec{1}`. Reading COPY like the others reverses the copy, so
+        # `COPY 'PERMX' 'PERMY'` would overwrite PERMX from PERMY. It raises
+        # when the target does not exist yet, which is the lucky case; when
+        # both arrays exist it silently copies the wrong way.
+        if keyword.upper() == "COPY":
+            target = str(record[1]).strip().strip("'\"")
+            value = record[0]
+        else:
+            target = str(record[0]).strip().strip("'\"")
+            value = record[1]
         given = list(record[2:])
         if given and len(given) != 6:
             raise ValueError(
@@ -155,7 +166,13 @@ if __name__ == "__main__":
         print("ok test_equals_can_create_an_array")
 
     def test_copy_duplicates_another_array() -> None:
-        got = apply_operator_simple(sect(), [["'PERMY'", "'PERMX'"]], "COPY", DIMS)
+        """Source first, target second: `COPY 'PERMX' 'PERMY'` sets PERMY.
+
+        This test previously passed the pair the other way round, matching the
+        implementation rather than the format. Both were wrong together, so it
+        passed.
+        """
+        got = apply_operator_simple(sect(), [["'PERMX'", "'PERMY'"]], "COPY", DIMS)
         assert got["PERMY"].tolist() == [100.0] * 8
         print("ok test_copy_duplicates_another_array")
 
@@ -243,4 +260,33 @@ if __name__ == "__main__":
     test_a_box_outside_the_grid_is_rejected()
     test_a_short_box_is_rejected()
     test_an_unknown_operator_is_rejected()
+    def test_copy_goes_source_then_target():
+        """ECLIPSE writes `COPY source target`, not `COPY target source`.
+
+        MRST spells the direction out in its own implementation as `y <- x`
+        with `x = rec{1}`. The Egg model relies on it:
+
+            COPY
+             'PERMX' 'PERMY'  1 60 1 60 1 7 /
+
+        Reading the record the other way round overwrites PERMX from PERMY.
+        Here both arrays exist and differ, so a reversed copy is visible
+        rather than merely raising.
+        """
+        sect = {"PERMX": np.full(8, 100.0), "PERMY": np.full(8, 7.0)}
+        out = apply_operator_simple(dict(sect), [["PERMX", "PERMY"]], "COPY",
+                                    (2, 2, 2))
+        assert np.allclose(out["PERMY"], 100.0), out["PERMY"]
+        assert np.allclose(out["PERMX"], 100.0), "source was modified"
+        print("ok test_copy_goes_source_then_target")
+
+    def test_copy_creates_the_target_when_absent():
+        sect = {"PERMX": np.full(8, 100.0)}
+        out = apply_operator_simple(dict(sect), [["PERMX", "PERMZ"]], "COPY",
+                                    (2, 2, 2))
+        assert np.allclose(out["PERMZ"], 100.0), out.get("PERMZ")
+        print("ok test_copy_creates_the_target_when_absent")
+
+    test_copy_goes_source_then_target()
+    test_copy_creates_the_target_when_absent()
     print("\nAll tests passed!")

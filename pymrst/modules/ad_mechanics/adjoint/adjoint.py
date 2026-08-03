@@ -46,7 +46,7 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
 from pymrst.modules.ad_core.statefunctions.state_function import State
-from pymrst.modules.ad_mechanics.mech_blackoil import MechBlackOilModel
+from pymrst.modules.ad_mechanics.models.fully_coupled.mech_black_oil_model import MechBlackOilModel
 from pymrst.utils.adi import ADI, combine_equations, value
 
 
@@ -123,14 +123,19 @@ def _jac_wrt_controls(model) -> sp.csc_matrix:
                          shape=(n_rows, nw))
 
 
-def uplift_objective(model: MechBlackOilModel, node: int, direction: int = 2):
+def uplift_objective(model: MechBlackOilModel, node: int,
+                     direction: int | None = None):
     """dt * u_node[direction]: MRST's `objUplift`.
 
     The displacement of one surface node, weighted by the timestep, summed
     over the schedule. Returns (J_n, dJ_n/dx_n) for a given state.
     """
     is_dir = model.mech.operators.is_dir
-    dof = 3 * int(node) + int(direction)
+    dimension = int(model.G.griddim)
+    direction = dimension - 1 if direction is None else int(direction)
+    if not 0 <= direction < dimension:
+        raise ValueError("uplift direction is outside the grid dimension")
+    dof = dimension * int(node) + direction
     if is_dir[dof]:
         raise ValueError(
             f"node {node} has its component {direction} prescribed - its "
@@ -224,7 +229,7 @@ def compute_gradient_adjoint(
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
-    from pymrst.modules.ad_mechanics.mechanics import MechanicModel
+    from pymrst.modules.ad_mechanics.models.mechanic_model import MechanicModel
     from pymrst.modules.ad_props.init_simple_adi_fluid import init_simple_adi_fluid
     from pymrst.modules.vemmech.vem import (
         ElasticBC,

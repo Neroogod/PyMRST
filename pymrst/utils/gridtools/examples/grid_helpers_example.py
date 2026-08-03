@@ -27,4 +27,4 @@ def grid_helpers_example(*, shape=(10, 20, 3), plot=False):
 if __name__ == "__main__":
     result = grid_helpers_example()
     assert result["nodes"].size > 0 and result["faces"].size > 0
-    print("gridHelpersExample passed")
+    print("gridHelpersExample passed\n\nAll tests passed!")

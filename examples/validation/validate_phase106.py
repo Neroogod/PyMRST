@@ -1,4 +1,4 @@
-"""Validate HFM v2/DFM/shale compatibility and toughness propagation."""
+"""Validate consolidated HFM/DFM/shale surfaces and toughness propagation."""
 
 import numpy as np
 
@@ -32,9 +32,9 @@ def _bc(g):
 
 
 def test_import_surfaces():
-    from pymrst.modules import dfm, hfm_v2, shale
+    from pymrst.modules import dfm, hfm, shale
 
-    assert hasattr(hfm_v2, "build_edfm_3d")
+    assert hasattr(hfm, "build_edfm_3d")
     assert hasattr(dfm, "build_dfm")
     assert hasattr(shale, "build_shale_edfm")
 
@@ -82,7 +82,7 @@ def test_toughness_propagation():
 
 
 def main():
-    print("Phase 106: HFM v2/DFM/shale compatibility and propagation")
+    print("Phase 106: consolidated HFM/DFM/shale surfaces and propagation")
     test_import_surfaces()
     print("  ok compatibility import surfaces")
     test_toughness_propagation()

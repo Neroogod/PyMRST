@@ -72,6 +72,7 @@ from pymrst.modules.ad_core.models.facilities.separators import (
 from pymrst.modules.ad_core.models.physical_model import PhysicalModel
 from pymrst.modules.ad_core.models.reservoir_model import ReservoirModel
 from pymrst.modules.ad_core.simulators.nonlinear_solver import (
+    LinearSolveDiagnostic,
     NonLinearSolver,
     SimulationReport,
     StepReport,
@@ -136,5 +137,5 @@ __all__ = [
     "SimpleTimeStepSelector", "FactorTimeStepSelector",
     "IterationCountTimeStepSelector", "StateChangeTimeStepSelector",
     "rampup_timesteps",
-    "NonLinearSolver", "StepReport", "SimulationReport",
+    "LinearSolveDiagnostic", "NonLinearSolver", "StepReport", "SimulationReport",
 ]

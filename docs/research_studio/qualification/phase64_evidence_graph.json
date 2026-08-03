@@ -1,0 +1,402 @@
+{
+  "artifact": "pymrst_qualification_evidence_graph",
+  "artifact_schema_version": 1,
+  "graph": {
+    "edges": [
+      {
+        "accepted": true,
+        "claim": "Phase 64 pressure agrees within its declared tolerance",
+        "converged": true,
+        "edge_id": "phase64_pressure",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "report_time:exact",
+          "entity_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 1.5732542388141155,
+          "maximum_relative_error": 5.825505943534771e-08,
+          "maximum_scaled_error": 1.5732542388141155,
+          "worst_time": 518400.0
+        },
+        "shared_kernels": [
+          "PyMRST is a Python translation of the MRST formulation"
+        ],
+        "source": "mrst_phase64",
+        "target": "pymrst_phase64"
+      },
+      {
+        "accepted": true,
+        "claim": "Phase 64 free displacement agrees within its declared tolerance",
+        "converged": true,
+        "edge_id": "phase64_free_displacement",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "report_time:exact",
+          "entity_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 1.7790554022496666e-09,
+          "maximum_relative_error": 1.7790554022496666e-09,
+          "maximum_scaled_error": 1.7790554022496666e-09,
+          "worst_time": 518400.0
+        },
+        "shared_kernels": [
+          "PyMRST is a Python translation of the MRST formulation"
+        ],
+        "source": "mrst_phase64",
+        "target": "pymrst_phase64"
+      },
+      {
+        "accepted": true,
+        "claim": "Phase 64 full displacement agrees within its declared tolerance",
+        "converged": true,
+        "edge_id": "phase64_full_displacement",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "report_time:exact",
+          "entity_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 1.7790554022496666e-09,
+          "maximum_relative_error": 1.7790554022496666e-09,
+          "maximum_scaled_error": 1.7790554022496666e-09,
+          "worst_time": 518400.0
+        },
+        "shared_kernels": [
+          "PyMRST is a Python translation of the MRST formulation"
+        ],
+        "source": "mrst_phase64",
+        "target": "pymrst_phase64"
+      },
+      {
+        "accepted": true,
+        "claim": "Phase 64 volumetric strain agrees within its declared tolerance",
+        "converged": true,
+        "edge_id": "phase64_volumetric_strain",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "report_time:exact",
+          "entity_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 2.228136628838268e-10,
+          "maximum_relative_error": 2.228136628838268e-10,
+          "maximum_scaled_error": 2.228136628838268e-10,
+          "worst_time": 518400.0
+        },
+        "shared_kernels": [
+          "PyMRST is a Python translation of the MRST formulation"
+        ],
+        "source": "mrst_phase64",
+        "target": "pymrst_phase64"
+      },
+      {
+        "accepted": true,
+        "claim": "Phase 64 strain agrees within its declared tolerance",
+        "converged": true,
+        "edge_id": "phase64_strain",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "report_time:exact",
+          "entity_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 1.6826515782170695e-10,
+          "maximum_relative_error": 1.6826515782170695e-10,
+          "maximum_scaled_error": 1.6826515782170695e-10,
+          "worst_time": 518400.0
+        },
+        "shared_kernels": [
+          "PyMRST is a Python translation of the MRST formulation"
+        ],
+        "source": "mrst_phase64",
+        "target": "pymrst_phase64"
+      },
+      {
+        "accepted": true,
+        "claim": "Phase 64 effective stress agrees within its declared tolerance",
+        "converged": true,
+        "edge_id": "phase64_effective_stress",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "report_time:exact",
+          "entity_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 0.23271867592211493,
+          "maximum_relative_error": 3.824417568844631e-05,
+          "maximum_scaled_error": 0.23271867592211493,
+          "worst_time": 518400.0
+        },
+        "shared_kernels": [
+          "PyMRST is a Python translation of the MRST formulation"
+        ],
+        "source": "mrst_phase64",
+        "target": "pymrst_phase64"
+      },
+      {
+        "accepted": true,
+        "claim": "Phase 64 well water rate agrees within its declared tolerance",
+        "converged": true,
+        "edge_id": "phase64_well_water_rate",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "report_time:exact",
+          "entity_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 0.0,
+          "maximum_relative_error": 0.0,
+          "maximum_scaled_error": 0.0,
+          "worst_time": 86400.0
+        },
+        "shared_kernels": [
+          "PyMRST is a Python translation of the MRST formulation"
+        ],
+        "source": "mrst_phase64",
+        "target": "pymrst_phase64"
+      },
+      {
+        "accepted": true,
+        "claim": "Phase 64 well bhp agrees within its declared tolerance",
+        "converged": true,
+        "edge_id": "phase64_well_bhp",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "report_time:exact",
+          "entity_identity:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 1.5732540525496006,
+          "maximum_relative_error": 5.825503468683401e-08,
+          "maximum_scaled_error": 1.5732540525496006,
+          "worst_time": 518400.0
+        },
+        "shared_kernels": [
+          "PyMRST is a Python translation of the MRST formulation"
+        ],
+        "source": "mrst_phase64",
+        "target": "pymrst_phase64"
+      }
+    ],
+    "nodes": [
+      {
+        "kind": "mrst",
+        "label": "MRST Phase 64 reference",
+        "metadata": {
+          "generator": "examples/validation/dump_phase64_reference.m",
+          "matlab_command": "/Applications/MATLAB_R2021b.app/bin/matlab -batch \"run('examples/validation/dump_phase64_reference.m')\"",
+          "reference": "examples/validation/ref_p64_run2d_water_fixedstress.mat",
+          "sha256": "e4f4bb337c08a91d3b8e334fc824ae78bb95f820723c9df481f4b18f82c6543d"
+        },
+        "node_id": "mrst_phase64",
+        "version": "MRST 2024a"
+      },
+      {
+        "kind": "pymrst",
+        "label": "PyMRST Phase 64 run",
+        "metadata": {
+          "all_converged": true,
+          "grid_cells": 80,
+          "report_steps": 2,
+          "runner": "pymrst.modules.ad_mechanics.examples.run_2d_case"
+        },
+        "node_id": "pymrst_phase64",
+        "version": "working-tree"
+      }
+    ],
+    "schema_version": 1
+  },
+  "summary": {
+    "case": "phase64_water_fixed_stress",
+    "edges": {
+      "effective_stress": {
+        "candidate_unit": "Pa",
+        "compared_shape": [
+          2,
+          80,
+          3
+        ],
+        "maximum_absolute_error": 0.23271867592211493,
+        "maximum_relative_error": 3.824417568844631e-05,
+        "maximum_scaled_error": 0.23271867592211493,
+        "passed": true,
+        "reference_unit": "Pa",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_coordinates": [
+          [
+            "cell",
+            "1"
+          ],
+          [
+            "voigt",
+            "yy"
+          ]
+        ],
+        "worst_time": 518400.0
+      },
+      "free_displacement": {
+        "candidate_unit": "m",
+        "compared_shape": [
+          2,
+          168
+        ],
+        "maximum_absolute_error": 1.7790554022496666e-09,
+        "maximum_relative_error": 1.7790554022496666e-09,
+        "maximum_scaled_error": 1.7790554022496666e-09,
+        "passed": true,
+        "reference_unit": "m",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_coordinates": [
+          [
+            "free_dof",
+            "126"
+          ]
+        ],
+        "worst_time": 518400.0
+      },
+      "full_displacement": {
+        "candidate_unit": "m",
+        "compared_shape": [
+          2,
+          210
+        ],
+        "maximum_absolute_error": 1.7790554022496666e-09,
+        "maximum_relative_error": 1.7790554022496666e-09,
+        "maximum_scaled_error": 1.7790554022496666e-09,
+        "passed": true,
+        "reference_unit": "m",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_coordinates": [
+          [
+            "dof",
+            "168"
+          ]
+        ],
+        "worst_time": 518400.0
+      },
+      "pressure": {
+        "candidate_unit": "Pa",
+        "compared_shape": [
+          2,
+          80
+        ],
+        "maximum_absolute_error": 1.5732542388141155,
+        "maximum_relative_error": 5.825505943534771e-08,
+        "maximum_scaled_error": 1.5732542388141155,
+        "passed": true,
+        "reference_unit": "Pa",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_coordinates": [
+          [
+            "cell",
+            "9"
+          ]
+        ],
+        "worst_time": 518400.0
+      },
+      "strain": {
+        "candidate_unit": "dimensionless",
+        "compared_shape": [
+          2,
+          80,
+          3
+        ],
+        "maximum_absolute_error": 1.6826515782170695e-10,
+        "maximum_relative_error": 1.6826515782170695e-10,
+        "maximum_scaled_error": 1.6826515782170695e-10,
+        "passed": true,
+        "reference_unit": "dimensionless",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_coordinates": [
+          [
+            "cell",
+            "2"
+          ],
+          [
+            "voigt",
+            "yy"
+          ]
+        ],
+        "worst_time": 518400.0
+      },
+      "volumetric_strain": {
+        "candidate_unit": "dimensionless",
+        "compared_shape": [
+          2,
+          80
+        ],
+        "maximum_absolute_error": 2.228136628838268e-10,
+        "maximum_relative_error": 2.228136628838268e-10,
+        "maximum_scaled_error": 2.228136628838268e-10,
+        "passed": true,
+        "reference_unit": "dimensionless",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_coordinates": [
+          [
+            "cell",
+            "60"
+          ]
+        ],
+        "worst_time": 518400.0
+      },
+      "well_bhp": {
+        "candidate_unit": "Pa",
+        "compared_shape": [
+          2,
+          1
+        ],
+        "maximum_absolute_error": 1.5732540525496006,
+        "maximum_relative_error": 5.825503468683401e-08,
+        "maximum_scaled_error": 1.5732540525496006,
+        "passed": true,
+        "reference_unit": "Pa",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_entity": "inj",
+        "worst_time": 518400.0
+      },
+      "well_water_rate": {
+        "candidate_unit": "surface_m3/s",
+        "compared_shape": [
+          2,
+          1
+        ],
+        "maximum_absolute_error": 0.0,
+        "maximum_relative_error": 0.0,
+        "maximum_scaled_error": 0.0,
+        "passed": true,
+        "reference_unit": "surface_m3/s",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_entity": "inj",
+        "worst_time": 86400.0
+      }
+    },
+    "passed": true,
+    "reference_sha256": "e4f4bb337c08a91d3b8e334fc824ae78bb95f820723c9df481f4b18f82c6543d"
+  }
+}

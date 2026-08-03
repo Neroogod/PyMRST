@@ -1,0 +1,304 @@
+{
+  "artifact": "pymrst_poromechanics_equations_evidence_graph",
+  "artifact_schema_version": 1,
+  "graph": {
+    "edges": [
+      {
+        "accepted": true,
+        "claim": "Poromechanics residual agrees with MRST",
+        "converged": true,
+        "edge_id": "poromechanics_residual",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "equation_dof:v1",
+          "displacement_dof:v1",
+          "pressure_cell:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 4.440892098500626e-16,
+          "maximum_relative_error": 1.6447749223670497e-16,
+          "maximum_scaled_error": 4.440892098500626e-16,
+          "worst_time": 1.0
+        },
+        "shared_kernels": [
+          "PyMRST ports the MRST equationsPoroMechanics formulation"
+        ],
+        "source": "mrst_poromechanics_equations",
+        "target": "pymrst_poromechanics_equations"
+      },
+      {
+        "accepted": true,
+        "claim": "Poromechanics jacobian displacement agrees with MRST",
+        "converged": true,
+        "edge_id": "poromechanics_jacobian_displacement",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "equation_dof:v1",
+          "displacement_dof:v1",
+          "pressure_cell:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 0.0,
+          "maximum_relative_error": 0.0,
+          "maximum_scaled_error": 0.0,
+          "worst_time": 1.0
+        },
+        "shared_kernels": [
+          "PyMRST ports the MRST equationsPoroMechanics formulation"
+        ],
+        "source": "mrst_poromechanics_equations",
+        "target": "pymrst_poromechanics_equations"
+      },
+      {
+        "accepted": true,
+        "claim": "Poromechanics jacobian pressure agrees with MRST",
+        "converged": true,
+        "edge_id": "poromechanics_jacobian_pressure",
+        "evidence_class": "normalized_comparison",
+        "exceptions": [],
+        "independence": "partial",
+        "mappings": [
+          "equation_dof:v1",
+          "displacement_dof:v1",
+          "pressure_cell:v1"
+        ],
+        "metrics": {
+          "maximum_absolute_error": 0.0,
+          "maximum_relative_error": 0.0,
+          "maximum_scaled_error": 0.0,
+          "worst_time": 1.0
+        },
+        "shared_kernels": [
+          "PyMRST ports the MRST equationsPoroMechanics formulation"
+        ],
+        "source": "mrst_poromechanics_equations",
+        "target": "pymrst_poromechanics_equations"
+      }
+    ],
+    "nodes": [
+      {
+        "kind": "mrst",
+        "label": "MRST equationsPoroMechanics direct AD assembly",
+        "metadata": {
+          "fixture_manifest": "scripts/matlab/ad_mechanics/ref_equations_poro_mechanics.mat.manifest.json",
+          "generator_sha256": "b6d4a0b9981f8a8f331ab2bb6be44881f9a26e67e2b964c54d6b87785e9a9c46",
+          "input_artifacts": {
+            "mrst_equation_owner": {
+              "bytes": 1779,
+              "path": "/Users/Shared/PyMRST_workspace/mrst-2024a-Geomech/modules/ad-mechanics/utils/equationsPoroMechanics.m",
+              "sha256": "8bc1dc07c9276db9458b3231a43c210cb9233cc038652a4ce3ffc124bb5a7a73"
+            }
+          },
+          "matlab_release": "2021b",
+          "modules": [
+            "ad-core",
+            "ad-mechanics"
+          ],
+          "reference_sha256": "77a0171e8fdd58f719fa176528171d93a89e3187c659d1baa9dd5f507cab2169"
+        },
+        "node_id": "mrst_poromechanics_equations",
+        "version": "MRST 2024a"
+      },
+      {
+        "kind": "pymrst",
+        "label": "PyMRST equations_poro_mechanics direct AD assembly",
+        "metadata": {},
+        "node_id": "pymrst_poromechanics_equations",
+        "version": "working-tree"
+      }
+    ],
+    "schema_version": 1
+  },
+  "summary": {
+    "case": "Direct poromechanics residual and Jacobian qualification",
+    "comparisons": {
+      "jacobian_displacement": {
+        "candidate_unit": "dimensionless",
+        "compared_shape": [
+          1,
+          3,
+          3
+        ],
+        "maximum_absolute_error": 0.0,
+        "maximum_relative_error": 0.0,
+        "maximum_scaled_error": 0.0,
+        "passed": true,
+        "reference_unit": "dimensionless",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_coordinates": [
+          [
+            "equation_dof",
+            "u0"
+          ],
+          [
+            "primary_variable",
+            "u0"
+          ]
+        ],
+        "worst_time": 1.0
+      },
+      "jacobian_pressure": {
+        "candidate_unit": "dimensionless",
+        "compared_shape": [
+          1,
+          3,
+          2
+        ],
+        "maximum_absolute_error": 0.0,
+        "maximum_relative_error": 0.0,
+        "maximum_scaled_error": 0.0,
+        "passed": true,
+        "reference_unit": "dimensionless",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_coordinates": [
+          [
+            "equation_dof",
+            "u0"
+          ],
+          [
+            "primary_variable",
+            "cell0"
+          ]
+        ],
+        "worst_time": 1.0
+      },
+      "residual": {
+        "candidate_unit": "dimensionless",
+        "compared_shape": [
+          1,
+          3
+        ],
+        "maximum_absolute_error": 4.440892098500626e-16,
+        "maximum_relative_error": 1.6447749223670497e-16,
+        "maximum_scaled_error": 4.440892098500626e-16,
+        "passed": true,
+        "reference_unit": "dimensionless",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_coordinates": [
+          [
+            "equation_dof",
+            "u1"
+          ]
+        ],
+        "worst_time": 1.0
+      }
+    },
+    "fixture_manifest": {
+      "case_name": "Direct poromechanics residual and Jacobian qualification",
+      "fixture_id": "mrst_poromechanics_equations_v1",
+      "generated_at_utc": "2026-08-03T20:14:49.359377+00:00",
+      "generator_function": "dump_equations_poro_mechanics_reference",
+      "generator_sha256": "b6d4a0b9981f8a8f331ab2bb6be44881f9a26e67e2b964c54d6b87785e9a9c46",
+      "input_artifacts": {
+        "mrst_equation_owner": {
+          "bytes": 1779,
+          "path": "/Users/Shared/PyMRST_workspace/mrst-2024a-Geomech/modules/ad-mechanics/utils/equationsPoroMechanics.m",
+          "sha256": "8bc1dc07c9276db9458b3231a43c210cb9233cc038652a4ce3ffc124bb5a7a73"
+        }
+      },
+      "mappings": [
+        "equation_dof:v1",
+        "displacement_dof:v1",
+        "pressure_cell:v1"
+      ],
+      "matlab_executable": "/Applications/MATLAB_R2021b.app/bin/matlab",
+      "matlab_release": "2021b",
+      "metadata": {
+        "elapsed_seconds": 5.885912624999037,
+        "stderr_tail": "",
+        "stdout_tail": "MATLAB_RELEASE=2021b\nWelcome to the MATLAB Reservoir Simulation Toolbox (MRST)!\nYou are using the release version 2024a. To download other versions of MRST\nand view examples and relevant publications, please visit www.mrst.no\n\nUseful commands for getting started:\n - List all introductory examples:   mrstExamples()\n - List all modules:                 mrstPath('list')\n - Load modules using GUI:           mrstModule('gui')\n - Explore all available data sets:  mrstDatasetGUI()\n - List examples of a module:        mrstExamples('ad-blackoil')\n - Explore modules and publications: mrstExploreModules()\n - Show all examples in all modules: mrstExamples('all')\n - Show settings for MRST:           mrstSettings()\n - Display this message:             mrstStartupMessage()\n\nFor assistance and discussions about MRST, please visit our mailing list at\n\twww.sintef.no/projectweb/mrst/forum/ (sintef-mrst@googlegroups.com)\nFor some common queries, see our FAQ: www.sintef.no/projectweb/mrst/faq/\nWrote /Users/Shared/PyMRST_workspace/PyMRST/scripts/matlab/ad_mechanics/ref_equations_poro_mechanics.mat\n"
+      },
+      "modules": [
+        "ad-core",
+        "ad-mechanics"
+      ],
+      "mrst_root": "/Users/Shared/PyMRST_workspace/mrst-2024a-Geomech",
+      "mrst_version": "MRST 2024a",
+      "reference_bytes": 944,
+      "reference_sha256": "77a0171e8fdd58f719fa176528171d93a89e3187c659d1baa9dd5f507cab2169",
+      "regeneration_command": [
+        "/Applications/MATLAB_R2021b.app/bin/matlab",
+        "-batch",
+        "fprintf('MATLAB_RELEASE=%s\\n', version('-release')); addpath('/Users/Shared/PyMRST_workspace/PyMRST/scripts/matlab/ad_mechanics'); dump_equations_poro_mechanics_reference()"
+      ],
+      "schema_version": 1,
+      "solver_settings": {
+        "automatic_differentiation": "MRST ADI",
+        "linear_solve": "none; assembly-only fixture",
+        "residual_scale": "1/(1e6*mean(cell_volume))"
+      },
+      "tolerances": {
+        "jacobian_displacement": {
+          "absolute": 1e-13
+        },
+        "jacobian_pressure": {
+          "absolute": 1e-13
+        },
+        "residual": {
+          "absolute": 1e-13
+        }
+      }
+    },
+    "passed": true,
+    "result_mappings": {
+      "cell": {
+        "candidate_indices": [
+          0,
+          1
+        ],
+        "candidate_size": 2,
+        "complete": true,
+        "identities": [
+          "0",
+          "1"
+        ],
+        "kind": "cell",
+        "reference_indices": [
+          0,
+          1
+        ],
+        "reference_size": 2,
+        "schema_version": 1
+      },
+      "report_time": {
+        "candidate_indices": [
+          0
+        ],
+        "candidate_size": 1,
+        "complete": true,
+        "identities": [
+          "1.0"
+        ],
+        "kind": "report_time",
+        "reference_indices": [
+          0
+        ],
+        "reference_size": 1,
+        "schema_version": 1
+      },
+      "well": {
+        "candidate_indices": [
+          0
+        ],
+        "candidate_size": 1,
+        "complete": true,
+        "identities": [
+          "mechanics"
+        ],
+        "kind": "well",
+        "reference_indices": [
+          0
+        ],
+        "reference_size": 1,
+        "schema_version": 1
+      }
+    }
+  }
+}

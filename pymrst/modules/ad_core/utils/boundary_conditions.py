@@ -246,8 +246,10 @@ def _boundary_fluxes_ad(model, pressure, saturation, mobility, density, b, bc):
         qr = sample * 0.0
         qs = sample * 0.0
         bc_v = values[:, 0] if values.shape[1] == 1 else values[:, i]
-        p_out = sample * 1.0
-        p_out = p_out + (bc_v - value(sample)) * is_p
+        # A prescribed pressure is constant in both value *and derivative*.
+        # Replacing only ``value(sample)`` leaves dp_out/dp_cell = 1 and then
+        # cancels the physical derivative in ``p_out - sample``.
+        p_out = sample + (bc_v - sample) * is_p
         rho_avg = (rho_out[i] + density[i][cells]) / 2
         dp = p_out - sample - rho_avg * gdz
         inj_p = is_p & (value(dp) > 0)
@@ -262,7 +264,13 @@ def _boundary_fluxes_ad(model, pressure, saturation, mobility, density, b, bc):
         qs = qs + bc_v * (mob_in[i] / total) * prod_sf
         qr = qr + bc_v * sat[:, i] / b_out[i] * inj_sf
         qr = qr + bc_v * (mob_in[i] / total) / b[i][cells] * prod_sf
-        qs = qs + qph[i] * np.where(value(qph[i]) > 0, b_out[i], b[i][cells]) * is_rf
+        # ``np.where`` tries to coerce ADI operands into an object array.  The
+        # upwind selector is numeric, so express the same selection
+        # algebraically and preserve derivatives of either b-factor branch.
+        reservoir_inflow = value(qph[i]) > 0
+        b_cell = b[i][cells]
+        b_face = b_cell + (b_out[i] - b_cell) * reservoir_inflow
+        qs = qs + qph[i] * b_face * is_rf
         qr = qr + qph[i] * is_rf
         q_s.append(qs)
         q_r.append(qr)

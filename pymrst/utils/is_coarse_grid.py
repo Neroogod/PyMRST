@@ -1,16 +1,15 @@
 """Is this an upscaled grid? (MRST ``utils/isCoarseGrid.m``).
 
 A coarse grid carries the fine grid it came from (`parent`) and the map from
-fine cells to coarse ones (`partition`). Both must be present: a grid with only
-one of them is malformed rather than coarse, and treating it as coarse would
-send a caller looking for a field that is not there.
+fine cells to coarse ones (`partition`). MRST checks field presence only, so
+objects with both fields are classified as coarse even when their values are
+empty. This reproduces that structural predicate.
 """
 
 
 def is_coarse_grid(g) -> bool:
     """True when ``g`` has both a ``parent`` grid and a ``partition``."""
-    return (getattr(g, "parent", None) is not None
-            and getattr(g, "partition", None) is not None)
+    return hasattr(g, "parent") and hasattr(g, "partition")
 
 
 isCoarseGrid = is_coarse_grid
@@ -38,7 +37,7 @@ if __name__ == "__main__":
 
     def test_fields_present_but_none_do_not_count() -> None:
         g = SimpleNamespace(parent=None, partition=[0, 1])
-        assert not is_coarse_grid(g)
+        assert is_coarse_grid(g)
         print("ok test_fields_present_but_none_do_not_count")
 
     test_a_plain_grid_is_not_coarse()

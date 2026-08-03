@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pymrst.modules.compositional.eos import flash, simple_mixture, wilson_k
+from pymrst.modules.compositional.eos import _cubic_roots, flash, simple_mixture, wilson_k
 from pymrst.modules.compositional.models.eos.equation_of_state_model import (
     EquationOfStateModel,
 )
@@ -39,6 +39,21 @@ def test_wilson_values_are_positive_and_vectorized():
     assert values.shape == (2, len(mixture.names))
     assert np.all(np.isfinite(values))
     assert np.all(values > 0.0)
+
+
+def test_vectorized_pr_cubic_matches_numpy_roots():
+    rng = np.random.default_rng(8)
+    A = 10.0 ** rng.uniform(-4.0, 0.5, 100)
+    B = 10.0 ** rng.uniform(-5.0, -0.3, 100)
+    vectorized = _cubic_roots(A, B)
+    for i, (a, b) in enumerate(zip(A, B)):
+        coefficients = [1.0, -(1.0 - b), a - 3.0*b*b - 2.0*b,
+                        -(a*b - b*b - b**3)]
+        expected = np.roots(coefficients)
+        expected = np.sort(expected[np.abs(expected.imag) < 1.0e-9].real)
+        actual = np.sort(vectorized[i, np.isfinite(vectorized[i])])
+        assert actual.size == expected.size
+        assert np.allclose(actual, expected, rtol=1.0e-10, atol=1.0e-11)
 
 
 def test_zudkevitch_joffe_refusal_matches_mrst_2024a():

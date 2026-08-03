@@ -5,9 +5,15 @@ MRST's example builds the simple 1D injector/producer case with
 problem, runs the schedule, and compares natural-variable and
 overall-composition formulations against external simulator references.
 
-PyMRST does not ship the commercial E300/AD-GPRS reference states, but this
-port keeps the MRST setup shape: the same ``use_natural`` switch, an explicit
-schedule, state history, and nonlinear iteration report.
+The commercial E300/AD-GPRS reference states are not part of this repo, but
+they are not unavailable either: they ship in MRST's optional ``simplecomp``
+archive and ``fetch_simplecomp_dataset()`` will install them into the MRST
+tree, after which ``load_simplecomp_references`` picks them up. Code here
+should therefore treat them as *optionally present* rather than absent - see
+``test_packed_problem_and_plot_data_match_mrst_shape``.
+
+Otherwise this port keeps the MRST setup shape: the same ``use_natural``
+switch, an explicit schedule, state history, and nonlinear iteration report.
 """
 
 import numpy as np
@@ -306,6 +312,11 @@ def validation_plot_sections(run_output):
         pressure_norm = pressure / np.max(pressure) if pressure.size and np.max(pressure) != 0.0 else pressure
         detailed = {
             "step": int(detailed_step),
+            # Filled in below once it is known whether the E300 reference
+            # loaded. Hardcoding ("MRST",) here made this section contradict
+            # itself on any checkout with MRST's optional `simplecomp` archive
+            # installed: it reported E300 unavailable while carrying E300 data.
+            # Its sibling sections both derive this from comparison["available"].
             "available": ("MRST",),
             "legend": ("sV", "Normalized pressure", *comparison["component_names"]),
             "legend_location": "northoutside",
@@ -340,6 +351,9 @@ def validation_plot_sections(run_output):
                 "marker": "--",
                 "linewidth": 2.5,
             }
+        detailed["available"] = ("MRST",) + (
+            ("E300",) if detailed["E300"] is not None else ()
+        )
     return {
         "component_comparison": {
             "figure_position_offset": (0, 0, 350, 0),
@@ -388,7 +402,19 @@ if __name__ == "__main__":
         state = out["state"]
         assert out["pressure"].shape[0] == 2
         assert state.z[0, 1] > setup.state.z[0, 1]
-        assert state.qGs[0] > 0.0
+        # The injector's rate lands entirely in qOs, and qGs is exactly zero.
+        # That looks wrong against MRST's setup, which sets compi = [1, 0]
+        # under the comment "Injection is pure gas" - but the comment is stale
+        # and the code is what runs. The phases are (Oil, Gas), so [1, 0]
+        # selects the oil phase, and MRST itself reports
+        # `INJ qOs=1.5828141e-05 qGs=0` for this case. This assertion used to
+        # read `qGs[0] > 0`, which encoded the comment rather than the
+        # behavior, and failed for that reason alone.
+        assert state.qOs[0] > 0.0, state.qOs
+        assert state.qGs[0] == 0.0, state.qGs
+        # What actually matters physically, and the mirror of the producer
+        # check below: the injector injects.
+        assert state.qOs[0] + state.qGs[0] > 0.0
         assert state.qOs[1] + state.qGs[1] < 0.0
         assert out["schedule"].step.control.tolist() == [1, 1]
         assert out["iterations"].shape == (2,)
@@ -414,8 +440,18 @@ if __name__ == "__main__":
         assert out["names"] == ["Natural"]
         assert out["problem"].directory == "simple_comp"
         assert comparison["names"] == ("MRST", "E300", "AD-GPRS")
-        assert comparison["available"] == ("MRST",)
-        assert comparison["data"]["E300"] is None
+        # The E300 and AD-GPRS histories come from MRST's optional `simplecomp`
+        # archive, which lives in the MRST tree rather than in this repo and is
+        # fetched by `fetch_simplecomp_dataset()`. Whether they are present is
+        # a property of the machine, not of the port, so this asserts the
+        # invariant instead of one configuration: MRST's own history is always
+        # there, and the other two are listed as available exactly when their
+        # data loaded. The previous form pinned `available == ("MRST",)` and so
+        # failed on any checkout that actually had the dataset installed.
+        assert "MRST" in comparison["available"]
+        for name in ("E300", "AD-GPRS"):
+            installed = comparison["data"][name] is not None
+            assert (name in comparison["available"]) == installed, name
         assert len(ternary["paths"]) == 2
         assert ternary["paths"][0].shape[1] == 2
         assert ternary["vertices"].shape == (4, 2)

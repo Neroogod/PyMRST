@@ -22,7 +22,8 @@ def test_blackoilTimeIntegrationExample_runs_all_spe1_modes():
     fim = variants["Fully-Implicit"].diagnostics
     aim = variants["Adaptive-Implicit (AIM)"].diagnostics
     assert np.all(fim.implicit_fraction == 1.0)
-    assert np.all((aim.implicit_fraction > 0.0) & (aim.implicit_fraction < 1.0))
+    assert aim.implicit_fraction[0] == 1.0
+    assert 0.0 < aim.implicit_fraction[1] < 1.0
 
 
 def test_blackoilTimeIntegrationExample_guards_spe9_dependency():

@@ -1,0 +1,86 @@
+{
+  "acceptance": {
+    "browser_uses_service": true,
+    "durable_metadata_passed": true,
+    "hard_timeout_passed": true,
+    "http_contract_passed": true,
+    "internal_benchmark_hidden": true,
+    "notebook_rendered": true,
+    "real_result_workspace_passed": true,
+    "resume_lineage_passed": true,
+    "reusable_csr_passed": true,
+    "service_workflow_passed": true,
+    "teaching_limit_enforced": true
+  },
+  "benchmarks": {
+    "evidence_loaded": true,
+    "publicly_visible": 0,
+    "registered_internal": 1
+  },
+  "browser": {
+    "html_bytes": 9216,
+    "responsive_layout": true,
+    "service_endpoints_only": true,
+    "visual_browser_inspection": "blocked by missing session sandbox-policy metadata"
+  },
+  "notebook": {
+    "contains_progress": true,
+    "html_generated": true
+  },
+  "performance_primitives": {
+    "batched_property_exact": true,
+    "csr_nonzeros": 298,
+    "csr_refill_exact": true,
+    "structural_hash": "744b636313af37b1e595e5814cff0a1d665645171408d38077e7700d38833b7f"
+  },
+  "production_boundary": {
+    "durable_completed_status": "completed",
+    "hard_wall_timeout_terminated": true,
+    "remote_binding_requires_bearer": true,
+    "subprocess_round_trip": {
+      "value": 7
+    }
+  },
+  "result_workspace": {
+    "cell_fields": [
+      "pressure",
+      "rs",
+      "sG",
+      "sW"
+    ],
+    "lazy_pressure_values_read": 10,
+    "result_id": "spe1-time-integration",
+    "timesteps": 2,
+    "viewer_available": true,
+    "viewer_bytes": 185183
+  },
+  "schema_version": 2,
+  "service": {
+    "child_status": "completed",
+    "first_events": 5,
+    "first_status": "completed",
+    "independent_loopback_http_test": "passed",
+    "parent_link_preserved": true,
+    "projects": 1,
+    "runs": 2
+  },
+  "teaching": {
+    "field_scale_claim": false,
+    "limits": {
+      "maximum_cells": 100,
+      "maximum_members": 2,
+      "maximum_report_steps": 5,
+      "maximum_result_bytes": 10000,
+      "maximum_wall_seconds": 2
+    },
+    "mode": "bounded teaching runtime",
+    "oversized_case_refused": true
+  },
+  "work_packages": [
+    "M5.1",
+    "M5.2",
+    "M5.3",
+    "M5.4",
+    "M5.5"
+  ]
+}

@@ -2290,9 +2290,16 @@ class FacilityModel:
             # The well has flowed: use the perforation fluxes it actually had.
             q_vol_ph = np.asarray(flux, float).reshape(nperf, nph)
         elif w.sign == -1:
-            # A producer with no history: assume a uniform drawdown, so each
-            # perforation delivers in proportion to `WI * mobility`.
-            q_vol_ph = wi[:, None] * mob_c
+            if getattr(w, "mrst_zero_flux_mixture", False):
+                # Compatibility with MRST 2024a's zero-flux guard: its signed
+                # 1e-12 replacement gives every phase equal volume before a
+                # producer has ever flowed.  This is intentionally opt-in;
+                # the physical default below uses the completion mobility.
+                q_vol_ph = wi[:, None] * np.ones_like(mob_c)
+            else:
+                # A producer with no history: assume a uniform drawdown, so
+                # each perforation delivers in proportion to `WI * mobility`.
+                q_vol_ph = wi[:, None] * mob_c
         else:
             # An injector pumps what it is told to pump.
             q_vol_ph = wi[:, None] * np.asarray(w.compi[:nph], float)[None, :]

@@ -1,0 +1,794 @@
+{
+  "matrices": [
+    {
+      "base_execution_fingerprint": "eac319539b865cfe65eedfc9e4f554cac772984cf7747c9af3fe4c14450aad53",
+      "base_experiment_id": "experiment_06a02706a0f9858ca33c4ba05fe3ce2d513427564cc68ef376e388b6e3f1e643",
+      "coordinates": [
+        {
+          "comparison_group": "time_integration",
+          "components": {
+            "time_integration": "fully-implicit"
+          },
+          "experiment_id": "experiment_06a02706a0f9858ca33c4ba05fe3ce2d513427564cc68ef376e388b6e3f1e643",
+          "member_id": "member_cca69992684cb62a8527aedafb86f8e33ca39d4f944ab10f74dbbf0459c25f9a",
+          "ordinal": 0,
+          "parameters": {},
+          "variant_name": "fim"
+        },
+        {
+          "comparison_group": "time_integration",
+          "components": {
+            "time_integration": "explicit"
+          },
+          "experiment_id": "experiment_06a02706a0f9858ca33c4ba05fe3ce2d513427564cc68ef376e388b6e3f1e643",
+          "member_id": "member_14d854a781e0061c07aa19b08d03bd91e549f421371f6898259a2698c79bff84",
+          "ordinal": 1,
+          "parameters": {},
+          "variant_name": "explicit"
+        },
+        {
+          "comparison_group": "time_integration",
+          "components": {
+            "time_integration": "adaptive-implicit"
+          },
+          "experiment_id": "experiment_06a02706a0f9858ca33c4ba05fe3ce2d513427564cc68ef376e388b6e3f1e643",
+          "member_id": "member_c0cfba8cb9e68b8176ebf253624096d03a0ea80a78ae650d4e8abbe728ec0757",
+          "ordinal": 2,
+          "parameters": {
+            "aim.threshold": 0.05
+          },
+          "variant_name": "aim"
+        }
+      ],
+      "definition": {
+        "base_case": {
+          "case_id": "case_spe1_blackoil",
+          "constructor": {
+            "configuration": {
+              "case": "spe1",
+              "report_steps": 2
+            },
+            "fingerprint": "",
+            "owner": "pymrst.modules.ad_blackoil.examples.blackoil_time_integration_example:run_blackoil_time_integration_example"
+          },
+          "content_hash": "88756d94a56eb8fb73705c087cba8dd02f0a1a8d4b30064f95b17c7979435ebf"
+        },
+        "datasets": [
+          {
+            "media_type": "application/x-eclipse-deck",
+            "name": "spe1_benchmark_deck",
+            "sha256": "88756d94a56eb8fb73705c087cba8dd02f0a1a8d4b30064f95b17c7979435ebf",
+            "size_bytes": 12242,
+            "source": "/Users/Shared/PyMRST_workspace/mrst-2024a-Geomech/examples/data/SPE1/BENCH_SPE1.DATA"
+          }
+        ],
+        "description": "A reproducible two-report-step FIM, explicit and AIM comparison anchored to the signed MRST 2024a qualification fixture.",
+        "execution_profile": {
+          "configuration": {
+            "checkpoint_every_report": true,
+            "failure_isolation": "member",
+            "workers": 1
+          },
+          "name": "quick"
+        },
+        "hypothesis": "Adaptive implicit transport preserves fully implicit pressure and production accuracy while reducing implicit transport work.",
+        "model": {
+          "configuration": {
+            "disgas": true,
+            "vapoil": false
+          },
+          "fingerprint": "",
+          "owner": "pymrst.modules.ad_blackoil.models:GenericBlackOilModel"
+        },
+        "name": "SPE1 time-integration formulation study",
+        "outputs": [
+          {
+            "cadence": "report_step",
+            "fields": [
+              "pressure",
+              "sW",
+              "sG",
+              "rs"
+            ],
+            "name": "reservoir"
+          },
+          {
+            "cadence": "report_step",
+            "fields": [
+              "bhp",
+              "qWs",
+              "qOs",
+              "qGs"
+            ],
+            "name": "wells"
+          },
+          {
+            "cadence": "report_step",
+            "fields": [
+              "iterations",
+              "ministeps",
+              "implicit_fraction"
+            ],
+            "name": "solver"
+          }
+        ],
+        "publication_artifacts": [
+          "evidence_graph",
+          "comparison_report"
+        ],
+        "random_seed": 20240803,
+        "schedule": {
+          "configuration": {
+            "controls": "deck",
+            "report_steps": 2
+          },
+          "fingerprint": "",
+          "owner": "pymrst.modules.ad_core.initialization:setupSPE1"
+        },
+        "schema_version": 1,
+        "tags": [
+          "blackoil",
+          "mrst-qualified",
+          "spe1",
+          "time-integration"
+        ],
+        "validation": [
+          {
+            "name": "mrst_time_integration",
+            "policy": {
+              "fixture": "examples/validation/ref_time_integration_spe1.mat",
+              "pressure_absolute_tolerance_pa": 100.0,
+              "saturation_absolute_tolerance": 1e-06
+            }
+          }
+        ],
+        "variants": [
+          {
+            "comparison_group": "time_integration",
+            "components": {
+              "time_integration": "fully-implicit"
+            },
+            "name": "fim",
+            "parameters": {}
+          },
+          {
+            "comparison_group": "time_integration",
+            "components": {
+              "time_integration": "explicit"
+            },
+            "name": "explicit",
+            "parameters": {}
+          },
+          {
+            "comparison_group": "time_integration",
+            "components": {
+              "time_integration": "adaptive-implicit"
+            },
+            "name": "aim",
+            "parameters": {
+              "aim.threshold": 0.05
+            }
+          }
+        ]
+      },
+      "matrix": {
+        "matrix_type": "explicit",
+        "schema_version": 1,
+        "variants": [
+          {
+            "comparison_group": "time_integration",
+            "components": {
+              "time_integration": "fully-implicit"
+            },
+            "name": "fim",
+            "parameters": {}
+          },
+          {
+            "comparison_group": "time_integration",
+            "components": {
+              "time_integration": "explicit"
+            },
+            "name": "explicit",
+            "parameters": {}
+          },
+          {
+            "comparison_group": "time_integration",
+            "components": {
+              "time_integration": "adaptive-implicit"
+            },
+            "name": "aim",
+            "parameters": {
+              "aim.threshold": 0.05
+            }
+          }
+        ]
+      },
+      "matrix_id": "matrix_3c7c7aec00ea0b7dc26b5cbfb3b7e6f49d8c5b61e2d92feac3f79d5474f5574d"
+    },
+    {
+      "base_execution_fingerprint": "be7e5b83f66395fe68a6f8cdf5a3e95529db9f221709541341eaac0870bae728",
+      "base_experiment_id": "experiment_f229998c26ff6707dbe1edb389f87d4c211cdb43df848a15584a704a8586d5aa",
+      "coordinates": [
+        {
+          "comparison_group": "solver_configuration",
+          "components": {
+            "linear_solver": "direct"
+          },
+          "experiment_id": "experiment_eff1d28249c3fbb5b32f110d625e75c2502df95e1311cd1f4d7f83c24123aec3",
+          "member_id": "member_f74021d19024a7267149da8a28785f8502ad50c3cd7b7e1ae3f12bbdd680d52d",
+          "ordinal": 0,
+          "parameters": {
+            "solver.max_iterations": 8
+          },
+          "variant_name": "cartesian_0000"
+        },
+        {
+          "comparison_group": "solver_configuration",
+          "components": {
+            "linear_solver": "cpr"
+          },
+          "experiment_id": "experiment_eff1d28249c3fbb5b32f110d625e75c2502df95e1311cd1f4d7f83c24123aec3",
+          "member_id": "member_a2a70d0dc346c84717dbfd637d6178442436a3b1e0e6f3ba6dba5185a1dcbe6b",
+          "ordinal": 1,
+          "parameters": {
+            "solver.max_iterations": 8
+          },
+          "variant_name": "cartesian_0001"
+        },
+        {
+          "comparison_group": "solver_configuration",
+          "components": {
+            "linear_solver": "direct"
+          },
+          "experiment_id": "experiment_eff1d28249c3fbb5b32f110d625e75c2502df95e1311cd1f4d7f83c24123aec3",
+          "member_id": "member_e8b75977d4b3f281f728f28b22093c86c741562da2818c586bdf0c90e7b2c7d9",
+          "ordinal": 2,
+          "parameters": {
+            "solver.max_iterations": 12
+          },
+          "variant_name": "cartesian_0002"
+        },
+        {
+          "comparison_group": "solver_configuration",
+          "components": {
+            "linear_solver": "cpr"
+          },
+          "experiment_id": "experiment_eff1d28249c3fbb5b32f110d625e75c2502df95e1311cd1f4d7f83c24123aec3",
+          "member_id": "member_9dfffd305c67d4f9c995e5252542c07c3ae6361d54670bb931021e8c0c1a8441",
+          "ordinal": 3,
+          "parameters": {
+            "solver.max_iterations": 12
+          },
+          "variant_name": "cartesian_0003"
+        },
+        {
+          "comparison_group": "solver_configuration",
+          "components": {
+            "linear_solver": "direct"
+          },
+          "experiment_id": "experiment_eff1d28249c3fbb5b32f110d625e75c2502df95e1311cd1f4d7f83c24123aec3",
+          "member_id": "member_35a2cb51be578984060094bd6bd810277381c2c79494497c0f6f360bf0f0c133",
+          "ordinal": 4,
+          "parameters": {
+            "solver.max_iterations": 16
+          },
+          "variant_name": "cartesian_0004"
+        },
+        {
+          "comparison_group": "solver_configuration",
+          "components": {
+            "linear_solver": "cpr"
+          },
+          "experiment_id": "experiment_eff1d28249c3fbb5b32f110d625e75c2502df95e1311cd1f4d7f83c24123aec3",
+          "member_id": "member_1554a52b52fbe65964310afb29d836a28cfb93a785b1f4179e2e1abf7d96d2af",
+          "ordinal": 5,
+          "parameters": {
+            "solver.max_iterations": 16
+          },
+          "variant_name": "cartesian_0005"
+        }
+      ],
+      "definition": {
+        "base_case": {
+          "case_id": "case_spe1_blackoil",
+          "constructor": {
+            "configuration": {
+              "case": "spe1",
+              "report_steps": 2
+            },
+            "fingerprint": "",
+            "owner": "pymrst.modules.ad_blackoil.examples.blackoil_time_integration_example:run_blackoil_time_integration_example"
+          },
+          "content_hash": "88756d94a56eb8fb73705c087cba8dd02f0a1a8d4b30064f95b17c7979435ebf"
+        },
+        "datasets": [
+          {
+            "media_type": "application/x-eclipse-deck",
+            "name": "spe1_benchmark_deck",
+            "sha256": "88756d94a56eb8fb73705c087cba8dd02f0a1a8d4b30064f95b17c7979435ebf",
+            "size_bytes": 12242,
+            "source": "/Users/Shared/PyMRST_workspace/mrst-2024a-Geomech/examples/data/SPE1/BENCH_SPE1.DATA"
+          }
+        ],
+        "description": "A reproducible two-report-step FIM, explicit and AIM comparison anchored to the signed MRST 2024a qualification fixture.",
+        "execution_profile": {
+          "configuration": {
+            "checkpoint_every_report": true,
+            "failure_isolation": "member",
+            "workers": 1
+          },
+          "name": "quick"
+        },
+        "hypothesis": "Adaptive implicit transport preserves fully implicit pressure and production accuracy while reducing implicit transport work.",
+        "model": {
+          "configuration": {
+            "disgas": true,
+            "vapoil": false
+          },
+          "fingerprint": "",
+          "owner": "pymrst.modules.ad_blackoil.models:GenericBlackOilModel"
+        },
+        "name": "SPE1 time-integration formulation study",
+        "outputs": [
+          {
+            "cadence": "report_step",
+            "fields": [
+              "pressure",
+              "sW",
+              "sG",
+              "rs"
+            ],
+            "name": "reservoir"
+          },
+          {
+            "cadence": "report_step",
+            "fields": [
+              "bhp",
+              "qWs",
+              "qOs",
+              "qGs"
+            ],
+            "name": "wells"
+          },
+          {
+            "cadence": "report_step",
+            "fields": [
+              "iterations",
+              "ministeps",
+              "implicit_fraction"
+            ],
+            "name": "solver"
+          }
+        ],
+        "publication_artifacts": [
+          "evidence_graph",
+          "comparison_report"
+        ],
+        "random_seed": 20240803,
+        "schedule": {
+          "configuration": {
+            "controls": "deck",
+            "report_steps": 2
+          },
+          "fingerprint": "",
+          "owner": "pymrst.modules.ad_core.initialization:setupSPE1"
+        },
+        "schema_version": 1,
+        "tags": [
+          "blackoil",
+          "mrst-qualified",
+          "spe1",
+          "time-integration"
+        ],
+        "validation": [
+          {
+            "name": "mrst_time_integration",
+            "policy": {
+              "fixture": "examples/validation/ref_time_integration_spe1.mat",
+              "pressure_absolute_tolerance_pa": 100.0,
+              "saturation_absolute_tolerance": 1e-06
+            }
+          }
+        ],
+        "variants": [
+          {
+            "comparison_group": "solver_configuration",
+            "components": {
+              "linear_solver": "direct"
+            },
+            "name": "cartesian_0000",
+            "parameters": {
+              "solver.max_iterations": 8
+            }
+          },
+          {
+            "comparison_group": "solver_configuration",
+            "components": {
+              "linear_solver": "cpr"
+            },
+            "name": "cartesian_0001",
+            "parameters": {
+              "solver.max_iterations": 8
+            }
+          },
+          {
+            "comparison_group": "solver_configuration",
+            "components": {
+              "linear_solver": "direct"
+            },
+            "name": "cartesian_0002",
+            "parameters": {
+              "solver.max_iterations": 12
+            }
+          },
+          {
+            "comparison_group": "solver_configuration",
+            "components": {
+              "linear_solver": "cpr"
+            },
+            "name": "cartesian_0003",
+            "parameters": {
+              "solver.max_iterations": 12
+            }
+          },
+          {
+            "comparison_group": "solver_configuration",
+            "components": {
+              "linear_solver": "direct"
+            },
+            "name": "cartesian_0004",
+            "parameters": {
+              "solver.max_iterations": 16
+            }
+          },
+          {
+            "comparison_group": "solver_configuration",
+            "components": {
+              "linear_solver": "cpr"
+            },
+            "name": "cartesian_0005",
+            "parameters": {
+              "solver.max_iterations": 16
+            }
+          }
+        ]
+      },
+      "matrix": {
+        "comparison_group": "solver_configuration",
+        "component_axes": [
+          {
+            "owners": [
+              "direct",
+              "cpr"
+            ],
+            "slot": "linear_solver"
+          }
+        ],
+        "matrix_type": "cartesian",
+        "parameter_axes": [
+          {
+            "path": "solver.max_iterations",
+            "values": [
+              8,
+              12,
+              16
+            ]
+          }
+        ],
+        "schema_version": 1
+      },
+      "matrix_id": "matrix_baa2c3f3a2aff1383705beacdb184a25a3fb4c6d0d93e4d49913977bf5d26c8d"
+    },
+    {
+      "base_execution_fingerprint": "be7e5b83f66395fe68a6f8cdf5a3e95529db9f221709541341eaac0870bae728",
+      "base_experiment_id": "experiment_f229998c26ff6707dbe1edb389f87d4c211cdb43df848a15584a704a8586d5aa",
+      "coordinates": [
+        {
+          "comparison_group": "property_uncertainty",
+          "components": {},
+          "experiment_id": "experiment_109205b05f89331f25087a080608ce572b7f153e5fa03cf5dd89ccaee680dc88",
+          "member_id": "member_a4cd9b85ae46b5d2ed28ca38dec0ad405e40eaf8629df7af07a0dcc673b0bde5",
+          "ordinal": 0,
+          "parameters": {
+            "rock.perm_multiplier": 0.8160412792715339,
+            "well.rate_multiplier": 1.110048403414653
+          },
+          "variant_name": "sample_0000"
+        },
+        {
+          "comparison_group": "property_uncertainty",
+          "components": {},
+          "experiment_id": "experiment_109205b05f89331f25087a080608ce572b7f153e5fa03cf5dd89ccaee680dc88",
+          "member_id": "member_fa3073cd6b69cac43b4077b7bf5b4ce4dc2997edf1c9a4fac768b4e09356a58e",
+          "ordinal": 1,
+          "parameters": {
+            "rock.perm_multiplier": 1.4693560386015083,
+            "well.rate_multiplier": 0.8329680107871519
+          },
+          "variant_name": "sample_0001"
+        },
+        {
+          "comparison_group": "property_uncertainty",
+          "components": {},
+          "experiment_id": "experiment_109205b05f89331f25087a080608ce572b7f153e5fa03cf5dd89ccaee680dc88",
+          "member_id": "member_187b3e4b7ca797666a6707325e14d954e14cdd45ab1b68a3043e9192abdf44ab",
+          "ordinal": 2,
+          "parameters": {
+            "rock.perm_multiplier": 1.6981901652741553,
+            "well.rate_multiplier": 1.1321814869237719
+          },
+          "variant_name": "sample_0002"
+        },
+        {
+          "comparison_group": "property_uncertainty",
+          "components": {},
+          "experiment_id": "experiment_109205b05f89331f25087a080608ce572b7f153e5fa03cf5dd89ccaee680dc88",
+          "member_id": "member_b4b8f33228328086d4b828829ff958710d35132b2667810d137f170ac51bf0db",
+          "ordinal": 3,
+          "parameters": {
+            "rock.perm_multiplier": 1.9447622140976744,
+            "well.rate_multiplier": 0.840417094414232
+          },
+          "variant_name": "sample_0003"
+        },
+        {
+          "comparison_group": "property_uncertainty",
+          "components": {},
+          "experiment_id": "experiment_109205b05f89331f25087a080608ce572b7f153e5fa03cf5dd89ccaee680dc88",
+          "member_id": "member_cabda3598a70e60f102851aa84cfe7d362aac25658e6f9c7a3fa902ae63cbe90",
+          "ordinal": 4,
+          "parameters": {
+            "rock.perm_multiplier": 2.070627092008096,
+            "well.rate_multiplier": 0.9651397471888957
+          },
+          "variant_name": "sample_0004"
+        },
+        {
+          "comparison_group": "property_uncertainty",
+          "components": {},
+          "experiment_id": "experiment_109205b05f89331f25087a080608ce572b7f153e5fa03cf5dd89ccaee680dc88",
+          "member_id": "member_5e5631be59e4864a9496066d30c74afa0a3ff1c4c0105321c1eaad1143e20203",
+          "ordinal": 5,
+          "parameters": {
+            "rock.perm_multiplier": 3.6322962596570503,
+            "well.rate_multiplier": 0.8739312609337664
+          },
+          "variant_name": "sample_0005"
+        },
+        {
+          "comparison_group": "property_uncertainty",
+          "components": {},
+          "experiment_id": "experiment_109205b05f89331f25087a080608ce572b7f153e5fa03cf5dd89ccaee680dc88",
+          "member_id": "member_06704f1513af5fcb3e437293fd967ad51b70bf59e93fec0365eb7f62c21ee822",
+          "ordinal": 6,
+          "parameters": {
+            "rock.perm_multiplier": 0.9562870979361499,
+            "well.rate_multiplier": 0.8205531966669812
+          },
+          "variant_name": "sample_0006"
+        },
+        {
+          "comparison_group": "property_uncertainty",
+          "components": {},
+          "experiment_id": "experiment_109205b05f89331f25087a080608ce572b7f153e5fa03cf5dd89ccaee680dc88",
+          "member_id": "member_0e9aa216e5f3cb075b83af2681f69de46b56f0d9d66b28bfee3391c47a929eed",
+          "ordinal": 7,
+          "parameters": {
+            "rock.perm_multiplier": 1.03335447472589,
+            "well.rate_multiplier": 0.9431765872457164
+          },
+          "variant_name": "sample_0007"
+        }
+      ],
+      "definition": {
+        "base_case": {
+          "case_id": "case_spe1_blackoil",
+          "constructor": {
+            "configuration": {
+              "case": "spe1",
+              "report_steps": 2
+            },
+            "fingerprint": "",
+            "owner": "pymrst.modules.ad_blackoil.examples.blackoil_time_integration_example:run_blackoil_time_integration_example"
+          },
+          "content_hash": "88756d94a56eb8fb73705c087cba8dd02f0a1a8d4b30064f95b17c7979435ebf"
+        },
+        "datasets": [
+          {
+            "media_type": "application/x-eclipse-deck",
+            "name": "spe1_benchmark_deck",
+            "sha256": "88756d94a56eb8fb73705c087cba8dd02f0a1a8d4b30064f95b17c7979435ebf",
+            "size_bytes": 12242,
+            "source": "/Users/Shared/PyMRST_workspace/mrst-2024a-Geomech/examples/data/SPE1/BENCH_SPE1.DATA"
+          }
+        ],
+        "description": "A reproducible two-report-step FIM, explicit and AIM comparison anchored to the signed MRST 2024a qualification fixture.",
+        "execution_profile": {
+          "configuration": {
+            "checkpoint_every_report": true,
+            "failure_isolation": "member",
+            "workers": 1
+          },
+          "name": "quick"
+        },
+        "hypothesis": "Adaptive implicit transport preserves fully implicit pressure and production accuracy while reducing implicit transport work.",
+        "model": {
+          "configuration": {
+            "disgas": true,
+            "vapoil": false
+          },
+          "fingerprint": "",
+          "owner": "pymrst.modules.ad_blackoil.models:GenericBlackOilModel"
+        },
+        "name": "SPE1 time-integration formulation study",
+        "outputs": [
+          {
+            "cadence": "report_step",
+            "fields": [
+              "pressure",
+              "sW",
+              "sG",
+              "rs"
+            ],
+            "name": "reservoir"
+          },
+          {
+            "cadence": "report_step",
+            "fields": [
+              "bhp",
+              "qWs",
+              "qOs",
+              "qGs"
+            ],
+            "name": "wells"
+          },
+          {
+            "cadence": "report_step",
+            "fields": [
+              "iterations",
+              "ministeps",
+              "implicit_fraction"
+            ],
+            "name": "solver"
+          }
+        ],
+        "publication_artifacts": [
+          "evidence_graph",
+          "comparison_report"
+        ],
+        "random_seed": 20240803,
+        "schedule": {
+          "configuration": {
+            "controls": "deck",
+            "report_steps": 2
+          },
+          "fingerprint": "",
+          "owner": "pymrst.modules.ad_core.initialization:setupSPE1"
+        },
+        "schema_version": 1,
+        "tags": [
+          "blackoil",
+          "mrst-qualified",
+          "spe1",
+          "time-integration"
+        ],
+        "validation": [
+          {
+            "name": "mrst_time_integration",
+            "policy": {
+              "fixture": "examples/validation/ref_time_integration_spe1.mat",
+              "pressure_absolute_tolerance_pa": 100.0,
+              "saturation_absolute_tolerance": 1e-06
+            }
+          }
+        ],
+        "variants": [
+          {
+            "comparison_group": "property_uncertainty",
+            "components": {},
+            "name": "sample_0000",
+            "parameters": {
+              "rock.perm_multiplier": 0.8160412792715339,
+              "well.rate_multiplier": 1.110048403414653
+            }
+          },
+          {
+            "comparison_group": "property_uncertainty",
+            "components": {},
+            "name": "sample_0001",
+            "parameters": {
+              "rock.perm_multiplier": 1.4693560386015083,
+              "well.rate_multiplier": 0.8329680107871519
+            }
+          },
+          {
+            "comparison_group": "property_uncertainty",
+            "components": {},
+            "name": "sample_0002",
+            "parameters": {
+              "rock.perm_multiplier": 1.6981901652741553,
+              "well.rate_multiplier": 1.1321814869237719
+            }
+          },
+          {
+            "comparison_group": "property_uncertainty",
+            "components": {},
+            "name": "sample_0003",
+            "parameters": {
+              "rock.perm_multiplier": 1.9447622140976744,
+              "well.rate_multiplier": 0.840417094414232
+            }
+          },
+          {
+            "comparison_group": "property_uncertainty",
+            "components": {},
+            "name": "sample_0004",
+            "parameters": {
+              "rock.perm_multiplier": 2.070627092008096,
+              "well.rate_multiplier": 0.9651397471888957
+            }
+          },
+          {
+            "comparison_group": "property_uncertainty",
+            "components": {},
+            "name": "sample_0005",
+            "parameters": {
+              "rock.perm_multiplier": 3.6322962596570503,
+              "well.rate_multiplier": 0.8739312609337664
+            }
+          },
+          {
+            "comparison_group": "property_uncertainty",
+            "components": {},
+            "name": "sample_0006",
+            "parameters": {
+              "rock.perm_multiplier": 0.9562870979361499,
+              "well.rate_multiplier": 0.8205531966669812
+            }
+          },
+          {
+            "comparison_group": "property_uncertainty",
+            "components": {},
+            "name": "sample_0007",
+            "parameters": {
+              "rock.perm_multiplier": 1.03335447472589,
+              "well.rate_multiplier": 0.9431765872457164
+            }
+          }
+        ]
+      },
+      "matrix": {
+        "comparison_group": "property_uncertainty",
+        "matrix_type": "sampled",
+        "parameters": [
+          {
+            "distribution": {
+              "kind": "log_uniform",
+              "parameters": {
+                "high": 4.0,
+                "low": 0.25
+              }
+            },
+            "path": "rock.perm_multiplier"
+          },
+          {
+            "distribution": {
+              "kind": "uniform",
+              "parameters": {
+                "high": 1.2,
+                "low": 0.8
+              }
+            },
+            "path": "well.rate_multiplier"
+          }
+        ],
+        "sample_count": 8,
+        "sampling_algorithm": "pymrst_pcg64_uniform_box_muller_v1",
+        "schema_version": 1,
+        "seed": 20240803
+      },
+      "matrix_id": "matrix_c840b9359e3d90fc8d11f3d72f2db4f03751197541301910ecc81a40f494260d"
+    }
+  ],
+  "schema_version": 1
+}

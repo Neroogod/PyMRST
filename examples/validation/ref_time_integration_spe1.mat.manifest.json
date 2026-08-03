@@ -1,0 +1,84 @@
+{
+  "case_name": "SPE1 FIM explicit AIM two-step qualification",
+  "fixture_id": "mrst_spe1_blackoil_time_integration_v1",
+  "generated_at_utc": "2026-08-03T20:10:21.071346+00:00",
+  "generator_function": "dump_time_integration_spe1_reference",
+  "generator_sha256": "28598da202ce08a258295bed52df4b5a69abb9ca2535024c6733347c4f768f0a",
+  "input_artifacts": {
+    "spe1_deck": {
+      "bytes": 12242,
+      "path": "/Users/Shared/PyMRST_workspace/mrst-2024a-Geomech/examples/data/SPE1/BENCH_SPE1.DATA",
+      "sha256": "88756d94a56eb8fb73705c087cba8dd02f0a1a8d4b30064f95b17c7979435ebf"
+    }
+  },
+  "mappings": [
+    "report_time:exact",
+    "well_name:v1",
+    "cell_identity:v1",
+    "phase_name:v1"
+  ],
+  "matlab_executable": "/Applications/MATLAB_R2021b.app/bin/matlab",
+  "matlab_release": "2021b",
+  "metadata": {
+    "elapsed_seconds": 10.440717458999643,
+    "stderr_tail": "",
+    "stdout_tail": "MATLAB_RELEASE=2021b\nWelcome to the MATLAB Reservoir Simulation Toolbox (MRST)!\nYou are using the release version 2024a. To download other versions of MRST\nand view examples and relevant publications, please visit www.mrst.no\n\nUseful commands for getting started:\n - List all introductory examples:   mrstExamples()\n - List all modules:                 mrstPath('list')\n - Load modules using GUI:           mrstModule('gui')\n - Explore all available data sets:  mrstDatasetGUI()\n - List examples of a module:        mrstExamples('ad-blackoil')\n - Explore modules and publications: mrstExploreModules()\n - Show all examples in all modules: mrstExamples('all')\n - Show settings for MRST:           mrstSettings()\n - Display this message:             mrstStartupMessage()\n\nFor assistance and discussions about MRST, please visit our mailing list at\n\twww.sintef.no/projectweb/mrst/forum/ (sintef-mrst@googlegroups.com)\nFor some common queries, see our FAQ: www.sintef.no/projectweb/mrst/faq/\nSolving timestep 1/2:        -> 1 Day\nSolving timestep 2/2: 1 Day  -> 3 Days\n*** Simulation complete. Solved 2 control steps in 1 Second, 487 Milliseconds ***\nSolving timestep 1/2:        -> 1 Day\nSolving timestep 2/2: 1 Day  -> 3 Days\n*** Simulation complete. Solved 2 control steps in 599 Milliseconds ***\nSolving timestep 1/2:        -> 1 Day\nSolving timestep 2/2: 1 Day  -> 3 Days\n*** Simulation complete. Solved 2 control steps in 398 Milliseconds ***\nWrote /Users/Shared/PyMRST_workspace/PyMRST/examples/validation/ref_time_integration_spe1.mat\n"
+  },
+  "modules": [
+    "ad-core",
+    "ad-blackoil",
+    "deckformat",
+    "ad-props",
+    "linearsolvers",
+    "test-suite"
+  ],
+  "mrst_root": "/Users/Shared/PyMRST_workspace/mrst-2024a-Geomech",
+  "mrst_version": "MRST 2024a",
+  "reference_bytes": 23725,
+  "reference_sha256": "879f46c5673cbd420cb8e35e5a52fa2bc3cc3d019ba8e0417a86538254e59138",
+  "regeneration_command": [
+    "/Applications/MATLAB_R2021b.app/bin/matlab",
+    "-batch",
+    "fprintf('MATLAB_RELEASE=%s\\n', version('-release')); addpath('/Users/Shared/PyMRST_workspace/PyMRST/examples/validation'); dump_time_integration_spe1_reference()"
+  ],
+  "schema_version": 1,
+  "solver_settings": {
+    "nonlinear_solver": "initEclipseProblemAD default for SPE1",
+    "report_steps": 2,
+    "time_discretizations": [
+      "fully-implicit",
+      "explicit",
+      "adaptive-implicit"
+    ],
+    "timestep_strategy": "none"
+  },
+  "tolerances": {
+    "aim": {
+      "pressure": 100.0,
+      "saturation": 1e-06,
+      "solution_gas_ratio": 0.001,
+      "well_bhp": 2000.0,
+      "well_gas_rate": 1e-12,
+      "well_oil_rate": 1e-12,
+      "well_water_rate": 1e-12
+    },
+    "explicit": {
+      "pressure": 100.0,
+      "saturation": 1e-06,
+      "solution_gas_ratio": 0.001,
+      "well_bhp": 2000.0,
+      "well_gas_rate": 1e-12,
+      "well_oil_rate": 1e-12,
+      "well_water_rate": 1e-12
+    },
+    "fim": {
+      "pressure": 100.0,
+      "saturation": 1e-06,
+      "solution_gas_ratio": 0.001,
+      "well_bhp": 2000.0,
+      "well_gas_rate": 1e-12,
+      "well_oil_rate": 1e-12,
+      "well_water_rate": 1e-12
+    }
+  }
+}

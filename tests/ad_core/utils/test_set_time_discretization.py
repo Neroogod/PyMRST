@@ -68,3 +68,27 @@ def test_invalid_type_is_rejected():
         set_time_discretization(
             SimpleNamespace(FlowDiscretization=_Flow()), "crank-nicolson"
         )
+
+
+def test_aim_first_step_is_implicit_before_cfl_estimation():
+    calls = []
+
+    def estimator(model, state, dt, forces):
+        calls.append(dt)
+        return np.zeros(4), np.zeros((4, 3))
+
+    builder = AdaptiveImplicitFlowStateBuilder(cfl_estimator=estimator)
+    model = SimpleNamespace(G=SimpleNamespace(cells=SimpleNamespace(num=4)))
+    initial = {"pressure": np.ones(4)}
+    _, prepared = builder.prepare_timestep(
+        model, initial.copy(), initial, 10.0, forces={"W": []}
+    )
+    assert np.all(prepared["implicit"])
+    assert calls == []
+
+    accepted = {"pressure": np.ones(4), "flux": np.ones((3, 3))}
+    _, prepared = builder.prepare_timestep(
+        model, accepted.copy(), accepted, 20.0, forces={"W": []}
+    )
+    assert not np.any(prepared["implicit"])
+    assert calls == [20.0]

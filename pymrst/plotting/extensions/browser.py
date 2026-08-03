@@ -92,6 +92,8 @@ def plot_reservoir_browser(
     cmap: str | None = None,
     style: str = "mesh",
     show_grid: bool = True,
+    well_series: Mapping[str, np.ndarray] | None = None,
+    rock=None,
     include_plotlyjs: str | bool = "cdn",
     open_browser: bool = False,
 ) -> Path:
@@ -107,6 +109,10 @@ def plot_reservoir_browser(
     payload = reservoir_browser_data(
         g, data, wells=wells, times=times, zscale=1.0, include_legacy_mesh=False
     )
+    pore_volume = None
+    if rock is not None:
+        payload.fields.update(_rock_fields(rock, g.cells.num))
+        pore_volume = _pore_volume(g, rock)
     if not payload.fields:
         raise ValueError("no fields supplied for browser plotting")
     if style == "mesh" and payload.face_pos.size < 2:
@@ -119,6 +125,8 @@ def plot_reservoir_browser(
         zscale=zscale,
         marker_size=marker_size,
         show_grid=show_grid,
+        well_series=well_series,
+        pore_volume=pore_volume,
     )
     page = _engineering_page(model, title=title, include_plotlyjs=include_plotlyjs)
 
@@ -148,8 +156,152 @@ _DEFAULT_CMAP = {
     "permeability": "Viridis",
     "porosity": "Viridis",
     "temperature": "Hot",
+    "ratio": "Portland",
     "generic": "Viridis",
 }
+
+
+#: Display names for the well series a run usually carries.
+_SERIES_LABEL = {
+    "bhp": "Bottom-hole pressure",
+    "qws": "Water rate",
+    "qos": "Oil rate",
+    "qgs": "Gas rate",
+    "watercut": "Water cut",
+    "gor": "Gas-oil ratio",
+    "cumoil": "Cumulative oil",
+    "cumwater": "Cumulative water",
+    "cumgas": "Cumulative gas",
+    "fieldoil": "Field cumulative oil",
+    "fieldwater": "Field cumulative water",
+    "fieldgas": "Field cumulative gas",
+}
+
+
+def _series_kind(name: str) -> str:
+    """Classify a well time series so the viewer can offer sensible units."""
+    n = str(name).strip().lower()
+    if n.startswith("cum") or n.startswith("field"):
+        return "volume_gas" if "gas" in n else "volume_liquid"
+    if "bhp" in n or "pres" in n:
+        return "pressure"
+    if "cut" in n:
+        return "fraction"
+    if "gor" in n:
+        return "gor"
+    if n.startswith("qg") or "gas" in n:
+        return "rate_gas"
+    if n.startswith("q") or "rate" in n:
+        return "rate_liquid"
+    return "generic"
+
+
+def _cumulative(rates: np.ndarray, times: np.ndarray) -> np.ndarray:
+    """Trapezoidal time-integral of a rate series.
+
+    Magnitudes are integrated, so a producer accumulates volume produced and an
+    injector volume injected; the sign convention lives in the well role, not in
+    the cumulative.
+    """
+    r = np.abs(np.asarray(rates, dtype=float))
+    t = np.asarray(times, dtype=float).ravel()
+    out = np.zeros_like(r)
+    if r.shape[0] < 2 or t.size != r.shape[0]:
+        return out
+    dt = np.diff(t)[:, None]
+    out[1:] = np.cumsum(0.5 * (r[1:] + r[:-1]) * dt, axis=0)
+    return out
+
+
+def _derived_well_series(
+    series: dict[str, np.ndarray], times: np.ndarray | None
+) -> dict[str, tuple[np.ndarray, str]]:
+    """Water cut, GOR and cumulative volumes, where the inputs allow it.
+
+    Returns ``name -> (values, scope)`` where scope is ``"well"`` or ``"field"``.
+    """
+    lower = {k.lower(): v for k, v in series.items()}
+    qw, qo, qg = lower.get("qws"), lower.get("qos"), lower.get("qgs")
+    out: dict[str, tuple[np.ndarray, str]] = {}
+    with np.errstate(divide="ignore", invalid="ignore"):
+        if qw is not None and qo is not None:
+            aw, ao = np.abs(qw), np.abs(qo)
+            total = aw + ao
+            out["watercut"] = (
+                np.where(total > 1e-30, aw / np.where(total > 0, total, 1.0), np.nan), "well")
+        if qg is not None and qo is not None:
+            ao = np.abs(qo)
+            out["gor"] = (
+                np.where(ao > 1e-30, np.abs(qg) / np.where(ao > 0, ao, 1.0), np.nan), "well")
+
+    if times is None or np.asarray(times).size < 2:
+        return out
+    for key, name in (("qos", "cumOil"), ("qws", "cumWater"), ("qgs", "cumGas")):
+        if key not in lower:
+            continue
+        cum = _cumulative(lower[key], times)
+        out[name] = (cum, "well")
+        # Field total: one line, summed across wells.
+        out["field" + name[3:]] = (cum.sum(axis=1)[:, None], "field")
+    return out
+
+
+def _well_series_payload(
+    well_series, wells: list[dict], n_steps: int, times: np.ndarray | None = None
+) -> dict:
+    """Normalise well time series to (n_steps, n_wells) and tag them."""
+    if not well_series:
+        return {}
+    n_wells = len(wells)
+    clean: dict[str, np.ndarray] = {}
+    for name, values in dict(well_series).items():
+        arr = np.asarray(values, dtype=float)
+        if arr.ndim == 1:
+            arr = arr[:, None]
+        if arr.shape[0] != n_steps or arr.shape[1] != n_wells:
+            raise ValueError(
+                f"well series {name!r} has shape {arr.shape}, expected "
+                f"({n_steps}, {n_wells})"
+            )
+        clean[str(name)] = arr
+
+    scoped: dict[str, tuple[np.ndarray, str]] = {k: (v, "well") for k, v in clean.items()}
+    scoped.update(_derived_well_series(clean, times))
+    return {
+        name: {
+            "label": _SERIES_LABEL.get(name.lower(), name),
+            "kind": _series_kind(name),
+            "scope": scope,
+            "values": _json_array(arr),
+        }
+        for name, (arr, scope) in scoped.items()
+    }
+
+
+def _rock_fields(rock, n_cells: int) -> dict[str, np.ndarray]:
+    """Expose static rock properties as single-step fields."""
+    out: dict[str, np.ndarray] = {}
+    poro = np.asarray(getattr(rock, "poro", None), dtype=float).ravel()
+    if poro.size == n_cells:
+        out["porosity"] = poro[None, :]
+    perm = np.asarray(getattr(rock, "perm", None), dtype=float)
+    if perm.ndim == 1 and perm.size == n_cells:
+        out["permX"] = perm[None, :]
+    elif perm.ndim == 2 and perm.shape[0] == n_cells:
+        for i, name in enumerate(("permX", "permY", "permZ")[: perm.shape[1]]):
+            out[name] = perm[:, i][None, :]
+    return out
+
+
+def _pore_volume(g: Grid, rock) -> list | None:
+    """Per-cell pore volume, so the viewer can report volumes under a filter."""
+    poro = np.asarray(getattr(rock, "poro", None), dtype=float).ravel()
+    if poro.size != g.cells.num:
+        return None
+    ntg = getattr(rock, "ntg", None)
+    ntg = 1.0 if ntg is None else np.asarray(ntg, dtype=float).ravel()
+    pv = np.asarray(g.cells.volumes, dtype=float).ravel() * poro * ntg
+    return [0.0 if not np.isfinite(v) else float(v) for v in pv]
 
 
 def _field_kind(name: str) -> str:
@@ -165,6 +317,8 @@ def _field_kind(name: str) -> str:
         return "porosity"
     if "temp" in n or n in {"t"}:
         return "temperature"
+    if n in {"rs", "rv"} or "gor" in n:
+        return "ratio"
     return "generic"
 
 
@@ -181,6 +335,8 @@ def _scene_model(
     zscale: float,
     marker_size: float,
     show_grid: bool,
+    well_series: Mapping[str, np.ndarray] | None = None,
+    pore_volume: list | None = None,
 ) -> dict:
     """Build the JSON model the browser viewer runs on."""
     names = list(payload.fields)
@@ -213,6 +369,13 @@ def _scene_model(
         "showGrid": bool(show_grid),
         "zscale": float(zscale),
         "cellCount": int(payload.centroids.shape[0]),
+        "wellSeries": _well_series_payload(
+            well_series,
+            payload.wells,
+            0 if payload.times is None else int(payload.times.size),
+            payload.times,
+        ),
+        "poreVolume": pore_volume,
     }
 
 
@@ -297,19 +460,39 @@ def _engineering_page(model: dict, *, title: str, include_plotlyjs: str | bool) 
 </aside>
 
 <section class="viewer">
+  <div class="viewer-error" id="viewer-error" hidden></div>
   <button class="panel-toggle rail-toggle" id="rail-toggle" aria-label="Toggle controls" aria-expanded="false">&#9776;</button>
   <button class="panel-toggle inspector-toggle" id="inspector-toggle" aria-label="Toggle statistics" aria-expanded="false">&#9878;</button>
+  <div class="vgrip vgrip-left" id="rail-grip" title="Drag to resize · double-click to reset"></div>
+  <div class="vgrip vgrip-right" id="inspector-grip" title="Drag to resize · double-click to reset"></div>
   <div class="topbar"><div class="title-card"><strong>{safe_title}</strong>
     <span class="badge" id="state-badge"></span>
     <div class="help">Drag to orbit &middot; scroll to zoom &middot; click a cell to inspect &middot; &larr;/&rarr; step &middot; space play</div></div>
   </div>
   <div id="pymrst-reservoir-view"></div>
+  <div class="curves" id="curves" hidden>
+    <div class="curves-grip" id="curves-grip" title="Drag to resize · double-click to reset"></div>
+    <div class="curves-head"><strong>Well curves</strong>
+      <select id="curve-series"></select><select id="curve-unit"></select>
+      <span class="axis-ctl">
+        <select id="curve-axis" title="Choose which axis to adjust">
+          <option value="y">Y axis</option><option value="x">X axis</option></select>
+        <input id="curve-amin" type="number" step="any" placeholder="auto">
+        <span class="dash">–</span>
+        <input id="curve-amax" type="number" step="any" placeholder="auto">
+        <button id="curve-aauto" title="Auto-fit this axis">Auto</button>
+        <button id="curve-csv" title="Download this series as CSV">CSV</button>
+        <label class="check" id="curve-log-wrap"><input id="curve-log" type="checkbox"> Log</label></span>
+      <button id="curves-hide" class="curves-hide" title="Hide curves">&#9662;</button></div>
+    <canvas id="curve-canvas"></canvas>
+  </div>
   <div class="transport">
     <button id="first" title="First step">&#9198;</button>
     <button id="previous" title="Previous step">&#9664;</button>
     <button id="play" class="primary" title="Play/pause">&#9654;</button>
     <button id="next" title="Next step">&#9654;</button>
     <button id="last" title="Last step">&#9197;</button>
+    <button id="curves-toggle" title="Show well curves">Curves</button>
     <input id="step" type="range" min="0" value="0" step="1">
     <select id="time-unit"></select>
     <span class="time-value" id="time-value"></span>
@@ -325,6 +508,8 @@ def _engineering_page(model: dict, *, title: str, include_plotlyjs: str | bool) 
       <div class="stat"><b id="stat-p90">&ndash;</b><span>P90</span></div>
       <div class="stat"><b id="stat-shown">&ndash;</b><span>Cells shown</span></div>
       <div class="stat"><b id="stat-wells">&ndash;</b><span>Wells</span></div>
+      <div class="stat"><b id="stat-pv">&ndash;</b><span>Pore volume [m&sup3;]</span></div>
+      <div class="stat"><b id="stat-hcpv">&ndash;</b><span>HC pore vol [m&sup3;]</span></div>
     </div></div>
   <div class="section"><div class="section-title">Distribution</div>
     <canvas id="hist" height="110"></canvas>
@@ -484,6 +669,42 @@ def _well_payloads(
     return out
 
 
+#: Per-well time series a saved run typically stores, keyed by array name.
+_WELL_SERIES_KEYS = ("bhp", "qWs", "qOs", "qGs")
+
+
+def saved_well_series(
+    saved: Mapping[str, np.ndarray],
+    well_names: Sequence[str] | None = None,
+) -> dict[str, np.ndarray]:
+    """Pull the per-well (n_steps, n_wells) time series out of a saved run.
+
+    Series columns follow the order the run was saved in. When ``well_names``
+    is given, columns are permuted to match it, so curves cannot be attributed
+    to the wrong well if the wells were rebuilt in a different order.
+    """
+    out: dict[str, np.ndarray] = {}
+    for key in _WELL_SERIES_KEYS:
+        if key not in saved:
+            continue
+        arr = np.asarray(saved[key], dtype=float)
+        if arr.ndim == 2:
+            out[key] = arr
+    if not out or well_names is None or "well_names" not in saved:
+        return out
+
+    saved_names = [str(n) for n in np.asarray(saved["well_names"]).ravel()]
+    wanted = [str(n) for n in well_names]
+    if saved_names == wanted:
+        return out
+    try:
+        order = [saved_names.index(n) for n in wanted]
+    except ValueError:
+        # A name we cannot match: leave the columns alone rather than guess.
+        return out
+    return {key: arr[:, order] for key, arr in out.items()}
+
+
 def plot_saved_states_browser(
     state_file: str | Path,
     *,
@@ -525,6 +746,9 @@ def plot_saved_states_browser(
         fields,
         wells=wells,
         times=saved.get("time"),
+        well_series=saved_well_series(
+            saved, [str(getattr(w, "name", f"W{i + 1}")) for i, w in enumerate(wells or [])]
+        ),
         filename=out,
         title=f"PyMRST saved states: {Path(state_file).name}",
         zscale=zscale,
@@ -547,7 +771,7 @@ _PAGE_CSS = """
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);overflow:hidden;
 font:13px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}
-.shell{display:grid;grid-template-columns:296px 1fr 288px;height:100vh}
+.shell{display:grid;grid-template-columns:var(--rail-w,296px) 1fr var(--insp-w,288px);height:100vh}
 .rail,.inspector{background:linear-gradient(180deg,var(--rail-a),var(--rail-b));overflow:auto;z-index:4}
 .rail{border-right:1px solid var(--line);padding:16px}
 .inspector{border-left:1px solid var(--line);padding:16px}
@@ -577,6 +801,9 @@ button:hover{background:var(--hover);border-color:var(--accent)}
 .rng{color:var(--muted);font-size:10.5px;text-align:right;font-variant-numeric:tabular-nums}
 .viewer{position:relative;min-width:0;display:flex;flex-direction:column}
 #pymrst-reservoir-view{flex:1;min-height:0}
+.viewer-error{position:absolute;left:0;right:0;top:0;z-index:9;padding:9px 14px;
+background:#7f1d1d;color:#fee2e2;font-size:12px;border-bottom:1px solid #b91c1c}
+.viewer-error[hidden]{display:none}
 .topbar{position:absolute;left:16px;top:12px;z-index:3;pointer-events:none}
 .title-card{background:var(--overlay);border:1px solid var(--line);border-radius:10px;padding:9px 12px;
 backdrop-filter:blur(10px);box-shadow:var(--shadow);max-width:min(460px,52vw)}
@@ -586,9 +813,36 @@ color:var(--accent);font-size:10px;margin-left:6px;font-variant-numeric:tabular-
 background:var(--panel)}
 .transport button{padding:5px 9px;min-width:34px}
 .transport button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.transport button.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
 .transport #step{flex:1}
 .transport select{width:auto;padding:5px 7px}
 .time-value{color:var(--accent);font-variant-numeric:tabular-nums;min-width:118px;text-align:right;font-size:12px}
+.curves{border-top:1px solid var(--line);background:var(--panel);padding:10px 14px 12px;
+position:relative;display:flex;flex-direction:column;height:230px;min-height:150px}
+/* A class rule beats the UA [hidden] rule, so display:none must be restated. */
+.curves[hidden]{display:none}
+.vgrip{position:absolute;top:0;bottom:0;width:9px;cursor:ew-resize;z-index:7;touch-action:none}
+.vgrip-left{left:-4px}.vgrip-right{right:-4px}
+.vgrip::after{content:'';position:absolute;top:50%;left:3px;transform:translateY(-50%);
+width:3px;height:52px;border-radius:2px;background:var(--line);transition:background .15s}
+.vgrip:hover::after,.vgrip.dragging::after{background:var(--accent)}
+.curves-grip{position:absolute;top:-4px;left:0;right:0;height:9px;cursor:ns-resize;z-index:6;
+touch-action:none}
+.curves-grip::after{content:'';position:absolute;left:50%;top:3px;transform:translateX(-50%);
+width:52px;height:3px;border-radius:2px;background:var(--line);transition:background .15s}
+.curves-grip:hover::after,.curves-grip.dragging::after{background:var(--accent)}
+.curves-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex:none;flex-wrap:wrap}
+.axis-ctl{display:inline-flex;align-items:center;gap:6px}
+.axis-ctl label{margin:0;font-size:11px}
+.axis-ctl input[type=number]{width:82px;padding:5px 6px}
+.axis-ctl .dash{color:var(--muted)}
+.axis-ctl button{padding:5px 9px}
+.axis-ctl .check{gap:5px;white-space:nowrap}
+.curves-head strong{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent)}
+.curves-head select{width:auto;padding:5px 7px}
+.curves-head button{padding:4px 9px}
+.curves-hide{margin-left:auto}
+#curve-canvas{flex:1;min-height:0;height:auto;cursor:crosshair;background:transparent}
 .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
 .stat{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px}
 .stat b{display:block;font-size:13.5px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
@@ -600,7 +854,8 @@ canvas{width:100%;display:block;border-radius:7px;background:var(--panel2);borde
 .selection-body{color:var(--muted);font-size:11.5px;line-height:1.6}
 .selection-body b{color:var(--accent);font-size:13px}
 .panel-toggle{display:none}
-@media(max-width:1180px){.shell{grid-template-columns:296px 1fr}.inspector{position:absolute;right:0;top:0;
+@media(max-width:1180px){.shell{grid-template-columns:var(--rail-w,296px) 1fr}
+#inspector-grip{display:none}.inspector{position:absolute;right:0;top:0;
 width:288px;height:100%;transform:translateX(100%);transition:.2s;border-left:1px solid var(--line);z-index:5}
 .inspector.open{transform:none}
 .inspector-toggle{display:grid;place-items:center;position:absolute;top:12px;right:12px;z-index:6;
@@ -608,6 +863,7 @@ width:36px;height:36px;padding:0;font-size:16px;background:var(--overlay);border
 border-radius:9px;backdrop-filter:blur(10px)}
 .topbar{right:58px}}
 @media(max-width:820px){.shell{grid-template-columns:1fr}
+#rail-grip{display:none}
 .rail{position:absolute;width:288px;height:100%;transform:translateX(-100%);transition:.2s;z-index:5}
 .rail.open{transform:none}
 .rail-toggle{display:grid;place-items:center;position:absolute;top:12px;left:12px;z-index:6;
@@ -620,8 +876,15 @@ border-radius:9px;backdrop-filter:blur(10px)}
 _PAGE_JS = r"""
 (function(){
 'use strict';
-var M = JSON.parse(document.getElementById('pymrst-model').textContent);
 var $ = function(id){ return document.getElementById(id); };
+window.addEventListener('error', function(e){
+  var b = $('viewer-error');
+  if (!b) return;
+  b.textContent = 'Viewer error: ' + (e.message || 'script failure')
+    + ' — some controls will not respond. See the browser console for details.';
+  b.hidden = false;
+});
+var M = JSON.parse(document.getElementById('pymrst-model').textContent);
 var graph = $('pymrst-reservoir-view');
 var NC = M.cellCount;
 var NF = M.facePos.length - 1;
@@ -635,10 +898,33 @@ var UNIT_SETS = {
   permeability:[['m2',1,0],['mD',1.01324997e15,0],['D',1.01324997e12,0]],
   porosity:    [['fraction',1,0],['%',100,0]],
   temperature: [['K',1,0],['degC',1,-273.15]],
+  ratio:       [['sm3/sm3',1,0],['scf/stb',5.6145833,0]],
   generic:     [['--',1,0]]
 };
-var DEFAULT_UNIT = {pressure:1, saturation:0, permeability:1, porosity:0, temperature:1, generic:0};
+var DEFAULT_UNIT = {pressure:1, saturation:0, permeability:1, porosity:0,
+                    temperature:1, ratio:1, generic:0};
 var TIME_UNITS = [['s',1],['hours',1/3600],['days',1/86400],['years',1/(86400*365.25)]];
+/* Well time series carry their own unit families: rates are volumetric, and
+   gas is conventionally reported per Mscf rather than per m3. */
+var SERIES_UNITS = {
+  pressure:    [['Pa',1,0],['bar',1e-5,0],['MPa',1e-6,0],['psi',1.4503773773e-4,0]],
+  rate_liquid: [['m3/s',1,0],['m3/day',86400,0],['stb/day',86400*6.2898107,0]],
+  rate_gas:    [['m3/s',1,0],['m3/day',86400,0],['Mscf/day',86400*35.3146667/1000,0]],
+  fraction:    [['fraction',1,0],['%',100,0]],
+  gor:         [['m3/m3',1,0],['scf/stb',5.6145833,0]],
+  volume_liquid:[['m3',1,0],['stb',6.2898107,0],['Mstb',6.2898107e-3,0]],
+  volume_gas:  [['m3',1,0],['Mscf',35.3146667e-3,0],['MMscf',35.3146667e-6,0]],
+  generic:     [['--',1,0]]
+};
+var SERIES_DEFAULT_UNIT = {pressure:1, rate_liquid:1, rate_gas:1, fraction:1,
+                           gor:1, volume_liquid:1, volume_gas:1, generic:0};
+var INJ_SHADES  = ['#60a5fa','#2563eb','#93c5fd','#1e40af'];
+var PROD_SHADES = ['#f87171','#dc2626','#fca5a5','#991b1b'];
+var CURVE_NAMES = Object.keys(M.wellSeries || {});
+/* Static properties (porosity, permeability) carry a single step. They must not
+   shorten the timeline, so the slider spans the longest field. */
+var NSTEPS = 1;
+NAMES.forEach(function(n){ NSTEPS = Math.max(NSTEPS, M.fields[n].length); });
 /* Plotly.js only knows a fixed set of named scales and silently substitutes
    RdBu for anything else, so Turbo ships as explicit stops. */
 var TURBO = [[0,'#30123b'],[0.1,'#4458cb'],[0.2,'#3e9bfe'],[0.3,'#18d6cb'],[0.4,'#46f884'],
@@ -656,8 +942,13 @@ var BOUNDS = (function(){
   for (var i=0;i<M.nodes.length;i+=3){
     for (var d=0;d<3;d++){ var v=M.nodes[i+d]; if(v<lo[d])lo[d]=v; if(v>hi[d])hi[d]=v; }
   }
-  return [Math.max(hi[0]-lo[0],1e-9), Math.max(hi[1]-lo[1],1e-9), Math.max(hi[2]-lo[2],1e-9)];
+  return {lo:lo, hi:hi,
+          span:[Math.max(hi[0]-lo[0],1e-9), Math.max(hi[1]-lo[1],1e-9), Math.max(hi[2]-lo[2],1e-9)]};
 })();
+/* Wells are drawn rising above the reservoir top so they stay readable against
+   opaque rock; the headroom is a fraction of gross thickness. */
+var WELL_HEAD_FRAC = 0.5;
+var WELL_HEAD_Z = BOUNDS.lo[2] - WELL_HEAD_FRAC * BOUNDS.span[2];
 
 /* Plotly and the 2D canvases paint their own pixels, so the theme cannot be
    expressed in CSS alone -- these mirror the stylesheet variables. */
@@ -665,11 +956,17 @@ var THEMES = {
   dark:  {paper:'#060b13', axisBg:'#0a1424', grid:'#20304a', zero:'#2b3f5c',
           font:'#dbeafe', edge:'rgba(148,163,184,0.18)', legendBg:'rgba(8,17,31,.72)',
           canvas:'#101d31', axisLine:'#1e2d44', bar:'#38bdf8', barDim:'#31445f',
-          band:'rgba(56,189,248,0.10)', tick:'#7e91ab', marker:'#fbbf24', cursor:'rgba(226,236,249,0.45)'},
+          band:'rgba(56,189,248,0.10)', tick:'#7e91ab', marker:'#fbbf24', cursor:'rgba(226,236,249,0.45)',
+          inj:'#60a5fa', prod:'#f87171',
+          plotBg:'#0a1424', gridLine:'rgba(126,145,171,0.22)', frame:'#22344e',
+          legendFill:'rgba(10,20,36,0.82)', text:'#dbeafe'},
   light: {paper:'#eef2f7', axisBg:'#ffffff', grid:'#d7e0ea', zero:'#b9c6d6',
           font:'#17324d', edge:'rgba(71,85,105,0.30)', legendBg:'rgba(255,255,255,.85)',
           canvas:'#f4f7fb', axisLine:'#d7e0ea', bar:'#0284c7', barDim:'#c3d0de',
-          band:'rgba(2,132,199,0.12)', tick:'#5c6c81', marker:'#b45309', cursor:'rgba(15,29,46,0.35)'}
+          band:'rgba(2,132,199,0.12)', tick:'#5c6c81', marker:'#b45309', cursor:'rgba(15,29,46,0.35)',
+          inj:'#1d4ed8', prod:'#b91c1c',
+          plotBg:'#ffffff', gridLine:'rgba(92,108,129,0.20)', frame:'#d7e0ea',
+          legendFill:'rgba(255,255,255,0.86)', text:'#17324d'}
 };
 function resolvedTheme(){
   if (S.theme === 'auto'){
@@ -685,7 +982,10 @@ var S = {
   rangeMode: 'global', robust: false, manual: {lo:null, hi:null},
   cmap: M.initialScale, reverse: false, opacity: 1.0, ve: M.zscale, theme: 'auto',
   showGrid: M.showGrid, showWells: true, delta: false,
-  filt: null, selected: null, playing: false, timer: null
+  filt: null, selected: null, playing: false, timer: null, camera: null,
+  curve: CURVE_NAMES[0] || null, curveUnit: 0, curvesOpen: false,
+  curveY: {min:null, max:null, log:false}, curveX: {min:null, max:null},
+  curveAxis: 'y'
 };
 NAMES.forEach(function(n){ S.unit[n] = DEFAULT_UNIT[M.kinds[n]] || 0; });
 S.reverse = !!(M.defaultReverse && M.defaultReverse[S.field]);
@@ -881,18 +1181,9 @@ function buildTraces(){
     edgeTrace = out.length;
     out.push({type:'scatter3d', mode:'lines', x:surface.EX, y:surface.EY, z:surface.EZ,
       line:{color:TH().edge, width:1}, name:'Cell edges',
-      visible:!orbiting, hoverinfo:'skip', showlegend:false});
+      hoverinfo:'skip', showlegend:false});
   }
-  M.wells.forEach(function(w){
-    var col = w.sign>0 ? '#3b82f6' : '#ef4444';
-    out.push({type:'scatter3d', mode:'lines+markers',
-      x:w.points.map(function(p){return p[0];}),
-      y:w.points.map(function(p){return p[1];}),
-      z:w.points.map(function(p){return p[2];}),
-      line:{color:col, width:7}, marker:{size:4, color:col, symbol:'diamond'},
-      name:w.name, visible:S.showWells,
-      hovertemplate:'<b>'+w.name+'</b><br>'+(w.sign>0?'Injector':'Producer')+'<extra></extra>'});
-  });
+  if (S.showWells) out = out.concat(wellTraces());
   if (S.selected!==null){
     out.push({type:'scatter3d', mode:'markers',
       x:[M.centroids[3*S.selected]], y:[M.centroids[3*S.selected+1]],
@@ -901,6 +1192,50 @@ function buildTraces(){
       name:'Selected cell', hoverinfo:'skip', showlegend:false});
   }
   return out;
+}
+function wellTraces(){
+  var t = TH(), out = [];
+  M.wells.forEach(function(w){
+    var inj = w.sign > 0;
+    var col = inj ? t.inj : t.prod;
+    var tag = inj ? 'INJ' : 'PROD';
+    var role = inj ? 'Injector' : 'Producer';
+    var nm = String(w.name);
+    /* Do not stutter when the name already carries the role. */
+    var label = nm.toUpperCase().indexOf(tag) === 0 ? nm : tag + ' · ' + nm;
+    var xs = w.points.map(function(p){return p[0];});
+    var ys = w.points.map(function(p){return p[1];});
+    var zs = w.points.map(function(p){return p[2];});
+    var hov = '<b>' + nm + '</b><br>' + role + '<br>'
+      + w.points.length + ' completion' + (w.points.length === 1 ? '' : 's')
+      + '<extra></extra>';
+
+    out.push({type:'scatter3d', mode:'lines',
+      x:[xs[0]].concat(xs), y:[ys[0]].concat(ys), z:[WELL_HEAD_Z].concat(zs),
+      line:{color:col, width:6}, name:label, legendgroup:nm,
+      hovertemplate:hov});
+    out.push({type:'scatter3d', mode:'markers', x:xs, y:ys, z:zs,
+      marker:{size:6, color:col, symbol:'diamond'},
+      legendgroup:nm, showlegend:false, hovertemplate:hov});
+    out.push({type:'scatter3d', mode:'markers+text',
+      x:[xs[0]], y:[ys[0]], z:[WELL_HEAD_Z],
+      marker:{size:7, color:col, symbol: inj ? 'diamond' : 'circle', line:{width:1}},
+      text:[label], textposition:'top center',
+      textfont:{size:11, color:col, family:'Inter, system-ui, sans-serif'},
+      legendgroup:nm, showlegend:false, hoverinfo:'skip'});
+  });
+  return out;
+}
+var DEFAULT_CAMERA = {eye:{x:1.45, y:1.45, z:0.85}};
+/* Plotly.react re-applies whatever camera the layout carries, so the layout has
+   to carry the camera the user is currently looking through -- not a constant. */
+function currentCamera(){
+  try {
+    var c = graph._fullLayout && graph._fullLayout.scene && graph._fullLayout.scene.camera;
+    if (c && c.eye) return {eye:{x:c.eye.x, y:c.eye.y, z:c.eye.z},
+                            up:c.up, center:c.center, projection:c.projection};
+  } catch (e) {}
+  return S.camera || DEFAULT_CAMERA;
 }
 function buildLayout(){
   var t = TH();
@@ -915,10 +1250,11 @@ function buildLayout(){
       zaxis:Object.assign({title:{text:'Depth'}, autorange:'reversed'}, ax),
       aspectmode:'manual',
       aspectratio:(function(){
-        var a=[BOUNDS[0], BOUNDS[1], BOUNDS[2]*S.ve], m=Math.max(a[0],a[1],a[2]);
+        var zs = BOUNDS.span[2] * (M.wells.length ? 1 + WELL_HEAD_FRAC : 1);
+        var a=[BOUNDS.span[0], BOUNDS.span[1], zs*S.ve], m=Math.max(a[0],a[1],a[2]);
         return {x:a[0]/m, y:a[1]/m, z:a[2]/m};
       })(),
-      camera:{eye:{x:1.45, y:1.45, z:0.85}}
+      camera: currentCamera()
     },
     legend:{itemsizing:'constant', bgcolor:t.legendBg, font:{size:10.5},
             x:0.99, y:0.01, xanchor:'right', yanchor:'bottom'},
@@ -931,10 +1267,11 @@ var CONFIG = {displaylogo:false, responsive:true, scrollZoom:true,
 
 /* ---------------- render ---------------- */
 var needSurface = true;
-/* gl-line3d re-uploads the whole edge buffer every camera frame, which alone
-   took orbiting on a 16k-cell grid from ~120fps to ~36fps. Drop the edges for
-   the duration of a drag and put them back on release. */
-var edgeTrace = -1, orbiting = false;
+/* De-duplicating shared edges cut gl-line3d's per-frame cost from ~20ms to
+   ~2ms, so edges now stay visible while orbiting. Hiding them on pointerdown/up
+   re-plotted the scene before gl3d had committed the dragged camera, which
+   snapped the view back to its previous orientation. */
+var edgeTrace = -1;
 /* Plotly emits plotly_click from inside gl3d's own render pass, so a handler
    that re-renders synchronously recurses until the stack blows. render() is
    therefore non-reentrant, and event handlers schedule it instead of calling
@@ -949,6 +1286,7 @@ function render(){
     updateReadouts();
     drawHistogram();
     drawSeries();
+    drawCurves();
   } finally { rendering = false; }
 }
 function scheduleRender(){
@@ -972,6 +1310,27 @@ function updateReadouts(){
   $('stat-p90').textContent  = shownVals.length ? fmt(quantile(sorted,0.9)) : '–';
   $('stat-shown').textContent = surface.shown + ' / ' + NC;
   $('stat-wells').textContent = M.wells.length;
+  /* Volumes are reported over the cells actually shown, so an index filter
+     reports the region's volume rather than the whole model's. */
+  if (M.poreVolume){
+    var pv = 0, hc = 0;
+    var swName = null;
+    for (var f2=0;f2<NAMES.length;f2++){
+      if (M.kinds[NAMES[f2]] === 'saturation' && /w/i.test(NAMES[f2])){ swName = NAMES[f2]; break; }
+    }
+    var sw0 = swName ? M.fields[swName][0] : null;
+    for (var c3=0;c3<NC;c3++){
+      if (!surface.vis[c3]) continue;
+      var v3 = M.poreVolume[c3];
+      if (!isFinite(v3)) continue;
+      pv += v3;
+      if (sw0){ var s3 = sw0[c3]; if (s3 !== null && isFinite(s3)) hc += v3*(1-s3); }
+    }
+    $('stat-pv').textContent = fmt(pv);
+    $('stat-hcpv').textContent = sw0 ? fmt(hc) : '–';
+  } else {
+    $('stat-pv').textContent = '–'; $('stat-hcpv').textContent = '–';
+  }
 
   var u = unitLabel();
   $('state-badge').textContent = S.field + (S.delta ? ' Δ' : '') + ' · step ' + S.step
@@ -979,13 +1338,13 @@ function updateReadouts(){
   var tu = TIME_UNITS[S.timeUnit];
   $('time-value').textContent = M.times.length
     ? fmt(M.times[Math.min(S.step, M.times.length-1)] * tu[1]) + ' ' + tu[0]
-    : 'step ' + S.step + ' / ' + (M.fields[S.field].length-1);
+    : 'step ' + S.step + ' / ' + (NSTEPS-1);
 
   var r = colorRange();
   if (document.activeElement !== $('cmin')) $('cmin').value = Number(r[0].toPrecision(6));
   if (document.activeElement !== $('cmax')) $('cmax').value = Number(r[1].toPrecision(6));
   $('range-note').textContent = S.rangeMode==='global'
-    ? 'Fixed across all ' + M.fields[S.field].length + ' timesteps, so frames stay comparable.'
+    ? 'Fixed across all ' + M.fields[S.field].length + ' timestep(s), so frames stay comparable.'
     : (S.rangeMode==='step' ? 'Rescales every step — playback exaggerates small changes.' : 'Manual limits.');
 }
 
@@ -1069,6 +1428,195 @@ function drawSeries(){
   ctx.fillText(fmt(lo), 3, h-padB-2);
 }
 
+/* ---------------- well curves ---------------- */
+var CURVE_COLORS = (function(){
+  var seen = {inj:0, prod:0};
+  return M.wells.map(function(w){
+    var inj = w.sign > 0, key = inj ? 'inj' : 'prod';
+    var shades = inj ? INJ_SHADES : PROD_SHADES;
+    return shades[(seen[key]++) % shades.length];
+  });
+})();
+function curveUnitSet(){
+  var spec = M.wellSeries[S.curve];
+  return SERIES_UNITS[(spec && spec.kind) || 'generic'] || SERIES_UNITS.generic;
+}
+function curveUnit(){ return curveUnitSet()[S.curveUnit] || curveUnitSet()[0]; }
+var CURVE_PAD = {l:56, r:14, t:10, b:24};
+var curveXDomain = null;
+var syncCurveAxisInputs = null;
+
+function drawCurves(){
+  if (!S.curvesOpen || !S.curve) return;
+  var cv = $('curve-canvas'), ctx = cv.getContext('2d'), t = TH();
+  var dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  if (!w || !h) return;
+  cv.width = w*dpr; cv.height = h*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);
+
+  var spec = M.wellSeries[S.curve], u = curveUnit();
+  var vals = spec.values, ns = vals.length, nw = M.wells.length;
+  if (!ns) return;
+  var log = S.curveY.log;
+  /* In log mode non-positive samples are gaps, matching how plotting libraries
+     treat them, rather than silently clamping them to a floor. */
+  var conv = function(v){
+    if (v === null || !isFinite(v)) return null;
+    var d = v*u[1] + u[2];
+    if (!log) return d;
+    return d > 0 ? Math.log10(d) : null;
+  };
+  var fwd = function(v){
+    if (v === null || !isFinite(v)) return null;
+    return log ? (v > 0 ? Math.log10(v) : null) : v;
+  };
+  var inv = function(v){ return log ? Math.pow(10, v) : v; };
+
+  var cols = spec.scope === 'field' ? 1 : nw;
+  var lo = Infinity, hi = -Infinity;
+  for (var k=0;k<ns;k++){ for (var i=0;i<cols;i++){ var v = conv(vals[k][i]);
+    if (v === null) continue; if (v<lo) lo=v; if (v>hi) hi=v; } }
+  if (!isFinite(lo)){ lo = 0; hi = 1; }
+  if (!(hi>lo)) hi = lo + Math.max(Math.abs(lo)*0.1, 1);
+  var pad = (hi-lo)*0.08; lo -= pad; hi += pad;
+
+  var umin = fwd(S.curveY.min), umax = fwd(S.curveY.max);
+  if (umin !== null) lo = umin;
+  if (umax !== null) hi = umax;
+  if (!(hi > lo)) hi = lo + 1;
+
+  /* Timesteps are usually non-uniform, so x must be positioned by time value.
+     Positioning by step index silently distorts the curves. */
+  var tu = TIME_UNITS[S.timeUnit];
+  var hasT = M.times.length > 0;
+  var tAt = function(k){ return hasT ? M.times[Math.min(k, M.times.length-1)]*tu[1] : k; };
+  var t0 = tAt(0), t1 = tAt(ns-1);
+  if (S.curveX.min !== null) t0 = S.curveX.min;
+  if (S.curveX.max !== null) t1 = S.curveX.max;
+  if (!(t1 > t0)) t1 = t0 + 1;
+  curveXDomain = {t0:t0, t1:t1, hasT:hasT, scale:tu[1]};
+
+  var P = CURVE_PAD;
+  var plotW = w - P.l - P.r, plotH = h - P.t - P.b;
+  var px = function(k){ return P.l + (tAt(k) - t0)/(t1 - t0)*plotW; };
+  var py = function(v){ return P.t + (1-(v-lo)/(hi-lo))*plotH; };
+
+  /* plotting surface */
+  ctx.fillStyle = t.plotBg;
+  ctx.fillRect(P.l, P.t, plotW, plotH);
+
+  ctx.font = '9.5px Inter, system-ui, sans-serif';
+  ctx.lineWidth = 1;
+
+  /* horizontal grid + y labels */
+  var YT = 5;
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (var q=0;q<=YT;q++){
+    var vv = lo + q/YT*(hi-lo), yy = Math.round(py(vv)) + 0.5;
+    ctx.strokeStyle = t.gridLine;
+    ctx.beginPath(); ctx.moveTo(P.l, yy); ctx.lineTo(P.l+plotW, yy); ctx.stroke();
+    ctx.fillStyle = t.tick;
+    ctx.fillText(fmt(inv(vv)), P.l-7, yy);
+  }
+
+  /* vertical grid + time labels, evenly spaced in time */
+  var XT = 6;
+  ctx.textBaseline = 'top';
+  for (var c=0;c<=XT;c++){
+    var frac = c/XT, tv = t0 + frac*(t1-t0);
+    var xx = Math.round(P.l + frac*plotW) + 0.5;
+    ctx.strokeStyle = t.gridLine;
+    ctx.beginPath(); ctx.moveTo(xx, P.t); ctx.lineTo(xx, P.t+plotH); ctx.stroke();
+    if (c === 0 || c === XT || c === XT/2){
+      ctx.textAlign = c === 0 ? 'left' : (c === XT ? 'right' : 'center');
+      ctx.fillStyle = t.tick;
+      var base = hasT ? fmt(tv) : ('step ' + Math.round(tv));
+      ctx.fillText(c === XT ? base + ' ' + (hasT ? tu[0] : '') : base, xx, P.t+plotH+6);
+    }
+  }
+
+  /* zero line reads differently from the grid */
+  if (!log && lo < 0 && hi > 0){
+    ctx.strokeStyle = t.tick; ctx.globalAlpha = 0.7;
+    var zy = Math.round(py(0)) + 0.5;
+    ctx.beginPath(); ctx.moveTo(P.l, zy); ctx.lineTo(P.l+plotW, zy); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  /* series, clipped so a manual range cannot draw outside the axes */
+  ctx.save();
+  ctx.beginPath(); ctx.rect(P.l, P.t, plotW, plotH); ctx.clip();
+  var isField = spec.scope === 'field';
+  var lineCount = isField ? 1 : nw;
+  for (var i2=0;i2<lineCount;i2++){
+    ctx.strokeStyle = isField ? t.bar : CURVE_COLORS[i2];
+    ctx.lineWidth = 1.8; ctx.beginPath();
+    var started = false;
+    for (var k2=0;k2<ns;k2++){
+      var v2 = conv(vals[k2][i2]);
+      if (v2 === null){ started = false; continue; }
+      if (!started){ ctx.moveTo(px(k2), py(v2)); started = true; }
+      else ctx.lineTo(px(k2), py(v2));
+    }
+    ctx.stroke();
+  }
+  var cx = Math.round(px(Math.min(S.step, ns-1))) + 0.5;
+  ctx.strokeStyle = t.cursor; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx, P.t); ctx.lineTo(cx, P.t+plotH); ctx.stroke();
+  ctx.restore();
+
+  /* frame above the grid */
+  ctx.strokeStyle = t.frame; ctx.lineWidth = 1;
+  ctx.strokeRect(P.l+0.5, P.t+0.5, plotW-1, plotH-1);
+
+  /* Legend inside the plot, in whichever top corner the data sits lowest, so
+     it does not collide with the curves. */
+  ctx.font = '10px Inter, system-ui, sans-serif';
+  var names = spec.scope === 'field'
+    ? ['Field total'] : M.wells.map(function(wl){ return wl.name; });
+  var nameW = 0;
+  for (var n2=0;n2<names.length;n2++) nameW = Math.max(nameW, ctx.measureText(names[n2]).width);
+  var lineH = 15, boxW = nameW + 40, boxH = names.length*lineH + 10;
+  if (boxW < plotW - 20 && boxH < plotH - 20){
+    /* Score all four corners by how far the nearest curve is, in that half of
+       the plot, from that corner -- then take the roomiest. */
+    var cut = Math.max(1, Math.floor(ns*0.35));
+    var lMax = -Infinity, lMin = Infinity, rMax = -Infinity, rMin = Infinity;
+    for (var i3=0;i3<cols;i3++){
+      for (var k3=0;k3<cut;k3++){ var lv = conv(vals[k3][i3]);
+        if (lv === null) continue;
+        if (lv > lMax) lMax = lv; if (lv < lMin) lMin = lv; }
+      for (var k4=ns-cut;k4<ns;k4++){ var rv = conv(vals[k4][i3]);
+        if (rv === null) continue;
+        if (rv > rMax) rMax = rv; if (rv < rMin) rMin = rv; }
+    }
+    var span = hi - lo;
+    var corners = [
+      {x:'l', y:'t', gap: isFinite(lMax) ? hi - lMax : span},
+      {x:'r', y:'t', gap: isFinite(rMax) ? hi - rMax : span},
+      {x:'l', y:'b', gap: isFinite(lMin) ? lMin - lo : span},
+      {x:'r', y:'b', gap: isFinite(rMin) ? rMin - lo : span}
+    ];
+    var best = corners[0];
+    for (var c2=1;c2<corners.length;c2++) if (corners[c2].gap > best.gap) best = corners[c2];
+    var bx = best.x === 'l' ? P.l + 10 : P.l + plotW - boxW - 10;
+    var by = best.y === 't' ? P.t + 10 : P.t + plotH - boxH - 10;
+    ctx.fillStyle = t.legendFill;
+    ctx.fillRect(bx, by, boxW, boxH);
+    ctx.strokeStyle = t.frame; ctx.lineWidth = 1;
+    ctx.strokeRect(bx+0.5, by+0.5, boxW-1, boxH-1);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    for (var i4=0;i4<names.length;i4++){
+      var ly = by + 5 + lineH*i4 + lineH/2;
+      ctx.strokeStyle = spec.scope === 'field' ? t.bar : CURVE_COLORS[i4];
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(bx+8, ly); ctx.lineTo(bx+26, ly); ctx.stroke();
+      ctx.fillStyle = t.text || t.tick;
+      ctx.fillText(names[i4], bx+31, ly);
+    }
+  }
+}
+
 /* ---------------- controls ---------------- */
 function fillSelect(el, items, value){
   el.innerHTML = '';
@@ -1085,8 +1633,7 @@ function syncUnitSelect(){
   $('unit').disabled = set.length < 2;
 }
 function setStep(k){
-  var ns = M.fields[S.field].length;
-  S.step = Math.max(0, Math.min(ns-1, k));
+  S.step = Math.max(0, Math.min(NSTEPS-1, k));
   $('step').value = S.step;
   render();
 }
@@ -1103,14 +1650,13 @@ $('well-toggle').checked = S.showWells;
 $('opacity').value = Math.round(S.opacity*100);
 $('opacity-value').textContent = Math.round(S.opacity*100)+'%';
 $('ve').value = S.ve; $('ve-value').textContent = S.ve+'×';
-$('step').max = M.fields[S.field].length - 1;
+$('step').max = NSTEPS - 1;
 $('time-unit').style.display = M.times.length ? '' : 'none';
 
 $('field').onchange = function(){
-  S.field = this.value; S.step = 0; S.manual={lo:null,hi:null};
+  S.field = this.value; S.manual={lo:null,hi:null};
   S.cmap = M.defaultCmaps[S.field] || S.cmap; $('cmap').value = S.cmap;
   S.reverse = !!(M.defaultReverse && M.defaultReverse[S.field]); $('reverse').checked = S.reverse;
-  $('step').max = M.fields[S.field].length - 1; $('step').value = 0;
   syncUnitSelect(); render();
 };
 $('unit').onchange = function(){ S.unit[S.field] = +this.value; S.manual={lo:null,hi:null}; render(); };
@@ -1160,7 +1706,12 @@ $('ve').oninput = function(){
 };
 $('grid-toggle').onchange = function(){ S.showGrid = this.checked; render(); };
 $('well-toggle').onchange = function(){ S.showWells = this.checked; render(); };
-$('time-unit').onchange = function(){ S.timeUnit = +this.value; updateReadouts(); };
+$('time-unit').onchange = function(){
+  S.timeUnit = +this.value;
+  if (S.curveX){ S.curveX.min = null; S.curveX.max = null; }
+  if (typeof syncCurveAxisInputs === 'function') syncCurveAxisInputs();
+  updateReadouts(); drawCurves();
+};
 
 /* index filters */
 if (M.cartDims && M.ijk){
@@ -1198,19 +1749,204 @@ if (M.cartDims && M.ijk){
     + '<div class="help">This grid has no logical (I, J, K) indexing, so index filtering is unavailable.</div>';
 }
 
+/* well curves wiring */
+function syncCurveUnits(){
+  var set = curveUnitSet();
+  fillSelect($('curve-unit'), set.map(function(u,i){ return [String(i), u[0]]; }), String(S.curveUnit));
+  $('curve-unit').disabled = set.length < 2;
+}
+function setCurvesOpen(open){
+  S.curvesOpen = open;
+  $('curves').hidden = !open;
+  $('curves-toggle').classList.toggle('active', open);
+  $('curves-toggle').setAttribute('aria-expanded', String(open));
+  if (open) drawCurves();
+  Plotly.Plots.resize(graph);
+}
+if (!CURVE_NAMES.length){
+  $('curves-toggle').hidden = true;
+} else {
+  fillSelect($('curve-series'),
+    CURVE_NAMES.map(function(n){ return [n, M.wellSeries[n].label || n]; }), S.curve);
+  S.curveUnit = SERIES_DEFAULT_UNIT[M.wellSeries[S.curve].kind || 'generic'] || 0;
+  syncCurveUnits();
+  /* One pair of inputs edits whichever axis the selector names; each axis keeps
+     its own limits so switching back shows what you set. */
+  function axisState(which){ return (which || S.curveAxis) === 'x' ? S.curveX : S.curveY; }
+  function syncAxisInputs(){
+    var isX = S.curveAxis === 'x', st = axisState();
+    $('curve-amin').value = st.min === null ? '' : st.min;
+    $('curve-amax').value = st.max === null ? '' : st.max;
+    var unit = isX
+      ? (M.times.length ? TIME_UNITS[S.timeUnit][0] : 'step')
+      : curveUnit()[0];
+    var ph = 'auto' + (unit && unit !== '--' ? ' (' + unit + ')' : '');
+    $('curve-amin').placeholder = ph;
+    $('curve-amax').placeholder = ph;
+    $('curve-log-wrap').style.display = isX ? 'none' : '';
+  }
+  function resetCurveAxis(which){
+    var st = axisState(which);
+    st.min = null; st.max = null;
+    syncAxisInputs();
+  }
+  function readAxis(){
+    var st = axisState();
+    var lo = parseFloat($('curve-amin').value), hi = parseFloat($('curve-amax').value);
+    st.min = isFinite(lo) ? lo : null;
+    st.max = isFinite(hi) ? hi : null;
+    drawCurves();
+  }
+  $('curve-csv').onclick = function(){
+    var spec = M.wellSeries[S.curve], u = curveUnit();
+    var isField = spec.scope === 'field';
+    var cols = isField ? ['Field total'] : M.wells.map(function(wl){ return wl.name; });
+    var tu = TIME_UNITS[S.timeUnit];
+    var rows = ['time [' + (M.times.length ? tu[0] : 'step') + '],'
+      + cols.map(function(c){ return '"' + c + ' [' + u[0] + ']"'; }).join(',')];
+    for (var k=0;k<spec.values.length;k++){
+      var tv = M.times.length ? M.times[Math.min(k, M.times.length-1)]*tu[1] : k;
+      var cells = [tv];
+      for (var i=0;i<cols.length;i++){
+        var raw = spec.values[k][i];
+        cells.push(raw === null || !isFinite(raw) ? '' : (raw*u[1] + u[2]));
+      }
+      rows.push(cells.join(','));
+    }
+    var blob = new Blob([rows.join('\n')], {type:'text/csv;charset=utf-8'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'pymrst-' + S.curve + '.csv';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  };
+  syncCurveAxisInputs = syncAxisInputs;
+  $('curve-axis').onchange = function(){ S.curveAxis = this.value; syncAxisInputs(); };
+  $('curve-amin').onchange = readAxis;
+  $('curve-amax').onchange = readAxis;
+  $('curve-aauto').onclick = function(){ resetCurveAxis(); drawCurves(); };
+  $('curve-series').onchange = function(){
+    S.curve = this.value;
+    S.curveUnit = SERIES_DEFAULT_UNIT[M.wellSeries[S.curve].kind || 'generic'] || 0;
+    resetCurveAxis('y'); syncCurveUnits(); syncAxisInputs(); drawCurves();
+  };
+  /* A typed range is in display units, so changing units invalidates it. */
+  $('curve-unit').onchange = function(){
+    S.curveUnit = +this.value; resetCurveAxis('y'); syncAxisInputs(); drawCurves();
+  };
+  $('curve-log').onchange = function(){
+    S.curveY.log = this.checked; resetCurveAxis('y'); drawCurves();
+  };
+  syncAxisInputs();
+  $('curves-toggle').onclick = function(){ setCurvesOpen(!S.curvesOpen); };
+
+  makeDragResize($('curves-grip'), {
+    axis:'y', sign:-1, min:150, def:230, key:'pymrst-curves-h',
+    max: function(){
+      return Math.max(150, document.querySelector('.viewer').getBoundingClientRect().height - 190);
+    },
+    get: function(){ return $('curves').getBoundingClientRect().height; },
+    set: function(v){ $('curves').style.height = v + 'px'; },
+    redraw: drawCurves
+  });
+  $('curves-hide').onclick = function(){ setCurvesOpen(false); };
+  /* Clicking the chart scrubs time, so the 3D state follows the curve. */
+  $('curve-canvas').onclick = function(e){
+    var r = this.getBoundingClientRect();
+    var ns = M.wellSeries[S.curve].values.length;
+    if (ns < 2 || !curveXDomain) return;
+    var f = (e.clientX - r.left - CURVE_PAD.l) / (r.width - CURVE_PAD.l - CURVE_PAD.r);
+    f = Math.max(0, Math.min(1, f));
+    /* x is a time position, so pick the step nearest that time. */
+    var target = curveXDomain.t0 + f*(curveXDomain.t1 - curveXDomain.t0);
+    var best = 0, bestD = Infinity;
+    for (var k=0;k<ns;k++){
+      var tk = curveXDomain.hasT
+        ? M.times[Math.min(k, M.times.length-1)]*curveXDomain.scale : k;
+      var d = Math.abs(tk - target);
+      if (d < bestD){ bestD = d; best = k; }
+    }
+    setStep(best);
+  };
+}
+
+/* panel resizing --------------------------------------------------------- */
+function redrawCanvases(){ drawHistogram(); drawSeries(); drawCurves(); }
+
+/* One drag implementation for both axes: cfg.sign maps pointer travel to the
+   direction the panel should grow. */
+function makeDragResize(grip, cfg){
+  if (!grip) return;
+  var startPos = 0, startVal = 0, dragging = false;
+  function apply(v, persist){
+    var clamped = Math.max(cfg.min, Math.min(cfg.max(), v));
+    cfg.set(clamped);
+    if (cfg.redraw) cfg.redraw();
+    if (persist){
+      try { localStorage.setItem(cfg.key, String(Math.round(clamped))); } catch (e) {}
+    }
+  }
+  try {
+    var saved = parseFloat(localStorage.getItem(cfg.key));
+    if (isFinite(saved)) apply(saved, false);
+  } catch (e) {}
+  grip.addEventListener('pointerdown', function(e){
+    dragging = true;
+    startPos = cfg.axis === 'x' ? e.clientX : e.clientY;
+    startVal = cfg.get();
+    grip.classList.add('dragging');
+    try { grip.setPointerCapture(e.pointerId); } catch (_) {}
+    e.preventDefault();
+  });
+  grip.addEventListener('pointermove', function(e){
+    if (!dragging) return;
+    var now = cfg.axis === 'x' ? e.clientX : e.clientY;
+    apply(startVal + (now - startPos) * cfg.sign, false);
+  });
+  function end(e){
+    if (!dragging) return;
+    dragging = false;
+    grip.classList.remove('dragging');
+    try { grip.releasePointerCapture(e.pointerId); } catch (_) {}
+    apply(cfg.get(), true);
+  }
+  grip.addEventListener('pointerup', end);
+  grip.addEventListener('pointercancel', end);
+  grip.addEventListener('dblclick', function(){ apply(cfg.def, true); });
+}
+
+/* Always leave the 3D view at least this wide when sizing the side panels. */
+var VIEWER_MIN_W = 360;
+function railWidth(){ return $('rail').getBoundingClientRect().width; }
+function inspectorWidth(){ return $('inspector').getBoundingClientRect().width; }
+
+makeDragResize($('rail-grip'), {
+  axis:'x', sign:1, min:220, def:296, key:'pymrst-rail-w',
+  max: function(){ return Math.max(220, window.innerWidth - inspectorWidth() - VIEWER_MIN_W); },
+  get: railWidth,
+  set: function(v){ document.documentElement.style.setProperty('--rail-w', v + 'px'); },
+  redraw: redrawCanvases
+});
+makeDragResize($('inspector-grip'), {
+  axis:'x', sign:-1, min:220, def:288, key:'pymrst-insp-w',
+  max: function(){ return Math.max(220, window.innerWidth - railWidth() - VIEWER_MIN_W); },
+  get: inspectorWidth,
+  set: function(v){ document.documentElement.style.setProperty('--insp-w', v + 'px'); },
+  redraw: redrawCanvases
+});
+
 /* transport */
 $('step').oninput = function(){ setStep(+this.value); };
 $('first').onclick = function(){ setStep(0); };
-$('last').onclick  = function(){ setStep(M.fields[S.field].length-1); };
+$('last').onclick  = function(){ setStep(NSTEPS-1); };
 $('previous').onclick = function(){ setStep(S.step-1); };
 $('next').onclick = function(){ setStep(S.step+1); };
 function togglePlay(){
   if (S.timer){ clearInterval(S.timer); S.timer=null; S.playing=false;
     $('play').innerHTML='&#9654;'; return; }
-  var ns = M.fields[S.field].length;
-  if (ns<2) return;
+  if (NSTEPS<2) return;
   S.playing = true; $('play').innerHTML='&#10073;&#10073;';
-  S.timer = setInterval(function(){ setStep((S.step+1)%ns); }, 620);
+  S.timer = setInterval(function(){ setStep((S.step+1)%NSTEPS); }, 620);
 }
 $('play').onclick = togglePlay;
 
@@ -1234,15 +1970,9 @@ panelToggle('inspector-toggle', 'inspector');
 /* selection — Plotly only attaches its emitter once the div has been plotted,
    so this is bound after the first render(), not before. */
 function bindPlotEvents(){
-graph.addEventListener('pointerdown', function(){
-  if (edgeTrace < 0 || orbiting) return;
-  orbiting = true;
-  Plotly.restyle(graph, {visible:false}, [edgeTrace]);
-});
-window.addEventListener('pointerup', function(){
-  if (!orbiting) return;
-  orbiting = false;
-  if (edgeTrace >= 0) Plotly.restyle(graph, {visible:true}, [edgeTrace]);
+graph.on('plotly_relayout', function(e){
+  if (e['scene.camera']) S.camera = e['scene.camera'];
+  else if (e['scene.camera.eye']) S.camera = {eye: e['scene.camera.eye']};
 });
 graph.on('plotly_click', function(e){
   var p = e.points && e.points[0];
@@ -1274,10 +2004,18 @@ document.addEventListener('keydown', function(e){
   }
 });
 
-window.addEventListener('resize', function(){ drawHistogram(); drawSeries(); });
+window.addEventListener('resize', function(){ drawHistogram(); drawSeries(); drawCurves(); });
 
 render();
 bindPlotEvents();
+if (window.ResizeObserver){
+  var roPending = false;
+  new ResizeObserver(function(){
+    if (roPending) return;
+    roPending = true;
+    requestAnimationFrame(function(){ roPending = false; Plotly.Plots.resize(graph); });
+  }).observe(graph);
+}
 window.__PYMRST_VIEWER__ = {state:S, render:render, setStep:setStep,
   invalidateSurface:invalidateSurface, colorRange:colorRange, surface:function(){return surface;}};
 })();
@@ -1289,4 +2027,5 @@ __all__ = [
     "plot_reservoir_browser",
     "plot_saved_states_browser",
     "reservoir_browser_data",
+    "saved_well_series",
 ]

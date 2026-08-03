@@ -1,6 +1,6 @@
 """Poro-mechanics residual (MRST ``equationsPoroMechanics.m`` layout)."""
 
-from pymrst.modules.ad_mechanics.mechanics import MechanicModel, MechanicOperators
+from pymrst.modules.ad_mechanics.models.mechanic_model import MechanicModel, MechanicOperators
 
 
 def equations_poro_mechanics(mech: MechanicModel, xd, p):

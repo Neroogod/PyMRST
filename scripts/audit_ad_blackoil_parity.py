@@ -43,6 +43,16 @@ def snake_case(name: str) -> str:
 
 
 def token(symbol: str) -> re.Pattern:
+    """Match a symbol or its snake_case form, case-insensitively.
+
+    Known false positive, left in place because changing it silently rewrites
+    every module's ledger: generic MATLAB names collide with ordinary code. The
+    nine `Contents.m` catalog entries are all marked validated-reference on the
+    strength of `from pymrst.modules.shale.examples.contents import ...`, which
+    is a different module's contents and validates nothing. Those rows carry
+    port_status `excluded-catalog`, so a validation status on them is
+    meaningless either way; treat validation_files on a catalog row as noise.
+    """
     variants = sorted({symbol, snake_case(symbol)})
     return re.compile(
         rf"(?<![A-Za-z0-9_])(?:{'|'.join(map(re.escape, variants))})(?![A-Za-z0-9_])",

@@ -85,6 +85,8 @@ class Well:
     heel: Optional[Any] = None
     defaulted: Any = field(default_factory=list)
     cp: Optional[Any] = None
+    # Generic per-well payload used by a few legacy MRST addWell variants.
+    c: Optional[Any] = None
 
 
 if __name__ == "__main__":

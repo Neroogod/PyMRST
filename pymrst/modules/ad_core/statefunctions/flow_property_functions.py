@@ -164,6 +164,10 @@ class FlowPropertyFunctions(StateFunctionGrouping):
     """Saturation- and rock-driven properties (MRST FlowPropertyFunctions)."""
 
     def __init__(self, model):
+        from pymrst.modules.ad_core.statefunctions.flowprops.component_properties import (
+            ComponentMobility, ComponentPhaseDensity,
+        )
+
         super().__init__("FlowProps")
         self.set_state_function("Saturations", Saturations(model))
         relative_permeability = RelativePermeability(model)
@@ -176,6 +180,8 @@ class FlowPropertyFunctions(StateFunctionGrouping):
             relative_permeability.set_regions(regions)
         self.set_state_function("RelativePermeability", relative_permeability)
         self.set_state_function("Mobility", Mobility(model))
+        self.set_state_function("ComponentPhaseDensity", ComponentPhaseDensity(model))
+        self.set_state_function("ComponentMobility", ComponentMobility(model))
         if model.fluid.has_pc:
             self.set_state_function("CapillaryPressure",
                                     CapillaryPressure(model))

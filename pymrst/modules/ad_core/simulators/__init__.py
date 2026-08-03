@@ -1,6 +1,7 @@
 """MRST-style simulator entry points for `ad_core`."""
 
 from pymrst.modules.ad_core.simulators.nonlinear_solver import (
+    LinearSolveDiagnostic,
     NonLinearSolver,
     SimulationReport,
     StepReport,
@@ -15,7 +16,7 @@ from pymrst.modules.ad_core.simulators.simulate_schedule_ad import simulate_sche
 #   from pymrst.modules.ad_core.simulators.compute_gradient_adjoint_ad import ...
 
 __all__ = [
-    "NonLinearSolver",
+    "LinearSolveDiagnostic", "NonLinearSolver",
     "SimulationReport",
     "StepReport",
     "simulate_schedule_ad",

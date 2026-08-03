@@ -27,8 +27,8 @@ import numpy as np
 from scipy.optimize import brentq
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
-from pymrst.modules.ad_mechanics.mechanics import MechanicModel
-from pymrst.modules.ad_mechanics.poromech import MechWaterModel
+from pymrst.modules.ad_mechanics.models.mechanic_model import MechanicModel
+from pymrst.modules.ad_mechanics.models.poromechanics import MechWaterModel
 from pymrst.modules.vemmech.vem import ElasticBC, create_augmented_grid, enu2c
 from pymrst.params.rock import make_rock
 from pymrst.utils.units import DARCY

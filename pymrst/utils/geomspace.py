@@ -36,7 +36,10 @@ def geomspace(a: float, b: float, n: int, x0: float) -> np.ndarray:
     coefficients[-2] = -f
     coefficients[-1] = f - 1.0
     roots = np.roots(coefficients)
-    candidates = roots[(np.abs(roots.imag) == 0) & (roots.real > 1)]
+    # q=1 is always the algebraic root introduced by multiplying the
+    # geometric-series equation by q-1. Numerical eigensolvers may return it
+    # a few ulps above one, so exclude that non-physical root explicitly.
+    candidates = roots[(np.abs(roots.imag) < 1e-10) & (roots.real > 1 + 1e-10)]
     if candidates.size != 1:
         raise RuntimeError(
             f"expected one growth ratio above 1, found {candidates.size}")
