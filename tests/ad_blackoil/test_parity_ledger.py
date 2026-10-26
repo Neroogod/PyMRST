@@ -31,7 +31,9 @@ def test_missing_utilities_and_guarded_examples_remain_honestly_pending():
     # validate_ad_blackoil_egg.py reproduces the MRST setup and
     # production regression - so the honest expectation is "ported".
     assert rows["eggExample"]["port_status"] == "ported"
-    assert rows["blackoilTimeIntegrationExample"]["port_status"] == "partial"
+    # blackoilTimeIntegrationExample: rewritten on the AD-OO stack and compared
+    # with MRST's own run (validate_ad_oo_blackoil_time_integration_example.py).
+    assert rows["blackoilTimeIntegrationExample"]["port_status"] == "ported"
     assert rows["blackoilSectorModelExample"]["port_status"] == "ported"
     assert rows["multisegmentWellExample"]["port_status"] == "ported"
     assert rows["loadAquiferEclipseResult"]["port_status"] == "ported"

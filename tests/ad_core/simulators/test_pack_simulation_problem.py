@@ -6,18 +6,18 @@ import numpy as np
 import pytest
 
 from pymrst.modules.ad_core.simulators.sim_runner import (
-    PackedProblemManager,
-    clear_packed_simulator_output,
-    copy_packed_problem,
-    get_packed_simulator_output,
-    get_multiple_packed_simulator_outputs,
-    monitor_background_simulations,
-    pack_simulation_problem,
-    simulate_packed_problem,
+    PackedProblemManagerAD,
+    clear_packed_simulator_output_ad,
+    copy_packed_problem_ad,
+    get_packed_simulator_output_ad,
+    get_multiple_packed_simulator_outputs_ad,
+    monitor_background_simulations_ad,
+    pack_simulation_problem_ad,
+    simulate_packed_problem_ad,
     BackgroundSimulationInfo,
-    simulate_packed_problem_background,
-    simulate_packed_problem_standalone,
-    init_eclipse_packed_problem_ad,
+    simulate_packed_problem_background_ad,
+    simulate_packed_problem_standalone_ad,
+    init_eclipse_packed_problem_ad_ad,
 )
 from pymrst.modules.ad_core.simulators.sim_runner.packed_problem import ResultHandler
 from pymrst.modules.ad_core.utils.schedule import simple_schedule
@@ -32,7 +32,7 @@ def test_pack_layout_and_atomic_handlers(tmp_path):
     model = SimpleNamespace(tag="model")
     state = {"pressure": [1.0, 2.0]}
     schedule = SimpleNamespace(step=SimpleNamespace(val=[1.0], control=[1]))
-    problem = pack_simulation_problem(
+    problem = pack_simulation_problem_ad(
         state, model, schedule, "Case", directory=tmp_path,
         name="solver", description="test case",
     )
@@ -54,11 +54,11 @@ def test_hash_names_and_ministep_prefixes_are_deterministic(tmp_path):
         SimpleNamespace(step={"val": [1.0]}),
         "Case",
     )
-    a = pack_simulation_problem(
+    a = pack_simulation_problem_ad(
         *args, directory=tmp_path, name="run", use_hash=True,
         output_ministeps=True,
     )
-    b = pack_simulation_problem(
+    b = pack_simulation_problem_ad(
         *args, directory=tmp_path, name="run", use_hash=True,
         output_ministeps=True,
     )
@@ -70,7 +70,7 @@ def test_hash_names_and_ministep_prefixes_are_deterministic(tmp_path):
 
 
 def test_output_readback_fallback_and_range_clear(tmp_path):
-    problem = pack_simulation_problem(
+    problem = pack_simulation_problem_ad(
         {}, SimpleNamespace(), SimpleNamespace(), "Case",
         directory=tmp_path, name="run",
     )
@@ -79,13 +79,13 @@ def test_output_readback_fallback_and_range_clear(tmp_path):
             "time": index + 1, "wellSol": [f"W{index}"]
         }
         problem.OutputHandlers.reports[index] = {"step": index + 1}
-    wells, states, reports, model = get_packed_simulator_output(problem)
+    wells, states, reports, model = get_packed_simulator_output_ad(problem)
     assert wells == [["W0"], ["W1"], ["W2"]]
     assert [state["time"] for state in states] == [1, 2, 3]
     assert [report["step"] for report in reports] == [1, 2, 3]
     assert model is problem.SimulatorSetup.model
 
-    clear_packed_simulator_output(problem, start=1, stop=1)
+    clear_packed_simulator_output_ad(problem, start=1, stop=1)
     assert problem.OutputHandlers.states.indices() == [0, 2]
     assert problem.OutputHandlers.reports.indices() == [0, 2]
 
@@ -98,18 +98,18 @@ def test_simulation_persists_and_auto_restart_is_idempotent(tmp_path):
     schedule = SimpleNamespace(step=SimpleNamespace(
         val=[1.0, 2.0, 3.0], control=[1, 1, 1]
     ))
-    problem = pack_simulation_problem(
+    problem = pack_simulation_problem_ad(
         {"x": 0.0}, Model(), schedule, "Case",
         directory=tmp_path, name="run",
     )
-    ok, status = simulate_packed_problem(problem)
+    ok, status = simulate_packed_problem_ad(problem)
     assert ok and status.RestartIndex == 0
-    _, states, reports, _ = get_packed_simulator_output(problem)
+    _, states, reports, _ = get_packed_simulator_output_ad(problem)
     assert [state["x"] for state in states] == [1.0, 3.0, 6.0]
     assert [state["time"] for state in states] == [1.0, 3.0, 6.0]
     assert all(report["Converged"] for report in reports)
 
-    ok, status = simulate_packed_problem(problem)
+    ok, status = simulate_packed_problem_ad(problem)
     assert ok and status.RestartIndex == 3
     assert len(problem.OutputHandlers.states) == 3
 
@@ -125,14 +125,14 @@ def test_explicit_restart_overwrites_tail(tmp_path):
     schedule = SimpleNamespace(step=SimpleNamespace(
         val=[1.0, 1.0, 1.0], control=[1, 1, 1]
     ))
-    problem = pack_simulation_problem(
+    problem = pack_simulation_problem_ad(
         {"x": 0.0}, model, schedule, "Case",
         directory=tmp_path, name="restart",
     )
-    simulate_packed_problem(problem)
+    simulate_packed_problem_ad(problem)
     model.increment = 2.0
-    simulate_packed_problem(problem, restart_step=1)
-    _, states, _, _ = get_packed_simulator_output(problem)
+    simulate_packed_problem_ad(problem, restart_step=1)
+    _, states, _, _ = get_packed_simulator_output_ad(problem)
     assert [state["x"] for state in states] == [1.0, 3.0, 5.0]
 
 
@@ -146,17 +146,17 @@ def test_collection_filters_incomplete_cases_and_copy_is_isolated(tmp_path):
     schedule = SimpleNamespace(step=SimpleNamespace(
         val=[1.0, 2.0], control=[1, 1]
     ))
-    complete = pack_simulation_problem(
+    complete = pack_simulation_problem_ad(
         {"x": 0.0}, Model(), schedule, "Case",
         directory=tmp_path, name="complete",
     )
-    empty = pack_simulation_problem(
+    empty = pack_simulation_problem_ad(
         {"x": 0.0}, Model(), schedule, "Case",
         directory=tmp_path, name="empty",
     )
-    simulate_packed_problem(complete)
+    simulate_packed_problem_ad(complete)
     wells, states, reports, names, times, grids, active = (
-        get_multiple_packed_simulator_outputs(
+        get_multiple_packed_simulator_outputs_ad(
             [complete, empty], min_steps=1
         )
     )
@@ -166,7 +166,7 @@ def test_collection_filters_incomplete_cases_and_copy_is_isolated(tmp_path):
     assert grids == ["grid"]
     assert len(states[0]) == len(reports[0]) == 2
 
-    copied = copy_packed_problem(
+    copied = copy_packed_problem_ad(
         complete, "Copied", directory=tmp_path / "copied"
     )
     assert copied.BaseName == "Copied" and copied.Name == "complete"
@@ -178,14 +178,14 @@ def test_background_process_writes_output_and_releases_lock(tmp_path):
     schedule = SimpleNamespace(step=SimpleNamespace(
         val=[1.0, 2.0], control=[1, 1]
     ))
-    problem = pack_simulation_problem(
+    problem = pack_simulation_problem_ad(
         {"x": 0.0}, PickleModel(), schedule, "Case",
         directory=tmp_path / "results", name="background",
     )
-    info = simulate_packed_problem_background(
+    info = simulate_packed_problem_background_ad(
         problem, workdir=tmp_path / "work"
     )
-    status = monitor_background_simulations(
+    status = monitor_background_simulations_ad(
         info, wait=True, timeout=20.0
     )[0]
     assert status["exitcode"] == 0
@@ -196,7 +196,7 @@ def test_background_process_writes_output_and_releases_lock(tmp_path):
 
 def test_standalone_worker_loads_payload_logs_and_releases_lock(tmp_path):
     schedule = simple_schedule([1.0, 2.0])
-    problem = pack_simulation_problem(
+    problem = pack_simulation_problem_ad(
         {"x": 0.0}, PickleModel(), schedule, "Standalone",
         directory=tmp_path / "results", name="worker",
     )
@@ -205,7 +205,7 @@ def test_standalone_worker_loads_payload_logs_and_releases_lock(tmp_path):
     with (work / "problem.pkl").open("wb") as stream:
         pickle.dump(problem, stream)
 
-    ok, status = simulate_packed_problem_standalone(work)
+    ok, status = simulate_packed_problem_standalone_ad(work)
 
     assert ok and status.RestartIndex == 0
     assert not (work / "lock.pymrst").exists()
@@ -226,11 +226,11 @@ def test_init_eclipse_packed_problem_preserves_initialized_setup(
     nonlinear = SimpleNamespace(tag="solver")
     monkeypatch.setattr(
         module,
-        "init_eclipse_problem_ad",
+        "init_eclipse_problem_ad_ad",
         lambda deck, **options: (state, model, schedule, nonlinear),
     )
 
-    problem = init_eclipse_packed_problem_ad(
+    problem = init_eclipse_packed_problem_ad_ad(
         {"deck": True}, name="run", directory=tmp_path
     )
 
@@ -243,26 +243,26 @@ def test_init_eclipse_packed_problem_preserves_initialized_setup(
 
 
 def test_native_ad_core_schedule_is_accepted(tmp_path):
-    problem = pack_simulation_problem(
+    problem = pack_simulation_problem_ad(
         {"x": 0.0}, PickleModel(), simple_schedule([1.0, 2.0]),
         "Case", directory=tmp_path, name="native-schedule",
     )
-    ok, _ = simulate_packed_problem(problem)
+    ok, _ = simulate_packed_problem_ad(problem)
     assert ok
-    _, states, _, _ = get_packed_simulator_output(problem)
+    _, states, _, _ = get_packed_simulator_output_ad(problem)
     assert [state["x"] for state in states] == [1.0, 3.0]
 
 
 def test_problem_manager_tracks_direct_simulations(tmp_path):
     schedule = simple_schedule([1.0, 1.0])
     problems = [
-        pack_simulation_problem(
+        pack_simulation_problem_ad(
             {"x": 0.0}, PickleModel(), schedule, "Case",
             directory=tmp_path, name=f"m{i}",
         )
         for i in range(2)
     ]
-    manager = PackedProblemManager(problems, max_simultaneous_simulations=1)
+    manager = PackedProblemManagerAD(problems, max_simultaneous_simulations=1)
     ok, _ = manager.simulate_problem()
     assert ok.tolist() == [True, True]
     assert manager.get_number_of_complete_steps().tolist() == [2, 2]
@@ -302,12 +302,12 @@ def test_the_observer_hook_is_observational(tmp_path):
     def run(observer, name):
         schedule = SimpleNamespace(step=SimpleNamespace(
             val=[1.0, 2.0, 3.0], control=[1, 1, 1]))
-        problem = pack_simulation_problem(
+        problem = pack_simulation_problem_ad(
             {"x": 0.0}, Model(), schedule, "Case",
             directory=tmp_path / name, name=name,
         )
-        ok, status = simulate_packed_problem(problem, observer=observer)
-        _, states, reports, _ = get_packed_simulator_output(problem)
+        ok, status = simulate_packed_problem_ad(problem, observer=observer)
+        _, states, reports, _ = get_packed_simulator_output_ad(problem)
         return ok, status.RestartIndex, [s["x"] for s in states], \
             [r["Converged"] for r in reports]
 
@@ -325,7 +325,7 @@ def test_the_observer_hook_is_observational(tmp_path):
 def test_standalone_worker_records_a_child_event_log_and_manifest(tmp_path):
     """A detached run's only account of itself.
 
-    `simulate_packed_problem_background` forks a child that nothing can watch
+    `simulate_packed_problem_background_ad` forks a child that nothing can watch
     while it runs, and the sole record was one log line naming a restart index
     and a message. The child now also writes `events.jsonl` and
     `run_manifest.json`.
@@ -338,7 +338,7 @@ def test_standalone_worker_records_a_child_event_log_and_manifest(tmp_path):
     import json
 
     schedule = simple_schedule([1.0, 2.0])
-    problem = pack_simulation_problem(
+    problem = pack_simulation_problem_ad(
         {"x": 0.0}, PickleModel(), schedule, "Evidence",
         directory=tmp_path / "results", name="child",
     )
@@ -347,7 +347,7 @@ def test_standalone_worker_records_a_child_event_log_and_manifest(tmp_path):
     with (work / "problem.pkl").open("wb") as stream:
         pickle.dump(problem, stream)
 
-    ok, status = simulate_packed_problem_standalone(work)
+    ok, status = simulate_packed_problem_standalone_ad(work)
     assert ok
 
     info = BackgroundSimulationInfo(path=work)
@@ -384,7 +384,7 @@ def test_a_crashed_child_still_leaves_a_manifest_naming_the_error(tmp_path):
     (work / "problem.pkl").write_bytes(b"not a pickle")
 
     with pytest.raises(Exception):
-        simulate_packed_problem_standalone(work)
+        simulate_packed_problem_standalone_ad(work)
 
     info = BackgroundSimulationInfo(path=work)
     assert not info.lock_path.exists(), "a crashed child kept its lock"
@@ -395,7 +395,7 @@ def test_a_crashed_child_still_leaves_a_manifest_naming_the_error(tmp_path):
 
 def test_evidence_recording_can_be_turned_off(tmp_path):
     schedule = simple_schedule([1.0])
-    problem = pack_simulation_problem(
+    problem = pack_simulation_problem_ad(
         {"x": 0.0}, PickleModel(), schedule, "Quiet", directory=tmp_path / "r",
         name="child",
     )
@@ -404,7 +404,7 @@ def test_evidence_recording_can_be_turned_off(tmp_path):
     with (work / "problem.pkl").open("wb") as stream:
         pickle.dump(problem, stream)
 
-    ok, _ = simulate_packed_problem_standalone(work, record_evidence=False)
+    ok, _ = simulate_packed_problem_standalone_ad(work, record_evidence=False)
     info = BackgroundSimulationInfo(path=work)
     assert ok
     assert not info.events_path.exists() and not info.manifest_path.exists()

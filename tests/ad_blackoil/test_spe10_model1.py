@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from pymrst.modules.ad_blackoil.examples.spe10 import (
-    run_tenth_csp_model_i, setup_tenth_csp_model_i,
+    run_tenth_csp_model_i_ad, setup_tenth_csp_model_i_ad,
 )
 from pymrst.modules.deckformat import load_spe10_model1
 from pymrst.utils.units import DAY
@@ -22,7 +22,7 @@ def test_spe10_model1_loader_and_layer_selection():
 
 
 def test_spe10_model1_complete_initialization():
-    data, model, schedule, state = setup_tenth_csp_model_i()
+    data, model, schedule, state = setup_tenth_csp_model_i_ad()
     assert model.G.cells.num == 2000
     assert len(model.wells) == 2
     assert all(w.cells.size == 20 for w in model.wells)
@@ -33,7 +33,7 @@ def test_spe10_model1_complete_initialization():
 
 
 def test_spe10_model1_first_report_converges():
-    result = run_tenth_csp_model_i(1, verbose=False)
+    result = run_tenth_csp_model_i_ad(1, verbose=False)
     assert result.report.converged
     assert result.history["sG"].max() > 0.0
     assert np.isclose(result.history["bhp"][0, 1], 95*6894.757293168361)

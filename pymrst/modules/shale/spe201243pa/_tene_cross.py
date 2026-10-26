@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from pymrst.gridprocessing import compute_geometry, tensor_grid
-from pymrst.modules.ad_blackoil.models.water_model import WaterModel
+from pymrst.modules.ad_blackoil.models.water_model import WaterModelAD
 from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
 from pymrst.modules.ad_core.statefunctions.flow_discretization import FlowDiscretization
 from pymrst.modules.ad_core.timesteps import rampup_timesteps
@@ -33,7 +33,7 @@ class TeneCrossVariant:
     name: str
     grid: object
     rock: object
-    model: WaterModel
+    model: WaterModelAD
     boundary: object
     initial_state: object
     states: list
@@ -74,7 +74,7 @@ def _water_model(grid, rock, operators, *, boundary_grid=None):
     # shale operators preserve MRST's ``T_all`` spelling.
     if not hasattr(operators, "t_all"):
         operators.t_all = operators.T_all
-    model = WaterModel(grid, rock, fluid, bc=bc)
+    model = WaterModelAD(grid, rock, fluid, bc=bc)
     model.operators = operators
     model.pv_ref = np.asarray(operators.pv, dtype=float)
     model.gdz = np.zeros(operators.N.shape[0])
@@ -150,7 +150,7 @@ def setup_tene_cross_case(*, high_conductivity: bool, reduced_explicit=False):
     )
     fracture_cells = np.flatnonzero(horizontal | vertical)
     explicit_rock.perm[fracture_cells, :] = kf
-    explicit_model = WaterModel(
+    explicit_model = WaterModelAD(
         explicit_grid, explicit_rock,
         init_simple_adi_fluid(
             mu=[CENTI*POISE, CENTI*POISE], rho=[1000., 1000.], n=[1.,1.],

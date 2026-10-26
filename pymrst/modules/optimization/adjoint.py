@@ -52,6 +52,12 @@ class AdjointResult:
     value: float
     gradient: np.ndarray          # (n_steps, n_wells)
     states: List[OWState]         # states[0] is the initial state
+    #: dJ/dx_0 - the objective's sensitivity to the *initial state*, one entry
+    #: per unknown in the state vector. `None` when the sweep took no steps.
+    #: It falls out of the same backward recursion: the multiplier of the first
+    #: step, pushed back through that step's derivative with respect to the
+    #: state it started from. Nothing extra is simulated for it.
+    initial_state_gradient: Optional[np.ndarray] = None
 
 
 def _set_controls(model: TwoPhaseOilWaterModelAD, u: np.ndarray) -> None:
@@ -197,7 +203,26 @@ def compute_gradient_adjoint(
         lam = spla.spsolve(a.T.tocsc(), rhs)
         grad[n] = dRdu.T @ lam
 
-    return AdjointResult(value=jtotal, gradient=grad, states=list(states))
+    # The recursion ends at step 0 holding lam_1, and one more application of
+    # the same coupling term gives the initial-state sensitivity:
+    #
+    #     dJ/dx_0 = (dR_1/dx_0)^T lam_1
+    #
+    # This is the adjoint answer, not an approximation of it, and it costs one
+    # extra transpose-multiply against a matrix the sweep already needs. The
+    # objective's own dJ_0/dx_0 is not added: `_objective_derivatives` scores
+    # the state at the *end* of each step, so state 0 is never scored directly.
+    dx0 = None
+    if nsteps:
+        # No `_set_controls` here, and that is a statement rather than an
+        # omission: `_jac_wrt_previous` seeds only the *previous* state, and
+        # only the accumulation term sees it - the well rows come out empty.
+        # Verified: the matrix is bit-identical under any control set.
+        dx0 = _jac_wrt_previous(model, state0, states[1],
+                                float(dts[0])).T @ lam
+
+    return AdjointResult(value=jtotal, gradient=grad, states=list(states),
+                         initial_state_gradient=dx0)
 
 
 def npv_objective(oil_price: float = 60.0, water_cost: float = 6.0,
@@ -290,6 +315,11 @@ def optimize_rates(
 
     return u, history
 
+
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+computeGradientAdjointAD = compute_gradient_adjoint
 
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry

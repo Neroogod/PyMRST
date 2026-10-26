@@ -10,7 +10,7 @@ the outlet and water breaks through.
 This ports MRST's introductory AD example. The MATLAB script's several tails
 (plotToolbar visualisation, the general-solver hook, the on-disk `ResultHandler`)
 are presentation/IO layers that live outside the physics; the simulation itself -
-a boundary-condition-driven `GenericBlackOilModel` stepped with the nonlinear
+a boundary-condition-driven `GenericBlackOilModelAD` stepped with the nonlinear
 solver - is what is reproduced here, and it is what `validate_phase363.py` pins
 against MRST's own saturation profile.
 """
@@ -21,7 +21,7 @@ import numpy as np
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
 )
 from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
 from pymrst.modules.ad_core.statefunctions.state_function import State
@@ -50,7 +50,7 @@ def run_ad_buckley_leverett_1d(n: int = 25) -> Tuple[object, List[State]]:
     inj_rate = pv.sum() / (500.0 * DAY)                 # 1 PVI in 500 days
     bc = fluxside(None, g, "xmin", inj_rate, sat=[1.0, 0.0])   # water in
     bc = pside(bc, g, "xmax", 0.0, sat=[0.0, 1.0])            # produce at p=0
-    model = GenericBlackOilModel(g, rock, fluid, [], bc=bc)
+    model = GenericBlackOilModelAD(g, rock, fluid, [], bc=bc)
 
     nc = g.cells.num
     state0 = State(pressure=np.full(nc, 50 * BARSA), sW=np.zeros(nc),

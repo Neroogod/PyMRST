@@ -78,7 +78,7 @@ class PackedSimulationProblem:
         return self.Name
 
 
-def pack_simulation_problem(
+def pack_simulation_problem_ad(
     state0,
     model,
     schedule,
@@ -128,11 +128,9 @@ def pack_simulation_problem(
     )
 
 
-packSimulationProblem = pack_simulation_problem
 
 __all__ = [
     "PackedSimulationProblem",
     "ResultHandler",
-    "pack_simulation_problem",
-    "packSimulationProblem",
+    "pack_simulation_problem_ad",
 ]

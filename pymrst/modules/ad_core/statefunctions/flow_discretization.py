@@ -187,6 +187,19 @@ class FlowDiscretization(StateFunctionGrouping):
         self.set_state_function("ComponentPhaseFlux", ComponentPhaseFlux(model))
         self.set_state_function("ComponentTotalFlux", ComponentTotalFlux(model))
 
+    def build_flow_state(self, model, state, state0, dt):
+        """The state the flux terms are evaluated on (MRST `buildFlowState`).
+
+        One line, and the seam the whole explicit/adaptive-implicit machinery
+        hangs from: an implicit builder returns `state` unchanged, an explicit
+        one returns a state whose mobilities come from `state0`, and the flux
+        code above never has to know which. Calling the properties directly
+        instead - the obvious shortcut - hard-wires the implicit choice.
+        """
+        return self.FlowStateBuilder.build(model, state, state0, dt)
+
+    buildFlowState = build_flow_state
+
     def set_flow_state_builder(self, builder):
         """Attach the FIM/AIM/IMPES flow-state policy."""
         self.FlowStateBuilder = builder

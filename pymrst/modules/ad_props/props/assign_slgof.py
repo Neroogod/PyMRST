@@ -85,19 +85,19 @@ if __name__ == "__main__":
         assert np.allclose(direct["krG"][0](probe), viaslgof["krG"][0](probe))
         print("ok test_it_produces_the_same_curves_as_the_equivalent_sgof")
 
-    def test_it_still_needs_the_water_table() -> None:
-        try:
-            assign_slgof({}, [SLGOF], Regions())
-        except ValueError as error:
-            assert "SWOF" in str(error)
-            print("ok test_it_still_needs_the_water_table")
-            return
-        raise AssertionError("SLGOF without SWOF must be rejected")
+    def test_without_swof_it_warns_as_mrsts_assign_sgof_does() -> None:
+        import warnings
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            f = assign_slgof({}, [SLGOF], Regions())
+        assert any("No relperm points" in str(w.message) for w in caught)
+        assert "krG" in f and "krOG" in f
+        print("ok test_without_swof_it_warns_as_mrsts_assign_sgof_does")
 
     test_the_abscissa_becomes_gas_saturation()
     test_the_rows_are_reversed_so_the_abscissa_increases()
     test_the_other_columns_travel_with_their_rows()
     test_liquid_saturation_above_one_is_clamped()
     test_it_produces_the_same_curves_as_the_equivalent_sgof()
-    test_it_still_needs_the_water_table()
+    test_without_swof_it_warns_as_mrsts_assign_sgof_does()
     print("\nAll tests passed!")

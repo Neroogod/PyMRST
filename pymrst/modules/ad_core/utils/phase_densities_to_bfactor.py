@@ -35,7 +35,9 @@ def phase_densities_to_bfactor(
     b: List[np.ndarray] = [None] * n            # type: ignore[list-item]
     for i in range(n):
         factor = rho_s[i]
-        if dissolved is not None:
+        # MRST's `~isempty(dissolved)`: an empty dissolution matrix, `{}`,
+        # means none, exactly as `None` does.
+        if dissolved:
             for j in range(n):
                 r_ph = dissolved[j][i]
                 if r_ph is not None:
@@ -43,6 +45,11 @@ def phase_densities_to_bfactor(
         b[i] = rho[i] / factor
     return b
 
+
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+phaseDensitiesTobfactor = phase_densities_to_bfactor
 
 if __name__ == "__main__":
     def test_no_dissolution_is_rho_over_rhos():

@@ -806,6 +806,198 @@ Current compositional sprint checkpoints:
   `pytest -q tests -k compositional` all pass. The remaining warning is the
   known pytest cache write warning.
 
+## Performance investigation plan (P0-P8)
+
+Separate from the phase-by-phase port above, this is the active plan for
+closing performance gaps between PyMRST and MRST that the rigorous SPE1/SPE10
+validation work surfaced (see `Validations/rigorous_validation_analysis.md`
+and `Validations/diagonal_backend_performance_validation.md`). It is numbered
+P0-P8, not phase-numbered, because it cuts across models rather than porting
+one MATLAB file at a time. Status as of the latest measurement:
+
+- **P0 - Benchmark methodology: record CPU utilization and native thread
+  configuration during every benchmark. DONE.** Established and applied
+  throughout `rigorous_validation_analysis.md` §2.4-§2.8: subprocess-isolated,
+  thread-pinned (`OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS`/`MKL_NUM_THREADS`/
+  `VECLIB_MAXIMUM_THREADS=1`) runs, median/min/max/IQR/stdev over repeated
+  reps, plus direct `ps %CPU` sampling that confirmed MRST's MATLAB process
+  uses roughly 1.5x-8.6x more CPU than PyMRST's single-threaded NumPy/SciPy
+  path depending on problem size, and that unpinning PyMRST's own threads does
+  not change that (tested at both SPE1 and SPE10-AD scale - no effect either
+  way).
+- **P4 - Symbolic sparsity pattern reuse across Newton iterations. DONE**,
+  shipped and independently verified
+  (`rigorous_validation_analysis.md` §2.9). Directly motivated by a fresh
+  cProfile of the fixed (post-line-search, post-P6) SPE1 run: millions of
+  calls into scipy.sparse's defensive validation path (`get_index_dtype`,
+  `check_format`, `check_shape`, `prune`) on every ADI arithmetic operation in
+  `pymrst/utils/adi/adi.py`, even though the Jacobian's sparsity *pattern* is
+  usually unchanged within a Newton loop and only the values change. Fixed via
+  a bypass constructor (`_fast_csr`, built with `__new__` + direct attribute
+  assignment) used wherever `indices`/`indptr` are provably already-validated
+  and unchanged - `_diag_mul`, `__neg__`, scalar `__mul__`, and a new
+  `_jac_add` for `__add__`/ADI-times-ADI that fast-paths byte-identical
+  patterns and falls back to ordinary scipy `+` otherwise. Verified via
+  correctness self-tests, two mutation/falsification checks, and a full
+  before/after regression run (288 tests, `validate_spe1_tutorial.py`)
+  showing identical results including two confirmed-pre-existing, unrelated
+  failures. Measured effect, isolated from the earlier Jacobian-sharing fix by
+  a same-session three-state paired comparison: a real 1.72x SPE1 wall-clock
+  speedup (19.10 s -> 11.13 s median), against a corrected historical PyMRST
+  baseline of 15.084 s (an earlier draft of this note misread which of §2.4's
+  two columns was PyMRST's and compared against MRST's 11.250 s instead -
+  fixed in §2.9, independently re-checked against the raw per-rep logs).
+  A smaller ~27% drift (15.084 s -> 19.10 s, no-P4-to-no-P4) was found and
+  then resolved, not left open: `find pymrst -newer <historical benchmark's
+  own log> -type f` showed only `adi.py` itself had changed anywhere in the
+  package since that measurement, ruling out a code cause; a fresh no-P4
+  re-measurement after the session's extensive benchmarking had settled came
+  back at 15.889 s, within ~5% of the historical number - thermal/
+  environmental variance from sustained back-to-back benchmarking, not a
+  regression. A fresh, paired, same-day MRST-vs-PyMRST SPE1 benchmark (10
+  reps each, thread-pinned, back-to-back on an idle machine) then settled the
+  open comparison directly: PyMRST 8.800 s median vs MRST 12.220 s median,
+  ranges non-overlapping, 322 vs 323 Newton iterations. **PyMRST is now 1.39x
+  faster than MRST on SPE1**, reversing §2.4's ~1.34x MRST-faster finding
+  rather than merely closing it. §2.4's number is not wrong for its own
+  conditions at the time; it is superseded, and is kept in the report as
+  historical record.
+- **P6 - Diagonal AD backend duplicate-triplet merge. DONE**, shipped and
+  independently verified (`diagonal_backend_performance_validation.md`): fixed
+  unbounded `nnz` growth in `RowMajorDiagonalJacobian`/`DiagonalJacobian`
+  `__add__`/`matmul_left` from unmerged same-`(row,col)` triplets; a ~65x
+  regression traced, fixed, and confirmed with a before/after profile at
+  identical call counts plus a 2.9x real-world speedup over the sparse
+  backend.
+- **P2-P3 - Vectorize reservoir and well assembly so work executes inside
+  native NumPy kernels instead of Python loops. RECONSIDERED, done as "P4
+  continued" instead.** Checked directly before starting: this label does
+  not match PyMRST's architecture. `assemble()` builds every reservoir
+  equation via `ADI` array operations over all cells at once already - no
+  per-cell Python loop exists to remove. Well assembly does loop in Python
+  (`for w in self.wells`), but SPE10 AD has 5 wells; too small a count to
+  matter. What profiling actually showed as the next real cost was more of
+  P4's own scipy-constructor-validation pattern, in two `ADI` operations P4
+  had not touched: `__getitem__` (fancy row-indexing, used by upwinding)
+  and `ad_matmul` (sparse matrix products). Both fixed the same way P4 was
+  (`_row_select`/`_fast_matmul`, `pymrst/utils/adi/adi.py`/`operators.py`),
+  verified against scipy references and falsification-checked. `_fast_matmul`
+  surfaced a real, non-obvious bug in the process: `csr_matmat_maxnnz` is an
+  *upper bound* on nonzero count, not exact - it cannot foresee
+  exact-cancellation to zero, which `csr_matmat`'s numeric pass then
+  correctly drops, leaving `data`/`indices` over-allocated relative to the
+  true `indptr[-1]`. Scipy's normal path trims this via `prune()`, the step
+  `_fast_csr` skips; `_fast_matmul` now trims it explicitly, with a
+  falsification-checked regression test
+  (`test_fast_matmul_trims_when_maxnnz_overestimates`) pinning the exact
+  minimal reproduction (two opposite-signed row entries cancelling into the
+  same output column). Measured effect follows the same scale-dependence
+  pattern as P4 itself: a real 1.24x speedup on SPE1 (300 cells), shrinking
+  to 1.03x at SPE10 AD layers=1 (13,200 cells) and noise-level 1.00x at
+  layers=4 (52,800 cells) - genuine at small scale, not a lever for the
+  field-scale gap. **Part two, correcting an earlier mistake in this same
+  entry**: the well loop was first dismissed as too small to matter by
+  reasoning from well count (5, for SPE10 AD) without checking the profile.
+  A fresh profile showed `_well_contributions` at 7.305 s cumulative
+  (~16% of a field-scale run) - genuinely real ADI arithmetic repeated once
+  per well, the actual Python-loop cost P2-3's original label described.
+  Fixed by `_well_contributions_batched`
+  (`two_phase_oil_water_model.py`): concatenates every well's perforation
+  data, broadcasts per-well scalars to perforations via `ADI.__getitem__`,
+  and uses two sparse membership matrices (grouping-by-well,
+  scatter-by-cell) via `ad_matmul` to replace the per-well `ad_sum` and
+  fancy-index cell update - reusing both of this entry's own earlier fast
+  paths. Two of the loop's branches (`any_prod` selecting which formula
+  computes the wellbore mixture fraction; the dead-well fallback) are
+  genuine semantic choices, not skippable-under-masking optimizations, and
+  are reproduced exactly. Verified against the original per-well loop
+  directly across 5 scenarios (producer+injector, cross-flow, dead well,
+  two wells sharing a cell, three wells together) with a 515-test full
+  regression pass; writing that comparison test itself surfaced two real
+  bugs caught only by deliberately breaking the corresponding logic and
+  confirming the test failed (an early scenario's injection composition
+  numerically coincided with the buggy formula's output; an early
+  shared-cell scenario had one well's contribution vanish by construction,
+  never exercising the accumulation logic). Measured: a real, clean 1.156x
+  speedup on SPE10 AD layers=1 (37.605 s -> 32.526 s), same-session paired.
+- **P5 - Batch PVT and flash evaluation, then parallelize independent regions
+  or batches. CHECKED, DOES NOT APPLY.** A fresh profile with every P4/P8/
+  P2-3 fix in place (see §2.9-§2.12, `rigorous_validation_analysis.md`)
+  shows PVT evaluation costing under 0.2 s of a 35 s SPE10 AD run. This
+  model has no flash calculation at all - two-phase black-oil, not
+  compositional - so P5's premise does not hold here. Not revisited unless
+  a compositional-model case motivates it with its own profile.
+- **P7 - Fused Numba kernels (`parallel=True`, `prange`) for the hottest
+  assembly paths, followed by C++/OpenMP kernels where Numba isn't enough.
+  CHECKED, NOT JUSTIFIED AT THIS SCALE.** The same fresh profile shows the
+  linear solve alone at 67.6% of profiled time, with everything else a long
+  tail of individually sub-second items - not a case for hand-written
+  kernels so much as a case that the linear solve (P8) is the only lever
+  left with room in it. Revisit if P8 ever closes enough of its own gap
+  that the remaining tail becomes worth chasing.
+- **P8 - Genuinely parallel sparse solvers: PETSc, AMGCL, Hypre, optionally
+  MKL/PARDISO. PARTIALLY DONE, with a real bug fixed this session.**
+  PyMRST already has a working AMGCL/CPR pairing (`CPRSolverAD` +
+  `AMGCLSolverAD`) for field-scale linear solves. Wiring it into SPE10 AD -
+  motivated by P4 barely moving that case's runtime, once profiling showed
+  the direct linear solve at ~40% of wall time there - initially failed
+  with a genuine, reproducible convergence breakdown (`invalid value
+  encountered in scalar multiply`, GMRES non-convergence, independent of
+  which AMG coarsening/relaxation was tried). Root-caused to a real bug in
+  `CPRSolver.solve` (`pymrst/modules/ad_core/solvers/linear_solvers.py`):
+  the elliptic/pressure-stage matrix was never Ruiz-equilibrated before
+  being solved, unlike the local stage's matrix - on SPE10 AD its diagonal
+  spanned `6.5e-15` to `3.1e-9`, producing a pressure correction ~1e7 too
+  large that then poisoned the rest of the two-stage preconditioner via
+  catastrophic cancellation. Fixed by equilibrating that matrix the same
+  way, verified against both existing self-test suites (with two test
+  thresholds honestly widened for a disclosed, understood ~20-50%
+  iteration-count side effect of properly conditioning an
+  already-passing case), a new fast regression test added
+  (`test_amgcl_cpr_converges_on_a_badly_scaled_pressure_block`), and
+  falsification-checked (reverting the fix reproduces the exact failure the
+  new test guards against). CPR/AMGCL now converges on SPE10 AD and matches
+  the direct-LU answer to ~1e-10 relative accuracy at every scale tested -
+  a real, working capability that did not exist before. It does not yet
+  win on wall-clock time there: 20x slower than direct LU at 13,200 cells,
+  4.7x slower at 52,800, 1.66x slower at 105,600 - closing fast and
+  consistently with scale, but not yet crossing over, consistent with
+  `TwoPhaseOilWaterModelAD._solve_increment`'s own documented analysis that
+  LU stays competitive far longer on 2D-shaped grids like this one.
+  MRST's own solver was also checked directly (not assumed): `setupSPE10_AD.m`
+  configures nothing special, and MRST's default is exactly `A\b` -
+  `mldivide`, a plain direct solve. Its field-scale speed edge is very
+  likely MATLAB's MKL-backed BLAS giving that direct solve's dense
+  sub-kernels free multithreading, which `scipy`'s serial-only SuperLU
+  structurally cannot get - not an algorithmic advantage. PETSc, Hypre, and
+  MKL/PARDISO backends are still not ported; a real multithreaded direct
+  solve alternative (`pypardiso`, `scikit-umfpack`) was checked and found
+  not installed - would need an external dependency install, not done here.
+
+Ordering rationale: P0, P2-P3, P4, and P6 are done. P8 gained a real,
+verified bug fix and a much clearer performance picture (not yet a win at
+the scales tested) from following where profiling pointed after P4; P2-P3
+turned out, once checked against this codebase's actual architecture, to be
+two different things under one label - reservoir assembly needed nothing (it
+was already fully vectorized), but the well-assembly loop was a real,
+profiled cost, fixed with a verified 1.156x speedup. P5 and P7 were then
+checked directly, the same way, rather than picked up next by list order -
+and found not to apply: no flash calculation exists in this two-phase model
+for P5 to batch, and P7's target (hand-written kernels for hot assembly
+paths) does not exist either, since the linear solve alone is now 67.6% of
+profiled time and everything else is a long tail of sub-second items.
+
+**Honest stopping point of this investigation as currently scoped**, not a
+claim that nothing more could be done: the linear solve (P8) is the only
+lever left with real room in it, and two paths there remain untried on this
+machine - `pypardiso` (impossible here, no Apple Silicon MKL build) was
+ruled out, but a from-source UMFPACK build with an explicitly-threaded BLAS
+was not attempted after the pip-installed `scikit-umfpack` build showed no
+threading. Also still open: the SPE10 AD controlled scaling sweep's
+layers=8 rung (`rigorous_validation_analysis.md` §2.8) has been interrupted
+mid-run twice and has no current-code number on either the PyMRST or MRST
+side.
+
 ## The one architectural decision that shapes everything
 
 **PyMRST's AD models are hand-rolled; MRST's are not.**

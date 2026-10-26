@@ -1,7 +1,7 @@
 from pathlib import Path
 import numpy as np
 
-from pymrst.modules.ad_blackoil.examples.spe9 import setup_spe9
+from pymrst.modules.ad_blackoil.examples.spe9 import setup_spe9_ad
 from pymrst.modules.deckformat import read_spe9_deck
 from pymrst.utils.units import DAY
 
@@ -23,7 +23,7 @@ def test_spe9_deck_grid_pvt_initial_and_schedule():
 
 
 def test_spe9_full_setup_has_all_wells_and_control_changes():
-    _, model, schedule, state = setup_spe9()
+    _, model, schedule, state = setup_spe9_ad()
     assert model.G.cells.num == 9000
     assert len(model.wells) == 26
     assert state["pressure"].size == 9000

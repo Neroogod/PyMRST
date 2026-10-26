@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from pymrst.modules.ad_core.initialization.deck import init_state_deck
+from pymrst.modules.ad_core.initialization.deck import init_state_deck_ad
 from pymrst.modules.ad_core.initialization.equilibrium import (
     EquilibriumRegion,
     _connate_saturations,
@@ -23,7 +23,7 @@ def test_explicit_deck_state_copies_phase_fields_and_live_oil_status():
         "SGAS": [0.0, 0.1, 0.0],
         "RS": [5.0, 6.0, 7.0],
     }
-    state = init_state_deck(model, deck)
+    state = init_state_deck_ad(model, deck)
 
     assert np.array_equal(state.pressure, deck["PRESSURE"])
     assert np.array_equal(state.sW, deck["SWAT"])

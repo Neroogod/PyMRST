@@ -1,0 +1,8 @@
+This directory mirrors MRST's layout and is intentionally empty.
+
+It corresponds to `modules/nwm` in the MRST 2024a tree. Nothing here is ported
+yet; the folder exists so the two trees can be compared side by side and so
+a port lands in the place its MATLAB original occupies.
+
+Git does not track empty directories, which is the only reason this file
+exists. Delete it when real code arrives.

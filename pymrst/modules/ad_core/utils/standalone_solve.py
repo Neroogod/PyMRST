@@ -30,12 +30,17 @@ def standalone_solve(state0: State, model, dt: float,
     return solver.solve_timestep(model, state0, dt)
 
 
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+standaloneSolveAD = standalone_solve
+
 if __name__ == "__main__":
     import numpy as np
 
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-        GenericBlackOilModel,
+        GenericBlackOilModelAD,
     )
     from pymrst.modules.ad_props import init_simple_adi_fluid
     from pymrst.params import add_well, make_rock
@@ -52,7 +57,7 @@ if __name__ == "__main__":
         prod = add_well(None, g, rock, np.array([g.cells.num - 1]),
                         well_type="bhp", val=150 * BARSA,
                         compi=np.array([0.0, 1.0]), sign=-1, name="P")[0]
-        return GenericBlackOilModel(g, rock, fluid, [inj, prod], tol_well=1e-8)
+        return GenericBlackOilModelAD(g, rock, fluid, [inj, prod], tol_well=1e-8)
 
     def test_single_step_advances_and_reports_converged():
         model = _model()

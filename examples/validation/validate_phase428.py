@@ -11,7 +11,7 @@ from pymrst.modules.ad_core.statefunctions.flux.flow_state import (
     ExplicitFlowStateBuilder,
     ImplicitFlowStateBuilder,
 )
-from pymrst.modules.ad_core.utils import set_time_discretization
+from pymrst.modules.ad_core.utils import set_time_discretization_ad
 
 REF = Path(__file__).with_name("ref_p428_time_discretization.mat")
 
@@ -32,11 +32,11 @@ def main():
         return 1
     ref = loadmat(REF)
 
-    fim = set_time_discretization(_model(), "fim").FlowDiscretization.FlowStateBuilder
-    aim = set_time_discretization(
+    fim = set_time_discretization_ad(_model(), "fim").FlowDiscretization.FlowStateBuilder
+    aim = set_time_discretization_ad(
         _model(), "aim", firstStepImplicit=False, saturationCFL=0.7
     ).FlowDiscretization.FlowStateBuilder
-    impes = set_time_discretization(
+    impes = set_time_discretization_ad(
         _model(), "impes", initialStep=12, changeTimestep=False
     ).FlowDiscretization.FlowStateBuilder
 

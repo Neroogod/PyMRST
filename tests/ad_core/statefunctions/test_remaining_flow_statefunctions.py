@@ -7,7 +7,7 @@ import pytest
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
 )
 from pymrst.modules.ad_core.statefunctions.components import (
     ConcentrationComponent,
@@ -29,7 +29,7 @@ from pymrst.modules.ad_core.statefunctions.flux.permeability_gradient_discretiza
     TwoPointFluxApproximation,
 )
 from pymrst.modules.ad_core.statefunctions.flux.upwind.boundary_faces import (
-    get_boundary_faces_merged,
+    get_boundary_faces_merged_ad,
 )
 from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.modules.ad_props import init_simple_adi_fluid
@@ -48,7 +48,7 @@ def _model():
         c=[1e-6 / BARSA, 1e-4 / BARSA],
         p_ref=200 * BARSA,
     )
-    return GenericBlackOilModel(grid, rock, fluid, [])
+    return GenericBlackOilModelAD(grid, rock, fluid, [])
 
 
 def _state(model):
@@ -179,7 +179,7 @@ def test_permeability_gradient_tpfa_numeric_and_ad():
 def test_get_boundary_faces_merged_reflects_owner_through_face():
     model = _model()
     grid = model.G
-    faces, cells, ghost = get_boundary_faces_merged(grid)
+    faces, cells, ghost = get_boundary_faces_merged_ad(grid)
     face_centroid = grid.faces.centroids[faces]
     cell_centroid = grid.cells.centroids[cells]
     assert np.all(np.any(grid.faces.neighbors[faces] < 0, axis=1))

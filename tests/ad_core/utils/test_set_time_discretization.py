@@ -8,7 +8,7 @@ from pymrst.modules.ad_core.statefunctions.flux.flow_state import (
     ExplicitFlowStateBuilder,
     ImplicitFlowStateBuilder,
 )
-from pymrst.modules.ad_core.utils import set_time_discretization
+from pymrst.modules.ad_core.utils import set_time_discretization_ad
 
 
 class _Flow:
@@ -22,11 +22,11 @@ class _Flow:
 
 def test_fim_aim_and_impes_builders_and_options():
     model = SimpleNamespace(FlowDiscretization=_Flow())
-    assert set_time_discretization(model, "fim") is model
+    assert set_time_discretization_ad(model, "fim") is model
     assert isinstance(model.FlowDiscretization.FlowStateBuilder,
                       ImplicitFlowStateBuilder)
 
-    set_time_discretization(
+    set_time_discretization_ad(
         model, "aim", firstStepImplicit=False, saturationCFL=0.7
     )
     aim = model.FlowDiscretization.FlowStateBuilder
@@ -34,7 +34,7 @@ def test_fim_aim_and_impes_builders_and_options():
     assert aim.first_step_implicit is False
     assert aim.saturation_cfl == 0.7
 
-    set_time_discretization(
+    set_time_discretization_ad(
         model, "impes", initialStep=12.0, changeTimestep=False
     )
     impes = model.FlowDiscretization.FlowStateBuilder
@@ -54,7 +54,7 @@ def test_sequential_wrapper_updates_transport_parent_model():
             return self
 
     wrapper = SimpleNamespace(transportModel=_Transport())
-    out = set_time_discretization(wrapper, "explicit")
+    out = set_time_discretization_ad(wrapper, "explicit")
     assert out is wrapper
     assert wrapper.transportModel.validated
     assert isinstance(
@@ -65,7 +65,7 @@ def test_sequential_wrapper_updates_transport_parent_model():
 
 def test_invalid_type_is_rejected():
     with pytest.raises(ValueError, match="valid choices"):
-        set_time_discretization(
+        set_time_discretization_ad(
             SimpleNamespace(FlowDiscretization=_Flow()), "crank-nicolson"
         )
 

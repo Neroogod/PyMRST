@@ -16,7 +16,7 @@ def test_linear_solver_matrix_regenerates_with_true_linear_diagnostics():
     assert summary["passed"]
     assert len(graph.nodes) == 4
     assert len(graph.edges) == 22
-    assert summary["diagnostics"]["direct"]["nonlinear_iterations"] == [3, 5]
+    assert summary["diagnostics"]["direct"]["nonlinear_iterations"] == [4, 4]
     assert summary["diagnostics"]["gmres_ilu"]["total_linear_iterations"] > 50
     assert summary["diagnostics"]["cpr"]["total_linear_iterations"] > 30
     for values in summary["diagnostics"].values():

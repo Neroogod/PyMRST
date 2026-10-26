@@ -549,32 +549,70 @@ def _vfp_index(record: Any, *, keyword: str) -> int | None:
 
 
 def _prod_lims(record: Any, *, keyword: str = "WCONPROD") -> dict[str, float]:
-    lims: dict[str, float] = {}
     kw = str(keyword).upper()
-    compact_wconhist = kw == "WCONHIST" and (not isinstance(record, Mapping)) and len(record) <= 9
+    if kw == "WCONHIST":
+        return _prod_lims_wconhist(record)
+    lims: dict[str, float] = {}
     for mode, names, index in [
         ("orat", ("orat", "oil_rate", "oil"), 3),
         ("wrat", ("wrat", "water_rate", "water"), 4),
         ("grat", ("grat", "gas_rate", "gas"), 5),
         ("lrat", ("lrat", "liquid_rate", "liquid"), 6),
         ("vrat", ("vrat", "resv", "reservoir_rate"), 7),
-        ("bhp", ("bhp", "bottom_hole_pressure"), 8 if compact_wconhist or kw != "WCONHIST" else 9),
+        ("bhp", ("bhp", "bottom_hole_pressure"), 8),
         ("thp", ("thp", "tubing_head_pressure"), 9),
     ]:
-        if kw == "WCONHIST" and mode == "thp":
-            continue
         default = ATM if mode == "bhp" else np.inf
         value = _finite_limit(_field(record, names, index, default))
         if value is not None:
             lims[mode] = -value if mode in {"orat", "wrat", "grat", "lrat", "vrat"} else value
-    if kw == "WCONHIST" and not compact_wconhist and not isinstance(record, Mapping):
+    return lims
+
+
+def _prod_lims_wconhist(record: Any) -> dict[str, float]:
+    """Port of MRST's process_wconhist limits block (processWells.m).
+
+    A WCONHIST record's orat/wrat/grat/bhp columns are historical
+    measurements, not operator-set limits — only the single column matching
+    the record's own declared control type is a real limit. MRST initializes
+    every rate limit to -inf and bhp to 1*atm, then overwrites just that one
+    field; there is no case for a 'resv' record, so a RESV_HISTORY well's
+    lims stay entirely at the defaults. Copying every column into `lims`
+    regardless of control type would spuriously trip control switching on a
+    well's own unrelated historical rates.
+    """
+    lims: dict[str, float] = {
+        "orat": -np.inf,
+        "wrat": -np.inf,
+        "grat": -np.inf,
+        "lrat": -np.inf,
+        "vrat": -np.inf,
+        "bhp": ATM,
+    }
+    compact_wconhist = (not isinstance(record, Mapping)) and len(record) <= 9
+    bhp_index = 8 if compact_wconhist else 9
+    raw_mode = _name(_field(record, ("control", "type", "mode"), 2, "bhp")).lower()
+    if raw_mode == "orat":
+        value = _finite_limit(_field(record, ("orat", "oil_rate", "oil"), 3, np.inf))
+        if value is not None:
+            lims["orat"] = -value
+    elif raw_mode == "wrat":
+        value = _finite_limit(_field(record, ("wrat", "water_rate", "water"), 4, np.inf))
+        if value is not None:
+            lims["wrat"] = -value
+    elif raw_mode == "grat":
+        value = _finite_limit(_field(record, ("grat", "gas_rate", "gas"), 5, np.inf))
+        if value is not None:
+            lims["grat"] = -value
+    elif raw_mode == "lrat":
         oil = _finite_limit(_field(record, ("orat", "oil_rate", "oil"), 3, np.inf))
         water = _finite_limit(_field(record, ("wrat", "water_rate", "water"), 4, np.inf))
         if oil is not None and water is not None:
             lims["lrat"] = -(oil + water)
-        if _name(_field(record, ("control", "type", "mode"), 2, "")).lower() == "resv":
-            val, _ = _wconhist_resv_target_and_compi(record)
-            lims["resv_history"] = val
+    elif raw_mode == "bhp":
+        value = _finite_limit(_field(record, ("bhp", "bottom_hole_pressure"), bhp_index, ATM))
+        if value is not None:
+            lims["bhp"] = value
     return lims
 
 

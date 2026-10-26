@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Tauri (via tao/winit) owns window creation and lifecycle itself.
+	     macOS's automatic window-state restoration after an abnormal quit
+	     re-enters that startup path in a way tao's app delegate does not
+	     expect, which panics (SIGABRT) in did_finish_launching on every
+	     subsequent launch until the saved window state is cleared -
+	     confirmed via crash report analysis. Opting out of restoration
+	     entirely avoids the crash and matches how Tauri expects to own
+	     window state. -->
+	<key>NSQuitAlwaysKeepsWindows</key>
+	<false/>
+</dict>
+</plist>

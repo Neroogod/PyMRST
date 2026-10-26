@@ -10,8 +10,8 @@ import scipy.sparse as sp
 
 from pymrst.modules.ad_core.solvers import (
     BackslashSolverAD,
-    CPRSolverAD,
-    GMRES_ILUSolverAD,
+    CPRSolverADAD,
+    GMRES_ILUSolverADAD,
 )
 
 
@@ -52,10 +52,10 @@ def linear_solver_example(
     rhs = np.asarray(matrix @ expected).ravel()
     solvers = (
         BackslashSolverAD(),
-        GMRES_ILUSolverAD(
+        GMRES_ILUSolverADAD(
             tolerance=tolerance, max_iterations=300, ilu_drop_tol=1e-6
         ),
-        CPRSolverAD(tolerance=tolerance, max_iterations=300),
+        CPRSolverADAD(tolerance=tolerance, max_iterations=300),
     )
     results = []
     rhs_norm = max(float(np.linalg.norm(rhs)), np.finfo(float).eps)

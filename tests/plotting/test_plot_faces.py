@@ -1377,7 +1377,9 @@ def test_colorbar_hist_renders_headlessly_in_all_supported_orientations():
                 logarithmic=True,
                 axes=axes,
             )
-            assert result.counts.size == 7
+            # MRST honours the bin count only without the log flag
+            # (`nargin == 4`); with it, 51 centres.
+            assert result.counts.size == 51
             assert result.location == location
             assert result.logarithmic is True
             assert result.colorbar is not None

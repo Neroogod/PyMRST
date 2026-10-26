@@ -1,4 +1,14 @@
-"""Convert a parsed ECLIPSE/MRST schedule to PyMRST's schedule objects.
+"""MRST ``ad-core/utils/convertDeckScheduleToMRST.m``.
+
+`convert_deck_schedule_to_mrst` is the port. It builds each control's wells
+with `processWells`, adds multisegment data when COMPSEGS and WELSEGS are
+given, and maps each well's `compi` from the deck's water/oil/gas(/solvent)
+order onto the model's saturation variables. It then makes the schedule
+consistent and applies WPIMULT. The result is a PyMRST `Schedule` (0-based
+`step_control`), the form the AD-OO simulator runs.
+
+`convert_deck_schedule_to_mrst_ad`, below, is PyMRST's earlier version, kept
+for its callers. Its notes follow.
 
 This ports the structural part of MRST ``convertDeckScheduleToMRST.m``:
 step/control conversion, active-phase composition mapping, compositional
@@ -161,7 +171,7 @@ def _processed_wells(
     return wells
 
 
-def convert_deck_schedule_to_mrst(
+def convert_deck_schedule_to_mrst_ad(
     model,
     schedule_deck,
     *,
@@ -209,12 +219,219 @@ def convert_deck_schedule_to_mrst(
     schedule = Schedule(values, indices, controls)
     if ensure_consistent:
         from pymrst.modules.ad_core.utils.make_schedule_consistent import (
-            make_schedule_consistent,
+            make_schedule_consistent_ad,
         )
-        schedule = make_schedule_consistent(schedule)
+        schedule = make_schedule_consistent_ad(schedule)
     return schedule
+
+
+#: MRST silences these while building wells; matched against the message.
+SKIP_WARNINGS = ("RefDepth:BelowTopConnection", "RepRad:FaceGeomMissing")
+
+
+def convert_deck_schedule_to_mrst(model, scheduleDeck, *, StepLimit: float = np.inf,
+                                  useCpGeometry: Optional[bool] = None,
+                                  DepthReorder: bool = False, setDepths: bool = False,
+                                  skipWarnings: Sequence[str] = SKIP_WARNINGS,
+                                  ReorderStrategy: Sequence[str] = (),
+                                  EnsureConsistent: bool = True,
+                                  **wellArg) -> Schedule:
+    """MRST `convertDeckScheduleToMRST`: the deck's schedule for `model`."""
+    import warnings
+
+    from pymrst.modules.ad_core.utils.make_schedule_consistent import (
+        make_schedule_consistent,
+    )
+    from pymrst.modules.deckformat.params.wells_and_bc.process_wells import (
+        process_wells,
+    )
+    G = model.G
+    if useCpGeometry is None:
+        # MRST: `size(G.cells.faces, 2) > 1`; PyMRST keeps that column in
+        # `G.cells.tags`.
+        useCpGeometry = getattr(G.cells, "tags", None) is not None
+    cell_dims = None
+    if _get(scheduleDeck, "RUNSPEC") is not None and _get(scheduleDeck, "SCHEDULE") is not None:
+        grid = _get(scheduleDeck, "GRID")
+        if useCpGeometry and grid is not None and _get(grid, "COORD") is not None:
+            from pymrst.modules.ad_core.utils.compute_cp_geometry import (
+                compute_cp_geometry,
+            )
+            _, _, cell_dims = compute_cp_geometry(G, grid)
+            cell_dims = np.asarray(cell_dims)[np.asarray(G.cells.indexMap, dtype=np.int64)]
+        elif all(hasattr(G.cells, f) for f in ("DX", "DY", "DZ")):
+            cell_dims = np.column_stack([G.cells.DX, G.cells.DY, G.cells.DZ])
+        scheduleDeck = _get(scheduleDeck, "SCHEDULE")
+    step = _schedule_field(scheduleDeck, "step")
+    step_val = np.asarray(_get(step, "val"), dtype=float).ravel()
+    step_control = np.asarray(_get(step, "control"), dtype=np.int64).ravel() - 1
+    deck_controls = _list(_schedule_field(scheduleDeck, "control"))
+    is_compositional = any(c.__name__ == "ThreePhaseCompositionalModel"
+                           for c in type(model).__mro__)
+    if is_compositional:
+        n_hc = model.EOSModel.getNumberOfComponents()
+    phase_map = []
+    for name in model.get_saturation_var_names():
+        index = {"sw": 0, "so": 1, "sg": 2, "ss": 3}.get(name.lower())
+        if index is None:
+            index = 3
+            warnings.warn("Unknown phase, translation directly from deck "
+                          "difficult, setting zero")
+        phase_map.append(index)
+    controls = []
+    with warnings.catch_warnings():
+        for pattern in skipWarnings:
+            warnings.filterwarnings("ignore", message=f".*{pattern}.*")
+        for ctrl in deck_controls:
+            W = process_wells(G, model.rock, ctrl, outputDefaulted=True,
+                              DepthReorder=DepthReorder, cellDims=cell_dims, **wellArg)
+            if "COMPSEGS" in ctrl and "WELSEGS" in ctrl:
+                from pymrst.modules.ad_core.utils.convert_multi_segment_wells_deck import (
+                    convert_multi_segment_wells_deck,
+                )
+                W = convert_multi_segment_wells_deck(W, G, ctrl)
+            for w in W:
+                c = np.append(np.asarray(w.compi, dtype=float).ravel(), 0.0)
+                if hasattr(w, "solventFrac"):
+                    c[3] = c[2]*w.solventFrac
+                    c[2] = c[2]*(1 - w.solventFrac)
+                ci = c[phase_map]
+                w.compi = ci/ci.sum()
+                if is_compositional and getattr(w, "components", None) is None:
+                    w.components = np.ones(n_hc)/n_hc
+                if hasattr(w, "isMS") and w.isMS is None:
+                    w.isMS = False
+            for w in W:
+                if hasattr(w, "solventFrac"):
+                    del w.solventFrac
+            controls.append(Control(W=W, bc=None, src=None))
+    if np.isfinite(StepLimit):
+        step_val, step_control = step_val[:int(StepLimit)], step_control[:int(StepLimit)]
+    schedule = Schedule(step_val, step_control, controls)
+    if EnsureConsistent:
+        schedule = make_schedule_consistent(schedule, DepthReorder=DepthReorder,
+                                            setDepths=setDepths,
+                                            ReorderStrategy=ReorderStrategy, G=G)
+        if deck_controls and "WPIMULT" in deck_controls[0]:
+            if any(_list(c.get("WPIMULT")) for c in deck_controls):
+                from pymrst.utils.gridtools.grid_logical_indices import (
+                    grid_logical_indices,
+                )
+                ijk = [x + 1 for x in grid_logical_indices(G)]          # 1-based
+                wi_prev = [np.asarray(w.WI, dtype=float).copy()
+                           for w in schedule.controls[0].W]
+                wi_raw = [x.copy() for x in wi_prev]
+                for k, deck_ctrl in enumerate(deck_controls):
+                    W = schedule.controls[k].W
+                    W, wi_raw, wi_prev = _apply_wpimult(W, ijk, deck_ctrl["WPIMULT"],
+                                                        wi_raw, wi_prev)
+                    schedule.controls[k].W = W
+    return schedule
+
+
+def _schedule_field(schedule_deck, name: str):
+    """`scheduleDeck.(name)` for a deck `Schedule` object or a mapping."""
+    if isinstance(schedule_deck, Mapping):
+        return _get(schedule_deck, name)
+    return getattr(schedule_deck, name)
+
+
+def _wpimult_tables(wpimult) -> list:
+    """WPIMULT as MRST's cell array of tables (one per keyword occurrence)."""
+    tables = _list(wpimult)
+    if tables and isinstance(tables[0], (list, tuple)) and tables[0] \
+            and isinstance(tables[0][0], str):
+        return [tables]
+    return tables
+
+
+def _apply_wpimult(W, ijk, wpimult, wi_raw, wi_now):
+    """Scale the well indices of the named perforations, compounding over
+    controls the way ECLIPSE's WPIMULT does."""
+    names = [w.name for w in W]
+    for k, w in enumerate(W):
+        current = np.asarray(w.WI, dtype=float)
+        new_perf = (wi_raw[k] != current) & (current > 0)
+        wi_raw[k] = wi_raw[k].copy()
+        wi_now[k] = wi_now[k].copy()
+        wi_raw[k][new_perf] = current[new_perf]
+        wi_now[k][new_perf] = current[new_perf]
+    for table in _wpimult_tables(wpimult):
+        for name, val, I, J, K, start, stop in table:
+            matches = [k for k, n in enumerate(names) if n == name]
+            assert len(matches) == 1
+            assert val > 1e-10 and np.isfinite(val)
+            k = matches[0]
+            wc = np.asarray(W[k].cells, dtype=np.int64)
+            n = np.size(W[k].WI)
+            start = 1 if start < 1 else start
+            stop = n if stop < 1 else stop
+            rng = np.arange(1, n + 1)
+            active = (rng >= start) & (rng <= stop)
+            for index, value in zip(ijk, (I, J, K)):
+                if value > 0:
+                    active &= index[wc] == value
+            wi = wi_now[k].copy()
+            wi[active] = wi[active]*val
+            wi_now[k] = wi
+    for k, w in enumerate(W):
+        w.WI = wi_now[k]*np.asarray(w.cstatus, dtype=float)
+    return W, wi_raw, wi_now
 
 
 convertDeckScheduleToMRST = convert_deck_schedule_to_mrst
 
-__all__ = ["convert_deck_schedule_to_mrst", "convertDeckScheduleToMRST"]
+__all__ = ["convert_deck_schedule_to_mrst", "convert_deck_schedule_to_mrst_ad",
+           "convertDeckScheduleToMRST"]
+
+
+if __name__ == "__main__":
+    from types import SimpleNamespace
+
+    from pymrst.gridprocessing import cart_grid, compute_geometry
+    from pymrst.params.rock import make_rock
+
+    def _model(phases=("sw", "so", "sg")):
+        G = compute_geometry(cart_grid([3, 3, 2], [30.0, 30.0, 20.0]))
+        return SimpleNamespace(G=G, rock=make_rock(G, 1e-13, 0.2),
+                               get_saturation_var_names=lambda: list(phases))
+
+    def _deck(wpimult=()):
+        nan = float("nan")
+        control = {
+            "WELSPECS": [["P", "G", 3, 3, nan, "OIL"], ["I", "G", 1, 1, nan, "WATER"]],
+            "COMPDAT": [["P", 3, 3, 1, 2, "OPEN", 0, -1.0, 0.2, -1, 0.0, "D", "Z", -1],
+                        ["I", 1, 1, 1, 2, "OPEN", 0, -1.0, 0.2, -1, 0.0, "D", "Z", -1]],
+            "WCONPROD": [["P", "OPEN", "BHP", 0, 0, 0, 0, 0, 1e7, 0, 0]],
+            "WCONINJE": [["I", "WATER", "OPEN", "RATE", 1e-3, nan, nan, nan, 0]],
+            "WPIMULT": list(wpimult),
+        }
+        return {"step": {"val": [86400.0, 86400.0], "control": [1, 1]},
+                "control": [control]}
+
+    def test_steps_become_zero_based_and_injectors_come_first():
+        schedule = convert_deck_schedule_to_mrst(_model(), _deck())
+        assert schedule.step_control.tolist() == [0, 0]
+        assert [w.name for w in schedule.controls[0].W] == ["I", "P"]
+        print("ok test_steps_become_zero_based_and_injectors_come_first")
+
+    def test_compi_follows_the_models_phases():
+        """A two-phase (water, oil) model keeps the deck's water and oil
+        fractions, renormalised."""
+        schedule = convert_deck_schedule_to_mrst(_model(("sw", "so")), _deck())
+        inj = schedule.controls[0].W[0]
+        assert np.allclose(inj.compi, [1.0, 0.0])
+        print("ok test_compi_follows_the_models_phases")
+
+    def test_wpimult_scales_the_named_wells_index():
+        plain = convert_deck_schedule_to_mrst(_model(), _deck())
+        scaled = convert_deck_schedule_to_mrst(_model(), _deck([["P", 2.0, 0, 0, 0, 0, 0]]))
+        p0, p1 = plain.controls[0].W[1], scaled.controls[0].W[1]
+        assert np.allclose(p1.WI, 2*np.asarray(p0.WI))
+        assert np.allclose(scaled.controls[0].W[0].WI, plain.controls[0].W[0].WI)
+        print("ok test_wpimult_scales_the_named_wells_index")
+
+    test_steps_become_zero_based_and_injectors_come_first()
+    test_compi_follows_the_models_phases()
+    test_wpimult_scales_the_named_wells_index()
+    print("\nAll tests passed!")

@@ -1,4 +1,5 @@
-"""Convert a standard well into MRST's simple multisegment representation."""
+"""PyMRST's earlier multisegment conversion (0-based topology, its own option
+names). MRST's `convert2MSWell` is ported in `convert2_ms_well.py`."""
 
 from __future__ import annotations
 
@@ -145,6 +146,4 @@ def convert_to_ms_well(
     return output
 
 
-convert2MSWell = convert_to_ms_well
-
-__all__ = ["convert_to_ms_well", "convert2MSWell"]
+__all__ = ["convert_to_ms_well"]

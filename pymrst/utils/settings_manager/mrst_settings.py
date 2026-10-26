@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from contextlib import contextmanager
 from threading import RLock
+from typing import Any, Iterator
 
 from pymrst.utils.settings_manager.settings_struct import SettingsStruct
 
@@ -76,3 +78,27 @@ def mrst_settings(verb="get", name=None, value=None):
 
 
 mrstSettings = mrst_settings
+
+
+@contextmanager
+def override_setting(name: str, value: Any) -> Iterator[None]:
+    """Use `value` for setting `name` in this process only, restoring it on exit.
+
+    Not an MRST function. `mrst_settings("set", ...)` persists to the settings
+    file, so a test that set and later restored a value could leave another,
+    concurrently running process's temporary value behind in the user's file.
+    This changes the in-memory settings only.
+    """
+    global _SETTINGS
+    with _LOCK:
+        if _SETTINGS is None:
+            _SETTINGS = _load()
+        if not hasattr(_SETTINGS, name):
+            raise KeyError(f"unknown PyMRST setting {name!r}")
+        previous = getattr(_SETTINGS, name)
+        setattr(_SETTINGS, name, value)
+    try:
+        yield
+    finally:
+        with _LOCK:
+            setattr(_SETTINGS, name, previous)

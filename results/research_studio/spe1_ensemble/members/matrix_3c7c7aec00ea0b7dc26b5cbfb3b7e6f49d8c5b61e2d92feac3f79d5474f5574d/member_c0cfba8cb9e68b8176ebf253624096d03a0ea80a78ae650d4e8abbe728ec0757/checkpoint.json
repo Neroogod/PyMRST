@@ -1,0 +1,145 @@
+{
+  "completed_utc": "2026-08-03T20:42:40.542584+00:00",
+  "coordinate": {
+    "comparison_group": "time_integration",
+    "components": {
+      "time_integration": "adaptive-implicit"
+    },
+    "experiment_id": "experiment_06a02706a0f9858ca33c4ba05fe3ce2d513427564cc68ef376e388b6e3f1e643",
+    "member_id": "member_c0cfba8cb9e68b8176ebf253624096d03a0ea80a78ae650d4e8abbe728ec0757",
+    "ordinal": 2,
+    "parameters": {
+      "aim.threshold": 0.05
+    },
+    "variant_name": "aim"
+  },
+  "elapsed_seconds": 0.7401749159998872,
+  "layout": {
+    "conservation": {
+      "finite_state": {
+        "dtype": "<f8",
+        "key": "conservation__finite_state",
+        "shape": [
+          2,
+          1
+        ]
+      }
+    },
+    "convergence": {
+      "cuts": {
+        "dtype": "<i8",
+        "key": "convergence__cuts",
+        "shape": [
+          2,
+          1
+        ]
+      },
+      "implicit_fraction": {
+        "dtype": "<f8",
+        "key": "convergence__implicit_fraction",
+        "shape": [
+          2,
+          1
+        ]
+      },
+      "iterations": {
+        "dtype": "<i8",
+        "key": "convergence__iterations",
+        "shape": [
+          2,
+          1
+        ]
+      }
+    },
+    "fields": {
+      "pressure": {
+        "dtype": "<f8",
+        "key": "fields__pressure",
+        "shape": [
+          2,
+          300
+        ]
+      },
+      "rs": {
+        "dtype": "<f8",
+        "key": "fields__rs",
+        "shape": [
+          2,
+          300
+        ]
+      },
+      "sG": {
+        "dtype": "<f8",
+        "key": "fields__sG",
+        "shape": [
+          2,
+          300
+        ]
+      },
+      "sW": {
+        "dtype": "<f8",
+        "key": "fields__sW",
+        "shape": [
+          2,
+          300
+        ]
+      }
+    },
+    "regions": {
+      "field_average_pressure": {
+        "dtype": "<f8",
+        "key": "regions__field_average_pressure",
+        "shape": [
+          2,
+          1
+        ]
+      }
+    },
+    "wells": {
+      "bhp": {
+        "dtype": "<f8",
+        "key": "wells__bhp",
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "qGs": {
+        "dtype": "<f8",
+        "key": "wells__qGs",
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "qOs": {
+        "dtype": "<f8",
+        "key": "wells__qOs",
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "qWs": {
+        "dtype": "<f8",
+        "key": "wells__qWs",
+        "shape": [
+          2,
+          2
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "case": "spe1",
+    "time_integration": "adaptive-implicit"
+  },
+  "performance": {
+    "simulation_seconds": 0.7366805419987941,
+    "total_iterations": 8.0
+  },
+  "runner": "pymrst.research_studio.experiments.runners:spe1_time_integration_member",
+  "schema_version": 1,
+  "seed": 8210840322351804976,
+  "status": "completed"
+}

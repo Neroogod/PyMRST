@@ -50,7 +50,8 @@ def pvt_interp_backend(
     if not be.is_torch:
         from pymrst.modules.ad_props.utils.interp_pvt import PVTTable, pvt_interp
 
-        np_tab = PVTTable(tab.key, tab.branches, tab.sat_x, tab.sat_f)
+        np_tab = PVTTable(tab.key, tab.branches, tab.sat_x, tab.sat_f,
+                          getattr(tab, "matlab_interp1", True))
         return pvt_interp(np_tab, p, rs, sat_flag)
 
     torch = be.torch

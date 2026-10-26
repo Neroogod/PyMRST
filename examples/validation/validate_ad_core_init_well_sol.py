@@ -6,7 +6,7 @@ import numpy as np
 import scipy.io
 
 from pymrst.modules.ad_core.utils import (
-    convert_deck_schedule_to_mrst,
+    convert_deck_schedule_to_mrst_ad,
     init_well_sol_ad,
 )
 from pymrst.utils.units import BARSA
@@ -19,7 +19,7 @@ def main() -> int:
         squeeze_me=True,
     )
     model, deck = _inputs()
-    schedule = convert_deck_schedule_to_mrst(model, deck)
+    schedule = convert_deck_schedule_to_mrst_ad(model, deck)
     rows = init_well_sol_ad(
         schedule.controls[0].W, model,
         {"pressure": np.array([200.0, 190.0, 180.0, 170.0]) * BARSA},

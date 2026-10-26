@@ -129,6 +129,12 @@ def print_convergence_report(names: Sequence[str], values: Sequence[float],
         print(f"    {ok} {name:>8} = {v:.3e}  (tol {tol:.1e})")
 
 
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+getConvergenceValuesCNV = cnv_mb_values
+printConvergenceReport = print_convergence_report
+
 if __name__ == "__main__":
     def test_b_avg_is_mean_reciprocal():
         b = [np.array([2.0, 4.0]), np.full(3, 0.5)]

@@ -1,5 +1,19 @@
 """Simulation schedules (MRST ad-core `simpleSchedule` and friends).
 
+MRST's schedule functions are each ported in full in their own file -
+`simple_schedule.py`, `combine_schedules.py`, `compress_schedule.py`,
+`filter_schedule.py`, `refine_schedule.py` - and the structure in
+`schedule_types.py`. This module gathers them under the import path the port
+has always used, with two PyMRST helpers: `subset_schedule` (a schedule
+restricted to some of its steps) and `step_times`.
+
+`refine_schedule_ad`, below, is PyMRST's earlier `refine_schedule`, kept for
+its callers: it splits every step longer than `max_dt` into equal pieces,
+where MRST's `refineSchedule` merges a second time grid into the schedule's.
+The earlier notes follow.
+
+Simulation schedules (MRST ad-core `simpleSchedule` and friends).
+
 Until now a "schedule" in this port was a bare list of timesteps, and the wells
 were whatever the model was built with - fixed for the whole run. A real field
 schedule is not that. A well opens in year 3, a rate steps down in year 7, an
@@ -27,140 +41,16 @@ single control; `refine` never lengthens a step and preserves its control; and
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, List, Optional, Sequence
+from typing import List, Sequence
 
 import numpy as np
 
-
-@dataclass
-class Control:
-    """One control period's driving forces (MRST's `schedule.control(i)`)."""
-
-    W: Optional[Sequence[Any]] = None        # wells
-    bc: Any = None                           # boundary conditions
-    src: Any = None                          # sources
-
-
-@dataclass
-class Schedule:
-    """A simulation schedule: timesteps grouped into control periods.
-
-    `step_val[i]` is step `i`'s length and `step_control[i]` is the index into
-    `controls` it runs under. Mirrors MRST's `schedule.step.val` /
-    `schedule.step.control` / `schedule.control`, with 0-based indices.
-    """
-
-    step_val: np.ndarray
-    step_control: np.ndarray
-    controls: List[Control] = field(default_factory=list)
-
-    def __post_init__(self):
-        self.step_val = np.asarray(self.step_val, dtype=float).ravel()
-        self.step_control = np.asarray(self.step_control, dtype=np.int64).ravel()
-        if self.step_val.shape != self.step_control.shape:
-            raise ValueError("step_val and step_control must have equal length")
-        if self.step_control.size and (
-                self.step_control.min() < 0
-                or self.step_control.max() >= len(self.controls)):
-            raise ValueError("a step references a control that does not exist")
-
-    @property
-    def n_steps(self) -> int:
-        return self.step_val.size
-
-    @property
-    def total_time(self) -> float:
-        return float(self.step_val.sum())
-
-    def control_for(self, step: int) -> Control:
-        """The control governing step `step`."""
-        return self.controls[int(self.step_control[step])]
-
-
-def simple_schedule(dt, W=None, bc=None, src=None) -> Schedule:
-    """A schedule with a single, unchanging control (MRST `simpleSchedule`).
-
-    Every step runs under control 0, whose wells/bc/sources are the ones passed
-    here. This is the common case, and the base every richer schedule is built
-    from by adding controls and pointing steps at them.
-    """
-    dt = np.asarray(dt, dtype=float).ravel()
-    return Schedule(step_val=dt,
-                    step_control=np.zeros(dt.size, dtype=np.int64),
-                    controls=[Control(W=W, bc=bc, src=src)])
-
-
-def compress_schedule(schedule: Schedule) -> Schedule:
-    """Merge each maximal run of one control into a single step (MRST
-    `compressSchedule`): the timesteps of a control period are summed, so the
-    result has one step per control period and the same total time.
-
-    This is the coarsest schedule with the same control history - a report of
-    *what was controlled when*, not how finely it was stepped.
-    """
-    ctrl = schedule.step_control
-    val = schedule.step_val
-    new_val: List[float] = []
-    new_ctrl: List[int] = []
-    i, n = 0, ctrl.size
-    while i < n:
-        c = int(ctrl[i])
-        j = i
-        while j < n and int(ctrl[j]) == c:
-            j += 1
-        new_val.append(float(val[i:j].sum()))
-        new_ctrl.append(c)
-        i = j
-    return Schedule(step_val=np.array(new_val),
-                    step_control=np.array(new_ctrl, dtype=np.int64),
-                    controls=list(schedule.controls))
-
-
-def refine_schedule(schedule: Schedule, max_dt: float) -> Schedule:
-    """Subdivide any step longer than `max_dt` into equal pieces, keeping its
-    control (a uniform-grid `refineSchedule`).
-
-    A step of length `L > max_dt` becomes `ceil(L/max_dt)` equal steps of
-    `L/ceil(...)`, all under the original control. The total time and the
-    control history are unchanged; every resulting step is `<= max_dt`. This is
-    what you reach for when a control period is one big step and the solver
-    needs a finer grid through it.
-    """
-    if max_dt <= 0:
-        raise ValueError("max_dt must be positive")
-    new_val: List[float] = []
-    new_ctrl: List[int] = []
-    for length, c in zip(schedule.step_val, schedule.step_control):
-        n_sub = max(1, int(np.ceil(length / max_dt - 1e-12)))
-        new_val.extend([length / n_sub] * n_sub)
-        new_ctrl.extend([int(c)] * n_sub)
-    return Schedule(step_val=np.array(new_val),
-                    step_control=np.array(new_ctrl, dtype=np.int64),
-                    controls=list(schedule.controls))
-
-
-def combine_schedules(*schedules: Schedule) -> Schedule:
-    """Concatenate schedules end to end (MRST `combineSchedules`).
-
-    The steps run in order; each schedule's controls are kept and its step
-    indices shifted so they still point at their own controls in the combined
-    list. The total time is the sum of the parts.
-    """
-    if not schedules:
-        raise ValueError("nothing to combine")
-    all_controls: List[Control] = []
-    all_val: List[np.ndarray] = []
-    all_ctrl: List[np.ndarray] = []
-    offset = 0
-    for s in schedules:
-        all_val.append(s.step_val)
-        all_ctrl.append(s.step_control + offset)
-        all_controls.extend(s.controls)
-        offset += len(s.controls)
-    return Schedule(step_val=np.concatenate(all_val),
-                    step_control=np.concatenate(all_ctrl).astype(np.int64),
-                    controls=all_controls)
+from pymrst.modules.ad_core.utils.schedule_types import Control, Schedule
+from pymrst.modules.ad_core.utils.combine_schedules import combine_schedules
+from pymrst.modules.ad_core.utils.compress_schedule import compress_schedule
+from pymrst.modules.ad_core.utils.filter_schedule import filter_schedule
+from pymrst.modules.ad_core.utils.refine_schedule import refine_schedule
+from pymrst.modules.ad_core.utils.simple_schedule import simple_schedule
 
 
 def subset_schedule(schedule: Schedule, steps: Sequence[int]) -> Schedule:
@@ -184,6 +74,45 @@ def subset_schedule(schedule: Schedule, steps: Sequence[int]) -> Schedule:
 def step_times(schedule: Schedule) -> np.ndarray:
     """Cumulative time at the *end* of each step - the report times."""
     return np.cumsum(schedule.step_val)
+
+
+
+# ---------------------------------------------------------------------------
+# PyMRST's earlier version.
+
+def refine_schedule_ad(schedule: Schedule, max_dt: float) -> Schedule:
+    """Subdivide any step longer than `max_dt` into equal pieces, keeping its
+    control (a uniform-grid `refineSchedule`).
+
+    A step of length `L > max_dt` becomes `ceil(L/max_dt)` equal steps of
+    `L/ceil(...)`, all under the original control. The total time and the
+    control history are unchanged; every resulting step is `<= max_dt`. This is
+    what you reach for when a control period is one big step and the solver
+    needs a finer grid through it.
+    """
+    if max_dt <= 0:
+        raise ValueError("max_dt must be positive")
+    new_val: List[float] = []
+    new_ctrl: List[int] = []
+    for length, c in zip(schedule.step_val, schedule.step_control):
+        n_sub = max(1, int(np.ceil(length / max_dt - 1e-12)))
+        new_val.extend([length / n_sub] * n_sub)
+        new_ctrl.extend([int(c)] * n_sub)
+    return Schedule(step_val=np.array(new_val),
+                    step_control=np.array(new_ctrl, dtype=np.int64),
+                    controls=list(schedule.controls))
+
+
+combineSchedules = combine_schedules
+compressSchedule = compress_schedule
+filterSchedule = filter_schedule
+refineSchedule = refine_schedule
+simpleSchedule = simple_schedule
+
+__all__ = ["Control", "Schedule", "combineSchedules", "combine_schedules", "compressSchedule",
+           "compress_schedule", "filterSchedule", "filter_schedule", "refineSchedule",
+           "refine_schedule", "refine_schedule_ad", "simpleSchedule", "simple_schedule",
+           "step_times", "subset_schedule"]
 
 
 if __name__ == "__main__":
@@ -227,7 +156,7 @@ if __name__ == "__main__":
 
     def test_refine_never_lengthens_and_keeps_control():
         s = _two_control_schedule()
-        r = refine_schedule(s, 5.0 * DAY)
+        r = refine_schedule_ad(s, 5.0 * DAY)
         assert np.all(r.step_val <= 5.0 * DAY + 1e-9)
         assert np.isclose(r.total_time, s.total_time)
         # every refined step inherits a real control from its parent
@@ -241,7 +170,7 @@ if __name__ == "__main__":
         control history you started from - same blocks, same durations."""
         s = _two_control_schedule()
         base = compress_schedule(s)
-        back = compress_schedule(refine_schedule(s, 3.0 * DAY))
+        back = compress_schedule(refine_schedule_ad(s, 3.0 * DAY))
         assert list(back.step_control) == list(base.step_control)
         assert np.allclose(back.step_val, base.step_val)
         assert np.isclose(back.total_time, s.total_time)
@@ -267,6 +196,26 @@ if __name__ == "__main__":
         assert sub.controls[0].W == ["shut"]
         print("ok test_subset_drops_dead_controls_and_renumbers")
 
+    def test_filter_drops_dead_controls_but_keeps_every_step():
+        """MRST's `filterSchedule`: unlike `subset_schedule`, no step is lost.
+
+        The two-control schedule references both, so nothing is dropped; a
+        schedule carrying an unreferenced third control loses exactly that one
+        and keeps its step count.
+        """
+        s = _two_control_schedule()
+        same = filter_schedule(s)
+        assert same.n_steps == s.n_steps
+        assert len(same.controls) == len(s.controls)
+
+        padded = Schedule(step_val=s.step_val, step_control=s.step_control,
+                          controls=list(s.controls) + [Control(W=["unused"])])
+        trimmed = filter_schedule(padded)
+        assert trimmed.n_steps == padded.n_steps, "a step was lost"
+        assert len(trimmed.controls) == len(s.controls), "dead control kept"
+        assert all(c.W != ["unused"] for c in trimmed.controls)
+        print("ok test_filter_drops_dead_controls_but_keeps_every_step")
+
     def test_bad_reference_is_rejected():
         try:
             Schedule(step_val=[1.0], step_control=[3], controls=[Control()])
@@ -282,5 +231,6 @@ if __name__ == "__main__":
     test_compress_after_refine_recovers_the_control_periods()
     test_combine_shifts_control_indices()
     test_subset_drops_dead_controls_and_renumbers()
+    test_filter_drops_dead_controls_but_keeps_every_step()
     test_bad_reference_is_rejected()
     print("\nAll tests passed!")

@@ -83,6 +83,11 @@ def update_switched_controls(wells: Sequence[Any], bhp: np.ndarray,
     return all_ok, switches
 
 
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+updateSwitchedControls = update_switched_controls
+
 __all__ = ["update_switched_controls", "violated_limit"]
 
 

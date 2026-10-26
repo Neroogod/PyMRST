@@ -24,7 +24,7 @@ import numpy as np
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
 )
 from pymrst.modules.ad_core.models import CompositeModel
 from pymrst.modules.ad_core.statefunctions.composite import SourceCouplingTerm
@@ -45,7 +45,7 @@ def _reservoir(seed_sw=0.4):
                  compi=np.array([1.0, 0.0]), sign=1)
     w = add_well(w, g, rock, np.array([g.cells.num - 1]), well_type="bhp",
                  val=150 * BARSA, compi=np.array([0.0, 1.0]), sign=-1)
-    model = GenericBlackOilModel(g, rock, fluid, w)
+    model = GenericBlackOilModelAD(g, rock, fluid, w)
     st0 = State(pressure=np.full(g.cells.num, 200 * BARSA),
                 sW=np.full(g.cells.num, seed_sw),
                 qWs=np.array([2e-3]), qOs=np.array([-2e-3]),

@@ -5,7 +5,7 @@ import numpy as np
 from scipy.io import loadmat
 
 from pymrst.modules.ad_blackoil.examples.spe10 import (
-    run_tenth_csp_model_i, setup_tenth_csp_model_i,
+    run_tenth_csp_model_i_ad, setup_tenth_csp_model_i_ad,
 )
 
 HERE = Path(__file__).resolve().parent
@@ -13,7 +13,7 @@ HERE = Path(__file__).resolve().parent
 
 def validate():
     ref = loadmat(HERE/"ref_ad_blackoil_spe10_model1.mat", squeeze_me=True)
-    dataset, model, schedule, state0 = setup_tenth_csp_model_i()
+    dataset, model, schedule, state0 = setup_tenth_csp_model_i_ad()
     assert model.G.cells.num == 2000
     assert schedule.n_steps == 131
     np.testing.assert_allclose(model.G.cells.centroids, ref["centroids"], atol=3e-13)
@@ -25,7 +25,7 @@ def validate():
     np.testing.assert_allclose(model.wells[0].WI, ref["WI_I"], rtol=4e-15)
     np.testing.assert_allclose(model.wells[1].WI, ref["WI_P"], rtol=4e-15)
 
-    result = run_tenth_csp_model_i(1, verbose=False)
+    result = run_tenth_csp_model_i_ad(1, verbose=False)
     state = result.states[0]
     np.testing.assert_allclose(state["pressure"], ref["pressure1"], rtol=2.3e-3)
     np.testing.assert_allclose(state["sW"], ref["sO1"], rtol=0, atol=1.7e-2)

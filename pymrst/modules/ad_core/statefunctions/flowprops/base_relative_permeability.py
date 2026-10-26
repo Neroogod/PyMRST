@@ -79,6 +79,64 @@ class BaseRelativePermeability(StateFunction, SaturationProperty):
             )
         return fn(s)
 
+    def rel_perm_unified(self, model: Any, state: Any):
+        """Every phase's relative permeability, one call per phase.
+
+        "Unified" is MRST's name for the phase-system-agnostic path: rather
+        than a two-phase branch and a three-phase branch that interpolate the
+        oil curve differently, each phase is asked for its own kr from its own
+        saturation. Models whose curves already carry that dependence use this
+        and skip the branching entirely.
+        """
+        names = list(model.get_phase_names())
+        saturations = [model.get_prop(state, f"s{name}") for name in names]
+        return [self.evaluate_phase_relative_permeability(model, name, s)
+                for name, s in zip(names, saturations)]
+
+    relPermUnified = rel_perm_unified
+
+    def apply_immobile_chop(self, model: Any, state: Any, state0: Any):
+        """Push saturations off the critical value they are crossing.
+
+        A phase at exactly its critical saturation has zero relative
+        permeability *and* zero derivative, so a Newton step cannot move it:
+        the cell is stuck at the boundary between mobile and immobile whatever
+        the driving force. MRST detects a cell crossing that boundary in
+        either direction and nudges it a little way past, so the next
+        iteration has a gradient to work with.
+
+        Returns `(state, chopped)` with `chopped` the mask of cells moved.
+
+        Two notes on fidelity. MRST's `size(sm, 1) > 1` branch references an
+        undefined `toIoImmobile` - a typo that would error in MATLAB, so that
+        branch cannot ever have run; the intended `toImmobile` is used here.
+        And the chop is off unless `immobile_chop` is set, which is MRST's
+        default and is kept: it perturbs saturations, so it must be asked for.
+        """
+        chopped = False
+        if not getattr(self, "immobile_chop", False):
+            return state, chopped
+
+        tol = 1e-8
+        s_min = np.atleast_2d(np.asarray(
+            self.get_critical_phase_saturations(model, state), dtype=float))
+        s = np.array(np.asarray(value(state["s"]), dtype=float), copy=True)
+        s0 = np.asarray(value(state0["s"]), dtype=float)
+
+        for ph in range(s.shape[1]):
+            sm = s_min[:, ph] if s_min.shape[1] > ph else s_min[:, 0]
+            sm = np.broadcast_to(np.atleast_1d(sm), (s.shape[0],))
+            to_mobile = (s0[:, ph] < sm + tol) & (s[:, ph] > sm - tol)
+            to_immobile = (s0[:, ph] > sm - tol) & (s[:, ph] < sm + tol)
+            s[to_immobile, ph] = sm[to_immobile] - 2*tol
+            s[to_mobile, ph] = sm[to_mobile] + 2*tol
+            chopped = chopped | to_immobile | to_mobile
+
+        state["s"] = s
+        return state, chopped
+
+    applyImmobileChop = apply_immobile_chop
+
     def scale_saturation(
         self, model: Any, saturation: Any, phase: str,
         cells: Any = None, type: str = "drainage",
@@ -165,7 +223,7 @@ if __name__ == "__main__":
         cart_grid, compute_geometry, tensor_grid,
     )
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-        GenericBlackOilModel, initial_state_from_deck,
+        GenericBlackOilModelAD, initial_state_from_deck,
     )
     from pymrst.modules.ad_core.statefunctions.flow_property_functions import (
         RelativePermeability as LegacyRelPerm,
@@ -190,7 +248,7 @@ if __name__ == "__main__":
                      compi=np.array([1.0, 0.0]), sign=1)
         w = add_well(w, g, rock, np.array([g.cells.num - 1]), well_type="bhp",
                      val=150 * BARSA, compi=np.array([0.0, 1.0]), sign=-1)
-        model = GenericBlackOilModel(g, rock, fluid, w)
+        model = GenericBlackOilModelAD(g, rock, fluid, w)
         st = model.init_state_ad(State(
             pressure=np.linspace(210, 190, g.cells.num) * BARSA,
             sW=np.full(g.cells.num, 0.45), qWs=np.array([2e-3]),
@@ -232,7 +290,7 @@ if __name__ == "__main__":
                              compi=wd["compi"], sign=wd["sign"], name=name,
                              ref_depth=wd["ref_depth"],
                              gravity=np.array([0.0, 0.0, NORM_GRAVITY]))
-        model = GenericBlackOilModel(g, rock, fluid, wells, disgas=True,
+        model = GenericBlackOilModelAD(g, rock, fluid, wells, disgas=True,
                                      gravity=NORM_GRAVITY)
         st0 = initial_state_from_deck(model, deck)
         st = dict(st0)

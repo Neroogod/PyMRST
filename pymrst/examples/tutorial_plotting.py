@@ -25,7 +25,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
-from pymrst.modules.incomp import incomp_tpfa
+from pymrst.modules.incomp import incomp_tpfa_ad as incomp_tpfa
 from pymrst.modules.incomp.fluid.incompressible.init_simple_fluid import (
     init_simple_fluid,
 )

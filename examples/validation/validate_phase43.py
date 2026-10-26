@@ -39,7 +39,7 @@ import scipy.io
 sys.path.insert(0, str(Path(__file__).parent))
 
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
     initial_state_from_deck,
 )
 from pymrst.modules.ad_core.solvers.linear_solvers import (
@@ -62,7 +62,7 @@ HERE = Path(__file__).parent
 def run_ow(linear_solver) -> Tuple[Dict[str, np.ndarray], int]:
     """Phase 5a's oil-water schedule, through whichever linear solver."""
     g, rock, fluid, wells = build_ow()
-    model = GenericBlackOilModel(g, rock, fluid, wells)
+    model = GenericBlackOilModelAD(g, rock, fluid, wells)
     solver = NonLinearSolver(linear_solver=linear_solver)
     st = ow_initial(g, wells)
 
@@ -83,7 +83,7 @@ def run_ow(linear_solver) -> Tuple[Dict[str, np.ndarray], int]:
 def run_spe1(order, linear_solver) -> Tuple[Dict[str, np.ndarray], int]:
     """SPE 1's first 30 report steps, through whichever linear solver."""
     deck, g, rock, fluid, wells = build_spe1(order)
-    model = GenericBlackOilModel(g, rock, fluid, wells, disgas=True,
+    model = GenericBlackOilModelAD(g, rock, fluid, wells, disgas=True,
                                  gravity=NORM_GRAVITY, tol_well=1e-8)
     solver = NonLinearSolver(linear_solver=linear_solver)
     st = initial_state_from_deck(model, deck)
@@ -185,7 +185,7 @@ def main() -> int:
     # back a *direct* solve for them. CPR is genuinely the slower choice at this
     # size, and saying otherwise would be the easy lie.
     deck, g, rock, fluid, wells = build_spe1(order)
-    spe1 = GenericBlackOilModel(g, rock, fluid, wells, disgas=True)
+    spe1 = GenericBlackOilModelAD(g, rock, fluid, wells, disgas=True)
     n = spe1.G.cells.num * spe1.n_phases
     chosen = select_linear_solver(spe1)
     ok = isinstance(chosen, DirectSolver)

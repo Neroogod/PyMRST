@@ -21,10 +21,10 @@ from scipy.io import loadmat
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
 )
-from pymrst.modules.ad_core.upscale.upscale_model_tpfa import upscale_model_tpfa
-from pymrst.modules.ad_core.upscale.upscale_state import upscale_state
+from pymrst.modules.ad_core.upscale.upscale_model_tpfa import upscale_model_tpfa_ad as upscale_model_tpfa
+from pymrst.modules.ad_core.upscale.upscale_state import upscale_state_ad as upscale_state
 from pymrst.modules.ad_props import init_simple_adi_fluid
 from pymrst.modules.upscaling.coarsegrid.partition_cart_grid import (
     partition_cart_grid,
@@ -56,7 +56,7 @@ def main() -> int:
     fluid = init_simple_adi_fluid(
         mu=np.array([1.0, 3.0]) * CENTI * POISE, rho=[1000.0, 800.0],
         n=[2, 2], c=[0.0, 0.0], p_ref=200 * BARSA)
-    model = GenericBlackOilModel(g, rock, fluid, [])
+    model = GenericBlackOilModelAD(g, rock, fluid, [])
 
     failed = 0
     part = partition_cart_grid([6, 6, 1], [3, 3, 1])

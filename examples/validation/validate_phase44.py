@@ -35,8 +35,8 @@ import scipy.io
 
 from pymrst.modules.ad_core.simulators.nonlinear_solver import StepReport
 from pymrst.modules.ad_core.timesteps import (
-    IterationCountTimeStepSelector,
-    StateChangeTimeStepSelector,
+    IterationCountTimeStepSelectorAD as IterationCountTimeStepSelector,
+    StateChangeTimeStepSelectorAD as StateChangeTimeStepSelector,
     rampup_timesteps,
 )
 from pymrst.modules.ad_core.statefunctions.state_function import State

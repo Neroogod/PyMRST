@@ -1,0 +1,9 @@
+quantity,passed,maximum_absolute_error,worst_time,worst_entity
+fields.pressure,True,0.0,432000.0,fields.pressure[0]
+fields.sW,True,0.0,432000.0,fields.sW[0]
+fields.sG,True,0.0,432000.0,fields.sG[0]
+fields.rs,True,0.0,432000.0,fields.rs[0]
+wells.bhp,True,0.0,432000.0,wells.bhp[0]
+wells.qWs,True,0.0,432000.0,wells.qWs[0]
+wells.qOs,True,0.0,432000.0,wells.qOs[0]
+wells.qGs,True,0.0,432000.0,wells.qGs[0]

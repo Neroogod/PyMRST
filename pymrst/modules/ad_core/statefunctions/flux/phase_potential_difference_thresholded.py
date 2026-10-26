@@ -22,6 +22,8 @@ that declares it but has no `THPRES` is undisturbed.
 
 from __future__ import annotations
 
+import warnings
+
 from typing import Any, Optional
 
 import numpy as np
@@ -49,6 +51,95 @@ class PhasePotentialDifferenceThresholded(PhasePotentialDifference):
             pressure_threshold = np.zeros((n_if, 2))
         self.pressure_threshold = (None if pressure_threshold is None
                                    else np.asarray(pressure_threshold, float))
+
+    def set_threshold_pressures_from_state(self, model: Any, state: Any
+                                           ) -> "PhasePotentialDifferenceThresholded":
+        """Derive thresholds that hold the *current* state in equilibrium.
+
+        Used when a deck declares equilibration regions but no THPRES values:
+        the thresholds are whatever it takes for the initial state not to
+        flow. The construction is to evaluate the unthresholded potential
+        difference and take, per face, the largest magnitude that must be
+        overcome before flow can start in each direction.
+
+        Faces whose upstream or downstream saturation is zero are excluded
+        from their direction. A phase that is not present cannot flow, so its
+        potential says nothing about what would hold it back, and including it
+        gives a threshold set by a phase that is not there.
+        """
+        # `get_prop` returns one array per phase as a plain Python list, not a
+        # stacked array - `value()` has to be mapped over it, not called on
+        # the list itself (that hits `np.asarray` on a list of ADI objects,
+        # which errors trying to broadcast them). `evaluate_on_domain` above
+        # indexes the same property the same way (`pot[i]`), which is the
+        # working pattern this follows.
+        raw_potential = model.get_prop(state, "PhasePotentialDifference")
+        phases = (raw_potential if isinstance(raw_potential, (list, tuple))
+                  else [raw_potential])
+        potential = np.column_stack([value(p) for p in phases]).astype(float)
+        # `state["s"]` is not a field this port populates outside the Newton
+        # update loop - only `sW`/`sG` are stored, and the closed-form phase
+        # (`1 - sW - sG`) is derived, not stored. `Saturations` is the state
+        # function that already does that derivation correctly for 1/2/3
+        # phases (including the disgas/vapoil three-phase case with neither
+        # saturation summing to 1 on its own); reusing it here is why this is
+        # right instead of re-deriving the same closure a second, divergeable
+        # way.
+        from pymrst.modules.ad_core.statefunctions.flow_property_functions import (
+            Saturations,
+        )
+        s_list = Saturations(model).evaluate_on_domain(model, state)
+        saturation = np.column_stack([value(s) for s in s_list]).astype(float)
+
+        n_faces = potential.shape[0]
+        # MRST's `operators.faceUpstr` (its own `faceUpstr.m`, closed over the
+        # operators' `N`/`sz`). This port's `Operators.upw` is the same
+        # two-argument upstream selection - `x[c1]` where `flag` else `x[c2]`
+        # - under a different name; `faceUpstr` itself was never bound on
+        # `Operators` at all, so this call raised `AttributeError` on any
+        # model that actually reached it.
+        upstream = model.operators.upw(np.ones(n_faces, dtype=bool),
+                                       saturation)
+        downstream = model.operators.upw(np.zeros(n_faces, dtype=bool),
+                                         saturation)
+
+        positive = np.where(np.asarray(downstream) == 0, np.nan, potential)
+        negative = np.where(np.asarray(upstream) == 0, np.nan, potential)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            pos_flow = np.nanmin(negative, axis=1)
+            neg_flow = np.nanmax(positive, axis=1)
+
+        # MRST's `setThresholdPressuresFromState`, translated literally rather
+        # than re-derived: `pt(:,1) = posflow; pt(:,2) = negflow`, no
+        # negation. A first version of this swapped the two columns *and*
+        # negated one of them - it matched the docstring's prose ("largest
+        # magnitude that must be overcome") but not MRST's actual formula,
+        # and reapplying the derived threshold to the state it came from left
+        # a residual of exactly the pressure drop (-4e6 Pa on the test case)
+        # instead of the ~0 the docstring promises. That could only be found
+        # by reading MRST's source, because this method had never been
+        # called - four separate defects (an undefined attribute, `value()`
+        # on a list, a state key this port never populates, and this sign/
+        # column swap) had accumulated with nothing to catch any of them.
+        #
+        # MRST also only fills in entries that are still unset
+        # (`isnan(pt(:,i))`), preserving any threshold already supplied (e.g.
+        # from `from_deck`/THPRES) rather than clobbering it. This port's
+        # `__init__` uses 0.0 rather than NaN as "unset" - matched here rather
+        # than switching the whole class to a NaN sentinel, which would touch
+        # `evaluate_on_domain`'s arithmetic on `self.pressure_threshold`.
+        existing = self.pressure_threshold
+        threshold = existing.copy()
+        replace_pos = (existing[:, 0] == 0.0) & np.isfinite(pos_flow)
+        replace_neg = (existing[:, 1] == 0.0) & np.isfinite(neg_flow)
+        threshold[replace_pos, 0] = pos_flow[replace_pos]
+        threshold[replace_neg, 1] = neg_flow[replace_neg]
+        self.pressure_threshold = threshold
+        return self
+
+    setThresholdPressuresFromState = set_threshold_pressures_from_state
 
     @classmethod
     def from_deck(cls, model: Any, deck: Any
@@ -122,7 +213,7 @@ __all__ = ["PhasePotentialDifferenceThresholded"]
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-        GenericBlackOilModel,
+        GenericBlackOilModelAD,
     )
     from pymrst.modules.ad_core.statefunctions.state_function import State
     from pymrst.modules.ad_props import init_simple_adi_fluid
@@ -139,7 +230,7 @@ if __name__ == "__main__":
                      compi=np.array([1.0, 0.0]), sign=1)
         w = add_well(w, g, rock, np.array([g.cells.num - 1]), well_type="bhp",
                      val=150 * BARSA, compi=np.array([0.0, 1.0]), sign=-1)
-        model = GenericBlackOilModel(g, rock, fluid, w, gravity=gravity)
+        model = GenericBlackOilModelAD(g, rock, fluid, w, gravity=gravity)
         # a monotone pressure ramp so every interior face has a clear drop
         p = np.linspace(260, 160, g.cells.num) * BARSA
         st = State(pressure=p, sW=np.full(g.cells.num, 0.5),
@@ -224,8 +315,37 @@ if __name__ == "__main__":
             assert np.isclose(out[f], expect), (f, dpv[f], out[f], expect)
         print("ok test_directional_threshold_uses_correct_column")
 
+    def test_thresholds_from_state_hold_the_current_state_in_equilibrium():
+        """`set_threshold_pressures_from_state` - not exercised by any test
+        above. It called `model.operators.faceUpstr`, an attribute `Operators`
+        never had; on a real model this raised `AttributeError`
+        unconditionally, and every test above passed anyway because none of
+        them reach this method. Fixed to call `operators.upw`, this port's
+        actual name for the same upstream-selection helper.
+
+        The physics check, not just "doesn't crash": per the docstring, the
+        derived thresholds must be exactly large enough to hold the state used
+        to derive them in equilibrium - so re-evaluating the potential
+        difference on that SAME state through the resulting thresholds must
+        come back at (or under) zero everywhere.
+        """
+        model, st = _build_ow(gravity=9.80665)
+        pot = PhasePotentialDifferenceThresholded(model)
+        pot.set_threshold_pressures_from_state(model, st)
+        model.FlowDiscretization.set_state_function(
+            "PhasePotentialDifference", pot)
+        st.clear_cache()
+        out = model.get_props(st, "PhasePotentialDifference")
+        for ph in out:
+            vals = value(ph)
+            assert np.all(np.abs(vals) < 1e-6), (
+                "a threshold derived FROM this state must hold this state "
+                f"still: {vals}")
+        print("ok test_thresholds_from_state_hold_the_current_state_in_equilibrium")
+
     test_zero_threshold_matches_parent()
     test_threshold_blocks_subthreshold_flow()
     test_above_threshold_reduces_by_delta()
     test_directional_threshold_uses_correct_column()
+    test_thresholds_from_state_hold_the_current_state_in_equilibrium()
     print("\nAll tests passed!")

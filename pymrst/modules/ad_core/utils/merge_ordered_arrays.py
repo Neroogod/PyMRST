@@ -87,6 +87,11 @@ def merge_ordered_arrays(old, new) -> np.ndarray:
     return ind
 
 
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+mergeOrderedArrays = merge_ordered_arrays
+
 if __name__ == "__main__":
     def test_identical_arrays_pass_through():
         a = np.array([1, 2, 3, 4])

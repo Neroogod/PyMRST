@@ -39,11 +39,31 @@ class ShrinkageFactors(StateFunction):
         else:
             self.depends_on("pressure", STATE)
 
+    def evaluate_phase_shrinkage_factor(self, model: Any, state: Any,
+                                        name: str, p: Any):
+        """One phase's shrinkage factor at its own pressure.
+
+        MRST's extension seam: `evaluate_on_domain` loops the phases and a
+        subclass overrides this for one phase instead of reimplementing the
+        loop. MRST reaches the curve as `fluid.b<name>(p)`; PyMRST's fluids
+        expose one vectorised `fluid.b(p)` returning every phase, so this
+        indexes that. MRST's spelling is tried first.
+        """
+        index = model.get_phase_index(name)
+        curve = getattr(getattr(model, "raw_fluid", None) or model.fluid,
+                        f"b{name}", None)
+        if curve is not None:
+            return curve(p)
+        return model.fluid.b(p)[index]
+
+    evaluatePhaseShrinkageFactor = evaluate_phase_shrinkage_factor
+
     def evaluate_on_domain(self, model: Any, state: Any):
         p_phase = phase_pressures(self, model, state)
-        if not self.use_phase_pressures:
-            return list(model.fluid.b(p_phase[0]))
-        return [model.fluid.b(p_phase[i])[i] for i in range(model.n_phases)]
+        names = model.get_phase_names()
+        return [self.evaluate_phase_shrinkage_factor(model, state, names[i],
+                                                     p_phase[i])
+                for i in range(model.n_phases)]
 
 
 class BlackOilShrinkageFactors(ShrinkageFactors):
@@ -58,13 +78,21 @@ class BlackOilShrinkageFactors(ShrinkageFactors):
         if self.vapoil:
             self.depends_on(["rv", "status"], STATE)
 
-    def evaluate_on_domain(self, model: Any, state: Any):
-        p_phase = phase_pressures(self, model, state)
+    def evaluate_phase_shrinkage_factor(self, model: Any, state: Any,
+                                        name: str, p: Any):
+        """Live-oil and wet-gas branches; the base class otherwise.
+
+        MRST branches on the phase name here - oil with dissolved gas takes
+        `rs`, gas with vaporised oil takes `rv`, with a saturated flag saying
+        which side of the bubble point each cell is on. PyMRST's fluids take
+        all four and branch internally, so passing them through is the same
+        computation with the decision made one level down.
+        """
+        index = model.get_phase_index(name)
         _, rs, sat, rv, sat_g = pvt_args(model, state)
-        if not self.use_phase_pressures:
-            return list(model.fluid.b(p_phase[0], rs, sat, rv, sat_g))
-        return [model.fluid.b(p_phase[i], rs, sat, rv, sat_g)[i]
-                for i in range(model.n_phases)]
+        return model.fluid.b(p, rs, sat, rv, sat_g)[index]
+
+    evaluatePhaseShrinkageFactor = evaluate_phase_shrinkage_factor
 
 
 __all__ = ["BlackOilShrinkageFactors", "ShrinkageFactors"]
@@ -75,7 +103,7 @@ if __name__ == "__main__":
 
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-        GenericBlackOilModel,
+        GenericBlackOilModelAD,
     )
     from pymrst.modules.ad_core.statefunctions.pvt_property_functions import (
         ShrinkageFactors as LegacyShrinkageFactors,
@@ -96,7 +124,7 @@ if __name__ == "__main__":
                      compi=np.array([1.0, 0.0]), sign=1)
         w = add_well(w, g, rock, np.array([g.cells.num - 1]), well_type="bhp",
                      val=150 * BARSA, compi=np.array([0.0, 1.0]), sign=-1)
-        model = GenericBlackOilModel(g, rock, fluid, w)
+        model = GenericBlackOilModelAD(g, rock, fluid, w)
         st = model.init_state_ad(State(
             pressure=np.linspace(210, 190, g.cells.num) * BARSA,
             sW=np.full(g.cells.num, 0.45), qWs=np.array([2e-3]),

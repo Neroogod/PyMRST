@@ -29,7 +29,7 @@ import scipy.io
 
 from pymrst.gridprocessing import compute_geometry, tensor_grid
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
     initial_state_from_deck,
 )
 from pymrst.modules.ad_core.utils.convergence import (
@@ -58,7 +58,7 @@ def build():
                          val=wd["val"], radius=wd["radius"], compi=wd["compi"],
                          sign=wd["sign"], name=name, ref_depth=wd["ref_depth"],
                          gravity=np.array([0.0, 0.0, NORM_GRAVITY]))
-    model = GenericBlackOilModel(g, rock, fluid, wells, disgas=True,
+    model = GenericBlackOilModelAD(g, rock, fluid, wells, disgas=True,
                                  gravity=NORM_GRAVITY, tol_well=1e-8)
     st = initial_state_from_deck(model, deck)
     return model, st, deck

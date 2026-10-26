@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import numpy as np
 import scipy.io
 
-from pymrst.modules.ad_core.utils import convert_to_ms_well
+from pymrst.modules.ad_core.utils.convert2_ms_well import convert2_ms_well
 from pymrst.params.wells_and_bc import Well
 
 
@@ -33,15 +33,15 @@ def main() -> int:
     grid = SimpleNamespace(cells=SimpleNamespace(centroids=np.array([
         [0.0, 0, 100], [3.0, 0, 104], [3.0, 4, 110]
     ])))
-    default = convert_to_ms_well(_well(), grid=grid)
-    grouped = convert_to_ms_well(
+    default = convert2_ms_well(_well(), G=grid)
+    grouped = convert2_ms_well(
         _well(),
         cell2node=np.array([0, 0, 1]),
-        topology=np.array([[0, 1]]),
-        segment_length=[12.0],
-        segment_diameter=[0.4],
-        conn_dz=[1, 2, 3],
-        volume=[7, 8],
+        topo=np.array([[0, 1]]),
+        segLength=[12.0],
+        segDiam=[0.4],
+        connDZ=[1, 2, 3],
+        vol=[7, 8],
     )
     checks = {
         "default cell2node": (

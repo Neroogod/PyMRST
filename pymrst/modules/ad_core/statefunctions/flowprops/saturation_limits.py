@@ -4,7 +4,7 @@ Ports MRST's `RsMax.m` and `RvMax.m`: the maximum dissolved gas-oil ratio and
 maximum vaporised oil-gas ratio a cell can hold at its pressure - the
 bubble-point / dew-point envelopes. A cell is *saturated* when its ``rs``
 (resp. ``rv``) sits on this curve, and the hydrocarbon-status switch that
-`GenericBlackOilModel` resolves is exactly the comparison of ``rs`` to
+`GenericBlackOilModelAD` resolves is exactly the comparison of ``rs`` to
 ``RsMax``.
 
 ``RsMax`` is a function of cell pressure; ``RvMax`` of the gas-phase pressure
@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-        GenericBlackOilModel,
+        GenericBlackOilModelAD,
     )
     from pymrst.modules.ad_core.statefunctions.state_function import State
     from pymrst.modules.ad_props import init_simple_adi_fluid
@@ -74,7 +74,7 @@ if __name__ == "__main__":
         model_fluid = fluid
         w = add_well(None, g, rock, np.array([0]), well_type="rate", val=2e-3,
                      compi=np.array([1.0, 0.0]), sign=1)
-        model = GenericBlackOilModel(g, rock, fluid, w)
+        model = GenericBlackOilModelAD(g, rock, fluid, w)
         model.fluid.rs_sat = lambda p: fluid_rs * value(p)
         st = model.init_state_ad(State(
             pressure=np.linspace(210, 190, g.cells.num) * BARSA,

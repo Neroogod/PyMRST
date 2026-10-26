@@ -1,10 +1,10 @@
-"""Tests for MRST ``getInitializationRegionsDeck`` region splitting."""
+"""Tests for PyMRST's earlier ``get_initialization_regions_deck_ad`` region splitting."""
 
 from types import SimpleNamespace
 
 import numpy as np
 
-from pymrst.modules.ad_core.initialization import getInitializationRegionsDeck
+from pymrst.modules.ad_core.initialization import get_initialization_regions_deck_ad
 
 
 def test_eql_sat_pvt_combinations_are_split_and_mapped():
@@ -31,7 +31,7 @@ def test_eql_sat_pvt_combinations_are_split_and_mapped():
             "PVTNUM": [1, 2, 1, 1, 1, 2],
         },
     }
-    regions = getInitializationRegionsDeck(model, deck)
+    regions = get_initialization_regions_deck_ad(model, deck)
     assert len(regions) == 5
     assert [r.eqlnum for r in regions] == [1, 1, 1, 2, 2]
     assert {(r.satnum, r.pvtnum) for r in regions[:3]} == {

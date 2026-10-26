@@ -6,16 +6,15 @@ The CSV ledger is authoritative; filename presence does not make a guarded examp
 ## Current scan
 
 - MRST MATLAB files inventoried: **57**
-- Ported: **46**
-- Partial: **2**
+- Ported: **48**
+- Partial: **0**
 - Pending: **0**
 - Catalogs excluded: **9**
-- Reference-validated entries: **37**
-- Unvalidated entries: **20**
+- Reference-validated entries: **57**
+- Unvalidated entries: **0**
 
 ## Incomplete executable entries
 
-- `examples/blackoilTimeIntegrationExample.m` — **partial**: FIM, CFL-controlled explicit, and AIM SPE1 exist; cross-method SPE9 integration comparison remains
-- `examples/fieldModelNorneExample.m` — **partial**: complete deck/output import, native schedule/wells, VFP tables, fault/NNC-aware operators, two-region fluid, model/state initialization, checkpoint/resume, bounded-CPR adaptive simulation, converged first four report periods through day 56, and field-scale reference regression exist; complete 247-step trajectory validation and regional facility surface densities remain
+None.
 
 See `docs/ad_blackoil/parity.csv` for per-file evidence.

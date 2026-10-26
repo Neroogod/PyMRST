@@ -1,10 +1,18 @@
-"""Port of MRST ``ad-blackoil/examples/spe1/blackoilTutorialSPE1.m``.
+"""MRST ``ad-blackoil/examples/spe1/blackoilTutorialSPE1.m``.
 
-This file owns the PyMRST SPE1 tutorial implementation. It does the same
-simulation setup as the MRST tutorial in Python: read the SPE1 deck, build the
-grid/rock/fluid objects, select a dissolved-gas black-oil model, convert the
-deck wells into PyMRST well objects, run the schedule, and collect the well and
-reservoir histories that MRST plots at the end of the tutorial.
+The Odeh benchmark (SPE1): gas injected into a 10x10x3 undersaturated
+reservoir, producer and injector in opposite corners. `blackoil_tutorial_spe1`
+is the tutorial, section by section, on the AD-OO stack:
+- `setupSPE1` and `selectModelFromDeck` build the case;
+- `convertDeckScheduleToMRST` builds the schedule;
+- `simulateScheduleAD` runs it with a line-searching `NonLinearSolver`;
+- the solution is plotted (`plotWellSols`, `plotToolbar`) and compared
+  with Eclipse 100 (`SPE1_smry.mat`): producer gas/oil ratio and both
+  wells' bottom-hole pressures.
+
+The rest of this file is PyMRST's earlier SPE1 tutorial on the legacy
+models (`setup_spe1_tutorial`, `run_blackoil_tutorial_spe1`, ...), kept for
+the code that imports it.
 """
 
 from __future__ import annotations
@@ -19,7 +27,7 @@ import numpy as np
 
 from pymrst.gridprocessing import compute_geometry, tensor_grid
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
     initial_state_from_deck,
 )
 from pymrst.modules.ad_blackoil.backend_blackoil_fluid import (
@@ -82,7 +90,7 @@ def setup_spe1_tutorial(
             gravity=np.array([0.0, 0.0, NORM_GRAVITY]),
         )
 
-    model = GenericBlackOilModel(
+    model = GenericBlackOilModelAD(
         grid,
         rock,
         fluid,
@@ -127,7 +135,7 @@ def _collect_backend_history(states: Sequence[BackendBOState]) -> dict[str, np.n
     return {key: np.vstack(values) for key, values in out.items()}
 
 
-def _well_indices(model: GenericBlackOilModel) -> tuple[int, int]:
+def _well_indices(model: GenericBlackOilModelAD) -> tuple[int, int]:
     signs = np.array([w.sign for w in model.wells], dtype=int)
     producers = np.flatnonzero(signs < 0)
     injectors = np.flatnonzero(signs > 0)
@@ -162,7 +170,8 @@ def run_blackoil_tutorial_spe1(
     deck_path: str | Path | None = None,
     well_order: Sequence[str] = ("PRODUCER", "INJECTOR"),
     use_line_search: bool = True,
-    verbose: bool = False,
+    verbose: bool = True,
+    progress: str | None = None,
 ) -> SPE1TutorialResult:
     """Run the PyMRST version of MRST's SPE1 tutorial.
 
@@ -174,7 +183,12 @@ def run_blackoil_tutorial_spe1(
     if nsteps is not None:
         timesteps = timesteps[:int(nsteps)]
 
-    solver = NonLinearSolver(max_iterations=30, use_line_search=use_line_search)
+    solver = NonLinearSolver(
+        max_iterations=30,
+        use_line_search=use_line_search,
+        verbose=verbose,
+        progress=progress,
+    )
     report = SimulationReport()
     states: list[State] = []
     state = state0.copy()
@@ -341,6 +355,37 @@ def plot_toolbar_spe1(
         off_screen=off_screen,
         use_qt=use_qt,
         title=title,
+    )
+
+
+def plot_browser_spe1(
+    result: SPE1TutorialResult,
+    *,
+    filename: str | Path = "examples/results_spe1/spe1.browser.html",
+    style: str = "mesh",
+    open_browser: bool = False,
+    zscale: float = 1.0,
+) -> Path:
+    """Write the complete SPE1 history to the interactive web viewer."""
+    from pymrst.plotting.extensions.browser import plot_reservoir_browser
+
+    well_series = {
+        key: np.asarray(result.history[key], dtype=float)
+        for key in ("bhp", "qWs", "qOs", "qGs")
+        if key in result.history
+    }
+    return plot_reservoir_browser(
+        result.model.G,
+        plot_toolbar_fields(result),
+        wells=result.model.wells,
+        times=result.time,
+        filename=filename,
+        title="PyMRST SPE1 black-oil tutorial",
+        zscale=zscale,
+        style=style,
+        well_series=well_series,
+        rock=result.model.rock,
+        open_browser=open_browser,
     )
 
 
@@ -605,6 +650,132 @@ def plot_blackoil_tutorial_spe1(
     }
 
 
+
+# -- MRST blackoilTutorialSPE1, on the AD-OO stack ---------------------------
+
+SPE1_SUMMARY = ROOT/"mrst-2024a-Geomech/modules/ad-blackoil/examples/spe1/SPE1_smry.mat"
+
+
+def load_spe1_smry(path=SPE1_SUMMARY):
+    """MATLAB's `load SPE1_smry`: the Eclipse summary, with `smry.get`.
+
+    The file stores the `readEclipseSummaryUnFmt` struct; its `get` is a
+    MATLAB function handle, so the struct is rebuilt as PyMRST's `Summary`
+    (0-based name and keyword indices).
+    """
+    from scipy.io import loadmat
+
+    from pymrst.modules.ad_core.utils.read_summary_local import Summary
+    raw = loadmat(path, squeeze_me=True, struct_as_record=False)["smry"]
+    return Summary(WGNAMES=[str(n) for n in raw.WGNAMES],
+                   KEYWORDS=[str(k) for k in raw.KEYWORDS],
+                   nInx=np.asarray(raw.nInx, dtype=np.int64) - 1,
+                   kInx=np.asarray(raw.kInx, dtype=np.int64) - 1,
+                   data=np.asarray(raw.data, dtype=float))
+
+
+def blackoil_tutorial_spe1(plot: bool = True):
+    """MRST `blackoilTutorialSPE1`. Returns the run and the comparison data."""
+    from types import SimpleNamespace
+
+    from pymrst.modules.ad_core.ad_oo.nonlinear_solver import NonLinearSolver
+    from pymrst.modules.ad_core.ad_oo.simulate_schedule_ad import simulate_schedule_ad
+    from pymrst.modules.ad_core.utils.convert_deck_schedule_to_mrst import (
+        convert_deck_schedule_to_mrst,
+    )
+    from pymrst.modules.ad_core.utils.select_model_from_deck import select_model_from_deck
+    from pymrst.modules.ad_core.utils.well_sol_to_vector import well_sol_to_vector
+    from pymrst.modules.test_suite.dataset_functions.spe1 import setup_spe1
+    from pymrst.utils.units import BARSA, DARCY, FT, MILLI, PSIA, STB, YEAR
+
+    # Set up the problem. The model comes from the deck: three-phase black
+    # oil with dissolved gas.
+    G, rock, fluid, deck, state = setup_spe1()
+    model = select_model_from_deck(G, rock, fluid, deck)
+    print(model)
+    # Convert the deck schedule into an MRST schedule by parsing the wells.
+    schedule = convert_deck_schedule_to_mrst(model, deck)
+
+    # Plot well and permeability: three layers, injector completed in the
+    # upper one and producer in the lower.
+    if plot:
+        import pyvista as pv
+
+        from pymrst.plotting.plot_cell_data import plot_cell_data
+        from pymrst.plotting.plot_well import plot_well
+        figure = pv.Plotter()
+        plot_cell_data(G, np.asarray(rock.perm)[:, 0]/(MILLI*DARCY), plotter=figure,
+                       opacity=0.5, edge_color="black", show=False,
+                       label="Permeability (mD)")
+        plot_well(G, schedule.controls[0].W, figure, radius=.5)
+        figure.add_title("Permeability (mD)")
+        figure.camera_position = "iso"
+        figure.show()
+
+    # Run the entire schedule.
+    nls = NonLinearSolver(useLinesearch=True)
+    wellSols, states, report = simulate_schedule_ad(state, model, schedule,
+                                                    NonLinearSolver=nls)
+
+    # Plot the well solutions and simulator states.
+    if plot:
+        from pymrst.modules.ad_core.plotting.plot_well_sols import plot_well_sols
+        from pymrst.plotting.extensions.plot_toolbar import plot_toolbar
+        plot_well_sols(wellSols, report["ReservoirTime"])
+        toolbar = plot_toolbar(G, states, show=False, off_screen=pv.OFF_SCREEN)
+        plot_well(G, schedule.controls[0].W, toolbar.pl)
+        if not toolbar.off_screen:
+            toolbar.show()
+
+    # Compare with a commercial simulator: load the summary and find the
+    # producer and injector. The first summary entry is zero, so skip it.
+    smry = load_spe1_smry()
+    inj = int(np.flatnonzero([w.sign == 1 for w in wellSols[0]])[0])
+    prod = int(np.flatnonzero([w.sign == -1 for w in wellSols[0]])[0])
+    ind = np.arange(1, smry.data.shape[1])
+    qWs, qOs, qGs, bhp = well_sol_to_vector(wellSols)
+    T = np.cumsum(schedule.step_val)/YEAR
+    Tcomp = smry.get(":+:+:+:+", "YEARS", ind).ravel()
+    out = SimpleNamespace(
+        G=G, model=model, schedule=schedule, wellSols=wellSols, states=states,
+        report=report, qWs=qWs, qOs=qOs, qGs=qGs, bhp=bhp, T=T, Tcomp=Tcomp,
+        inj=inj, prod=prod,
+        gor_ecl=smry.get("PRODUCER", "WGOR", ind).ravel()*(1000*FT**3/STB),
+        gor_mrst=qGs[:, prod]/qOs[:, prod],
+        bhp_prod_ecl=smry.get("PRODUCER", "WBHP", ind).ravel()*PSIA,
+        bhp_inj_ecl=smry.get("INJECTOR", "WBHP", ind).ravel()*PSIA)
+    if plot:
+        import matplotlib.pyplot as plt
+        mrstarg = dict(linewidth=2)
+        eclarg = dict(linestyle="none", marker="o", markersize=5,
+                      markerfacecolor=[.6, .6, .6], color="r")
+        # The producer gas/oil ratio is the interesting part of SPE1.
+        plt.figure(3)
+        plt.clf()
+        plt.plot(T, out.gor_mrst, **mrstarg)
+        plt.plot(Tcomp, out.gor_ecl, **eclarg)
+        plt.legend(["MRST", "Eclipse"])
+        plt.xlabel("Time [Years]")
+        plt.title("Gas rate / Oil rate")
+        # The injector is rate controlled, so its BHP comes out of the solve.
+        for fig, well, ecl, title in ((4, prod, out.bhp_prod_ecl,
+                                       "Bottom-hole pressure (producer)"),
+                                      (5, inj, out.bhp_inj_ecl,
+                                       "Bottom-hole pressure (injector)")):
+            plt.figure(fig)
+            plt.clf()
+            plt.plot(T, bhp[:, well]/BARSA, **mrstarg)
+            plt.plot(Tcomp, ecl/BARSA, **eclarg)
+            plt.legend(["MRST", "Eclipse"])
+            plt.xlabel("Time [Years]")
+            plt.ylabel("bar")
+            plt.title(title)
+        plt.show()
+    return out
+
+
+blackoilTutorialSPE1 = blackoil_tutorial_spe1
+
 if __name__ == "__main__":
     import argparse
 
@@ -691,6 +862,27 @@ if __name__ == "__main__":
         help="Open PyMRST plotToolbar for interactive reservoir-state browsing.",
     )
     parser.add_argument(
+        "--browser", action="store_true",
+        help="Write the interactive standalone HTML reservoir viewer.",
+    )
+    parser.add_argument(
+        "--open-browser", action="store_true",
+        help="Open the HTML viewer after writing it (implies --browser).",
+    )
+    parser.add_argument(
+        "--browser-output", type=Path,
+        default=Path("examples/results_spe1/spe1.browser.html"),
+        help="Output filename for the browser viewer.",
+    )
+    parser.add_argument(
+        "--browser-style", choices=("mesh", "points"), default="mesh",
+        help="Render solid cell faces or centroid points in the web viewer.",
+    )
+    parser.add_argument(
+        "--zscale", type=float, default=1.0,
+        help="Vertical exaggeration in the web viewer.",
+    )
+    parser.add_argument(
         "--save-states",
         nargs="?",
         const=Path("examples/results_spe1/spe1_states.npz"),
@@ -738,7 +930,21 @@ if __name__ == "__main__":
                 print(f"    {key}: {path}")
     if args.toolbar:
         plot_toolbar_spe1(result, show=True)
+    if args.browser or args.open_browser:
+        browser_path = plot_browser_spe1(
+            result,
+            filename=args.browser_output,
+            style=args.browser_style,
+            open_browser=args.open_browser,
+            zscale=args.zscale,
+        )
+        print(f"  browser viewer: {browser_path}")
 
+
+#: MRST's own spelling. MRST files each example as a script; this port
+#: gives it a `run_` entry point, and the alias keeps the MATLAB name
+#: callable - the convention the rest of the package follows.
+blackoilTutorialSPE1 = run_blackoil_tutorial_spe1
 
 __all__ = [
     "DEFAULT_DECK",
@@ -749,6 +955,7 @@ __all__ = [
     "plot_state_snapshot",
     "plot_toolbar_fields",
     "plot_toolbar_spe1",
+    "plot_browser_spe1",
     "plot_well_response_curves",
     "run_blackoil_tutorial_spe1",
     "run_backend_blackoil_tutorial_spe1",

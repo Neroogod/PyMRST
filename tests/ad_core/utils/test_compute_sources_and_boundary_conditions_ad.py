@@ -28,11 +28,19 @@ def _model():
                                 [2.0, 0.0, 0.0]]),
         ),
     )
+    from pymrst.modules.ad_core.backends.auto_diff_backend import AutoDiffBackend
+    rho_s = np.array([1000.0, 800.0])
+    t_all = np.array([2.0, 1.0, 3.0])
     return SimpleNamespace(
         G=grid,
-        operators=SimpleNamespace(t_all=np.array([2.0, 1.0, 3.0])),
-        fluid=SimpleNamespace(rho_s=np.array([1000.0, 800.0])),
+        operators=SimpleNamespace(t_all=t_all, T_all=t_all),
+        fluid=SimpleNamespace(rho_s=rho_s),
         gravity_magnitude=0.0,
+        # MRST's model API, which the ported functions read.
+        get_surface_densities=lambda: rho_s,
+        get_active_phases=lambda: np.array([True, True]),
+        get_gravity_vector=lambda: np.zeros(3),
+        AutoDiffBackend=AutoDiffBackend(),
     )
 
 

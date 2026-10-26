@@ -22,7 +22,7 @@ weighted by (1 - poro) and poro.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Any, Optional, Sequence, Tuple
 
 import numpy as np
 import scipy.sparse.linalg as spla
@@ -44,6 +44,14 @@ LAMBDA_F = 0.6          # fluid thermal conductivity, W/(m K)
 RHO_R = 2700.0          # rock density, kg/m3
 CP_R = 1000.0           # rock heat capacity, J/(kg K)
 CP_W = 4200.0           # water heat capacity, J/(kg K)
+
+
+def _field(obj, name, default=None):
+    if obj is None:
+        return default
+    if isinstance(obj, dict):
+        return obj.get(name, default)
+    return getattr(obj, name, default)
 
 
 @dataclass
@@ -100,6 +108,10 @@ class GeothermalModel:
         thermal_rock: ThermalRock = ThermalRock(),
         bc: Optional[BoundaryCondition] = None,
         bc_T: Optional[np.ndarray] = None,
+        wells: Sequence[Any] = (),
+        well_T: Optional[np.ndarray] = None,
+        src: Optional[Any] = None,
+        src_T: Optional[np.ndarray] = None,
         tol: float = 1e-8,
         max_iterations: int = 30,
     ):
@@ -109,6 +121,15 @@ class GeothermalModel:
         self.trock = thermal_rock
         self.bc = bc
         self.bc_T = None if bc_T is None else np.asarray(bc_T, float).ravel()
+        # Wells and sources carry an *injection* temperature each. It is
+        # required rather than defaulted, for the same reason `bc_T` is: water
+        # injected at an unstated temperature would silently arrive at the
+        # reservoir's own, and the whole point of a thermal model is that it
+        # does not.
+        self.wells = list(wells)
+        self.well_T = None if well_T is None else np.asarray(well_T, float).ravel()
+        self.src = src
+        self.src_T = None if src_T is None else np.asarray(src_T, float).ravel()
 
         self.ops = setup_operators_tpfa(g, rock)
         self.pv = pore_volume(g, rock)
@@ -122,6 +143,15 @@ class GeothermalModel:
         self.T_heat = (self._face_trans(lam_r) + self._face_trans(lam_f))
         self.tol = tol
         self.max_iterations = max_iterations
+
+        if self.wells and self.well_T is None:
+            raise ValueError(
+                "a thermal well needs an injection temperature (well_T, one "
+                "per well); without it injected water arrives at the "
+                "reservoir temperature and heats nothing")
+        if src is not None and self.src_T is None:
+            raise ValueError(
+                "a thermal source needs an injection temperature (src_T)")
 
         if bc is not None and bc.face.size:
             assert self.bc_T is not None, \
@@ -210,6 +240,78 @@ class GeothermalModel:
             q_cond = self.th_all[self.bc_faces] * (t_bc - t[c])
             energy[c] = energy[c] - h_up * q - q_cond
 
+        mass, energy = self._add_sources(mass, energy, p, t, rho, mob, h)
+        mass, energy = self._add_wells(mass, energy, p, t, rho, mob, h)
+        return mass, energy
+
+    def _add_sources(self, mass, energy, p, t, rho, mob, h):
+        """Prescribed cell rates and the heat they carry.
+
+        Same upwinding as the boundary block above: water *entering* the
+        reservoir arrives at the source's own temperature, water leaving takes
+        the cell's. A source is a rate, so there is no mobility term - it is
+        prescribed, not driven by a pressure difference.
+        """
+        if self.src is None:
+            return mass, energy
+        cells = np.asarray(_field(self.src, "cell"), dtype=int).ravel()
+        rates = np.asarray(_field(self.src, "rate"), dtype=float).ravel()
+        if not cells.size:
+            return mass, energy
+
+        injecting = (rates > 0).astype(float)
+        h_src = self.fluid.h(p[cells], self.src_T)
+        h_up = injecting*h_src + (1.0 - injecting)*h[cells]
+        q = rho[cells]*rates
+
+        mass[cells] = mass[cells] - q
+        energy[cells] = energy[cells] - h_up*q
+        return mass, energy
+
+    def _add_wells(self, mass, energy, p, t, rho, mob, h):
+        """Peaceman well rates and the heat they carry.
+
+        The structure is the boundary block's, with the well index in place of
+        the face transmissibility and the well's bottom-hole pressure in place
+        of the boundary pressure:
+
+            q = rho * mob * WI * (p_bh - p_cell)
+
+        and the enthalpy is upwinded the same way - an *injecting* perforation
+        carries the well's injection enthalpy, a *producing* one carries the
+        cell's. Using the cell's enthalpy for an injector is the error this
+        exists to avoid: cold injected water would arrive at reservoir
+        temperature and the thermal front would never form.
+
+        Only bottom-hole-pressure control is handled. A rate-controlled well
+        needs its own unknown and a control equation, which is a well *model*
+        rather than a source term, and inventing a bottom-hole pressure for it
+        would put the wrong drawdown on every perforation.
+        """
+        if not self.wells:
+            return mass, energy
+
+        for index, well in enumerate(self.wells):
+            control = str(getattr(well, "type", "bhp")).lower()
+            if control != "bhp":
+                raise NotImplementedError(
+                    f"thermal well {index} is on {control!r} control; the "
+                    f"geothermal kernel handles bottom-hole pressure only - a "
+                    f"rate control needs a well unknown and a closure "
+                    f"equation, not a source term")
+            cells = np.atleast_1d(np.asarray(well.cells, dtype=int)).ravel()
+            wi = np.atleast_1d(np.asarray(well.WI, dtype=float)).ravel()
+            p_bh = float(getattr(well, "val", 0.0))
+
+            dp = p_bh - p[cells]
+            injecting = (value(dp) > 0).astype(float)
+            h_well = self.fluid.h(np.full(cells.size, p_bh),
+                                  np.full(cells.size, float(self.well_T[index])))
+            h_up = injecting*h_well + (1.0 - injecting)*h[cells]
+
+            q = rho[cells]*mob[cells]*wi*dp
+            mass[cells] = mass[cells] - q
+            energy[cells] = energy[cells] - h_up*q
         return mass, energy
 
     def step(self, state: GeothermalState, dt: float

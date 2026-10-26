@@ -25,54 +25,9 @@ from pymrst.modules.ad_core.backends.diagonal.diagonal_jacobian import (
     DiagonalJacobian,
 )
 from pymrst.modules.ad_core.backends.diagonal.generic_ad import GenericAD
-
-
-def matrix_dims(m: Any) -> Tuple[int, int]:
-    """The `(rows, cols)` of a Jacobian block or sparse/dense matrix."""
-    if isinstance(m, DiagonalJacobian):
-        return m.shape
-    return tuple(np.asarray(m).shape) if not sp.issparse(m) else m.shape
-
-
-def get_sparse_arguments(m: Any, ioffset: int = 0, joffset: int = 0
-                         ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Return `(I, J, V)` for `m`, optionally shifted by `(ioffset, joffset)`.
-
-    The triplet a block-assembled sparse matrix is built from - MRST's
-    `getSparseArguments`, whose offsets place a block at its position in the
-    global system.
-    """
-    if isinstance(m, DiagonalJacobian):
-        i, j, v = m.row.copy(), m.col.copy(), m.data.copy()
-    else:
-        coo = sp.coo_array(m)
-        i, j, v = coo.row.copy(), coo.col.copy(), coo.data.copy()
-    if ioffset:
-        i = i + ioffset
-    if joffset:
-        j = j + joffset
-    return i, j, v
-
-
-def diag_mult(v: np.ndarray, m: Any, d: Optional[Any] = None) -> sp.spmatrix:
-    """`diag(v) @ m` - row-scale `m` by `v`, with MRST's fast paths.
-
-    Returns an empty matrix when `v` is all zero, `m` unchanged when it has no
-    nonzeros, and `v * m` when `v` is scalar; otherwise builds `diag(v)` (or
-    reuses a supplied `d`) and multiplies. `m` may be sparse or dense.
-    """
-    m = sp.csr_array(m)
-    v = np.asarray(v, dtype=float).ravel()
-    if not np.any(v):
-        return sp.csr_array(m.shape)
-    if m.nnz == 0:
-        return m
-    if v.size == 1:
-        return (v[0] * m).tocsr()
-    if d is None:
-        n = v.size
-        d = sp.csr_array((v, (np.arange(n), np.arange(n))), shape=(n, n))
-    return (sp.csr_array(d) @ m).tocsr()
+from pymrst.modules.ad_core.backends.diagonal.utils.diag_mult import diag_mult
+from pymrst.modules.ad_core.backends.diagonal.utils.get_sparse_arguments import get_sparse_arguments
+from pymrst.modules.ad_core.backends.diagonal.utils.matrix_dims import matrix_dims
 
 
 def diag_product_mult(v1, v2, x, y, d1=None, d2=None):

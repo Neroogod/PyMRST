@@ -20,7 +20,7 @@ There is no MATLAB reference here, and deliberately so:
   applied, the bhp would never move.
 
 `getInitializationRegionsBlackOil`-style deck schedule parsing
-(`convert_deck_schedule_to_mrst`) is out of this phase: it needs a general deck
+(`convert_deck_schedule_to_mrst_ad`) is out of this phase: it needs a general deck
 SCHEDULE reader and an SPE9 deck, neither of which is present, and is noted as
 deferred in `ad-core_implementation.md`.
 """
@@ -29,7 +29,7 @@ import numpy as np
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
 )
 from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
 from pymrst.modules.ad_core.statefunctions.state_function import State
@@ -37,7 +37,7 @@ from pymrst.modules.ad_core.utils.schedule import (
     Control,
     Schedule,
     compress_schedule,
-    refine_schedule,
+    refine_schedule_ad as refine_schedule,
 )
 from pymrst.modules.ad_props import init_simple_adi_fluid
 from pymrst.params import add_well, make_rock
@@ -83,7 +83,7 @@ def main() -> int:
         mu=np.array([1.0, 3.0]) * CENTI * POISE, rho=[1000.0, 800.0],
         n=[2, 2], c=[1e-6 / BARSA, 1e-4 / BARSA], p_ref=200 * BARSA)
 
-    model = GenericBlackOilModel(g, rock, fluid, _wells(g, rock, 150 * BARSA),
+    model = GenericBlackOilModelAD(g, rock, fluid, _wells(g, rock, 150 * BARSA),
                                  tol_well=1e-8)
     st = State(pressure=np.full(g.cells.num, 200.0 * BARSA),
                sW=np.full(g.cells.num, 0.2),

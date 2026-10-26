@@ -1,7 +1,7 @@
 """Phase 352 (AC15): the linear-solver class hierarchy.
 
 Adds MRST's `LinearSolverAD` base + `LinearizedProblem` and the concrete
-siblings (`BackslashSolverAD`, `NoOpSolverAD`, `GMRES_ILUSolverAD`) to PyMRST's
+siblings (`BackslashSolverAD`, `NoOpSolverAD`, `GMRES_ILUSolverADAD`) to PyMRST's
 existing `CPRSolver` / `DirectSolver`. Proved on a real reservoir Newton
 Jacobian - the one thing a linear solver must do is return the increment that
 zeroes the linearized residual:
@@ -23,13 +23,13 @@ import numpy as np
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
 )
 from pymrst.modules.ad_core.solvers import (
     BackslashSolverAD,
     DirectSolver,
-    GMRES_ILUSolverAD,
-    LinearizedProblem,
+    GMRES_ILUSolverADAD,
+    LinearizedProblemAD as LinearizedProblem,
     NoOpSolverAD,
 )
 from pymrst.modules.ad_core.statefunctions.state_function import State
@@ -50,7 +50,7 @@ def real_jacobian():
                  compi=np.array([1.0, 0.0]), sign=1)
     w = add_well(w, g, rock, np.array([g.cells.num - 1]), well_type="bhp",
                  val=150 * BARSA, compi=np.array([0.0, 1.0]), sign=-1)
-    model = GenericBlackOilModel(g, rock, fluid, w)
+    model = GenericBlackOilModelAD(g, rock, fluid, w)
     st = State(pressure=np.full(g.cells.num, 205 * BARSA),
                sW=np.full(g.cells.num, 0.45), qWs=np.array([2e-3, 0.0]),
                qOs=np.array([0.0, -2e-3]), bhp=np.array([150 * BARSA] * 2))
@@ -72,9 +72,9 @@ def main():
           f"{d_dir:.2e}")
     assert r_back < 1e-8 and d_dir < 1e-10
 
-    dx_gmres = GMRES_ILUSolverAD(tolerance=1e-11).solve(A, rhs)
+    dx_gmres = GMRES_ILUSolverADAD(tolerance=1e-11).solve(A, rhs)
     d_gmres = np.max(np.abs(dx_gmres - dx_direct))
-    print(f"  GMRES_ILUSolverAD: matches direct to {d_gmres:.2e}")
+    print(f"  GMRES_ILUSolverADAD: matches direct to {d_gmres:.2e}")
     assert d_gmres < 1e-6
 
     assert np.allclose(NoOpSolverAD().solve(A, rhs), 0.0)

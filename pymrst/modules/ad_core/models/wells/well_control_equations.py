@@ -88,13 +88,18 @@ def setup_well_control_equation_single_well(
     raise ValueError(f"unsupported well control '{ctype}' for this port")
 
 
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+setupWellControlEquationsSingleWell = setup_well_control_equation_single_well
+
 __all__ = ["setup_well_control_equation_single_well"]
 
 
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-        GenericBlackOilModel,
+        GenericBlackOilModelAD,
     )
     from pymrst.modules.ad_core.models.facilities.facility_model import (
         FacilityModel,

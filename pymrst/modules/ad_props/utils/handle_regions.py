@@ -57,6 +57,10 @@ class Regions:
     pvt_method_oil: str = "parallel"
     pvt_method_gas: str = "linshift"
     optimize: bool = False
+    #: How many sample pressures `initDeckADIFluid` should build `prange` from.
+    #: MRST's `resamplePoly`, and 0 means "none", because `linspace(a, b, 0)`
+    #: is empty - which is how the default path ends up evaluating directly.
+    resample_poly: int = 0
 
     def interp(self, x, values, xi):
         """Interpolate, using the deck's interpolator or MRST's default.

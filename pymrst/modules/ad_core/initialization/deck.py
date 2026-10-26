@@ -25,11 +25,11 @@ from typing import Any
 import numpy as np
 
 from pymrst.modules.ad_core.initialization.regions import (
-    get_initialization_regions_base,
+    get_initialization_regions_base_ad,
     init_state_equil_regions,
 )
 from pymrst.modules.ad_core.initialization.get_initialization_regions_deck import (
-    get_initialization_regions_deck,
+    get_initialization_regions_deck_ad,
 )
 from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.utils.adi import value
@@ -45,7 +45,7 @@ def _get(deck: Any, *keys):
     return None
 
 
-def init_state_deck(model: Any, deck: Any, gravity: float = 9.80665) -> State:
+def init_state_deck_ad(model: Any, deck: Any, gravity: float = 9.80665) -> State:
     """The initial reservoir state from a parsed deck (explicit or equilibrated)."""
     equil = _get(deck, "equil", "EQUIL")
     if equil is None:
@@ -89,7 +89,7 @@ def _init_equilibrated(model: Any, deck: Any, equil: Any,
         nested = dict(deck)
         if solution is None:
             nested["SOLUTION"] = {"EQUIL": equil}
-        regions = get_initialization_regions_deck(model, nested)
+        regions = get_initialization_regions_deck_ad(model, nested)
         return init_state_equil_regions(model, regions, gravity)
     rec = np.atleast_2d(np.asarray(equil, float))[0]
     datum_depth, datum_pressure = float(rec[0]), float(rec[1])
@@ -100,7 +100,7 @@ def _init_equilibrated(model: Any, deck: Any, equil: Any,
     else:
         contacts = [owc]
     rho = _phase_densities(model)
-    region = get_initialization_regions_base(
+    region = get_initialization_regions_base_ad(
         model, rho, contacts, datum_depth=datum_depth,
         datum_pressure=datum_pressure)
     return init_state_equil_regions(model, [region], gravity)
@@ -111,7 +111,12 @@ def _phase_densities(model: Any):
     return [float(rho_s[i]) for i in range(model.n_phases)]
 
 
-__all__ = ["init_state_deck"]
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+# MRST's initStateDeck is ported in `init_state_deck.py`.
+
+__all__ = ["init_state_deck_ad"]
 
 
 if __name__ == "__main__":
@@ -119,7 +124,7 @@ if __name__ == "__main__":
 
     from pymrst.gridprocessing import compute_geometry, tensor_grid
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-        GenericBlackOilModel, initial_state_from_deck,
+        GenericBlackOilModelAD, initial_state_from_deck,
     )
     from pymrst.modules.ad_props.props.init_deck_adi_fluid import init_deck_blackoil_fluid
     from pymrst.modules.deckformat import read_spe1_deck
@@ -141,18 +146,18 @@ if __name__ == "__main__":
                              compi=wd["compi"], sign=wd["sign"], name=name,
                              ref_depth=wd["ref_depth"],
                              gravity=np.array([0.0, 0.0, NORM_GRAVITY]))
-        model = GenericBlackOilModel(g, rock, fluid, wells, disgas=True,
+        model = GenericBlackOilModelAD(g, rock, fluid, wells, disgas=True,
                                      gravity=NORM_GRAVITY)
         return model, deck
 
     def test_explicit_deck_matches_initial_state_from_deck():
-        """init_state_deck reproduces the SPE 1 reservoir state that
+        """init_state_deck_ad reproduces the SPE 1 reservoir state that
         initial_state_from_deck builds (pressure, sW, sG, rs)."""
         if not DECK.exists():
             print("ok test_explicit_deck (skipped: no SPE1 deck)")
             return
         model, deck = _spe1()
-        a = init_state_deck(model, deck)
+        a = init_state_deck_ad(model, deck)
         b = initial_state_from_deck(model, deck)
         assert np.allclose(value(a["pressure"]), value(b["pressure"]))
         assert np.allclose(value(a["sW"]), value(b["sW"]))
@@ -170,7 +175,7 @@ if __name__ == "__main__":
         d2.pop("pressure", None)                 # force the EQUIL path
         # EQUIL: datum 2590 m, 234 bar, OWC 2600 m, pc 0, GOC 2560 m, pc 0
         d2["equil"] = [2590.0, 234e5, 2600.0, 0.0, 2560.0, 0.0]
-        st = init_state_deck(model, d2, gravity=NORM_GRAVITY)
+        st = init_state_deck_ad(model, d2, gravity=NORM_GRAVITY)
         assert st["pressure"].shape[0] == model.G.cells.num
         assert np.all(st["pressure"] > 0)
         # water below the OWC, none above it (a monotone contact)

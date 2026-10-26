@@ -1,22 +1,23 @@
 """Direct MATLAB/MRST validation of getInitializationRegionsDeck."""
 
 from pathlib import Path
-from types import SimpleNamespace
 
 import numpy as np
 from scipy.io import loadmat
 
-from pymrst.modules.ad_core.initialization import getInitializationRegionsDeck
+from pymrst.gridprocessing import cart_grid, compute_geometry
+from pymrst.modules.ad_blackoil.models import GenericBlackOilModel
+from pymrst.modules.ad_core.initialization import get_initialization_regions_deck
+from pymrst.modules.ad_props import init_simple_adi_fluid
+from pymrst.params.rock import make_rock
 
 
 def main() -> int:
     ref = loadmat(Path(__file__).with_name("ref_ad_core_deck_regions.mat"))
-    model = SimpleNamespace(
-        G=SimpleNamespace(cells=SimpleNamespace(num=6, indexMap=np.arange(6))),
-        fluid=SimpleNamespace(rho_s=np.array([1000.0, 800.0])),
-        raw_fluid=SimpleNamespace(swcon=0.0),
-        n_phases=2, water=True, oil=True, gas=False,
-    )
+    G = compute_geometry(cart_grid([6, 1]))
+    rock = make_rock(G, 1, 0.2)
+    fluid = init_simple_adi_fluid(phases="WO", n=[2, 2], mu=[1, 1], rho=[1000, 800])
+    model = GenericBlackOilModel(G, rock, fluid, gas=False).validate_model()
     deck = {
         "SOLUTION": {"EQUIL": np.array([
             [1000, 1e7, 1100, 5, 900, 0, 0, 0, 0, 0],
@@ -28,7 +29,7 @@ def main() -> int:
             "PVTNUM": [1, 2, 1, 1, 1, 2],
         },
     }
-    regions = getInitializationRegionsDeck(model, deck)
+    regions = get_initialization_regions_deck(model, deck)
     failed = 0
     print("Deck initialization regions vs MATLAB/MRST:")
     for i, region in enumerate(regions):

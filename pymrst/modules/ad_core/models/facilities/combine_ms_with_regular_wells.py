@@ -1,9 +1,37 @@
-"""Combine regular and multisegment wells with a uniform field layout."""
+"""MRST ``ad-core/models/facilities/combineMSwithRegularWells.m``.
+
+One well list from regular and multisegment wells: every well gets every
+field any of them has (missing ones empty, `None` here, as MATLAB's struct
+arrays fill them with `[]`), the regular wells come first, and `isMS` marks
+the rest. The wells keep their own type; the inputs are not changed.
+
+`combine_ms_with_regular_wells_ad`, below, is PyMRST's earlier version (it
+rebuilds the wells as namespaces or dicts).
+"""
 
 from __future__ import annotations
 
+from copy import copy
 from types import SimpleNamespace
 from typing import Any, Iterable, List
+
+
+def combine_ms_with_regular_wells(W_regular: Any, W_ms: Any) -> List[Any]:
+    """MRST `W = combineMSwithRegularWells(W_regular, W_ms)`."""
+    W_regular = [copy(w) for w in _as_list(W_regular)]
+    W_ms = [copy(w) for w in _as_list(W_ms)]
+    allflds = sorted(set().union(*[_fields(w) for w in W_ms + W_regular]))
+    for fld in allflds:
+        for w in W_regular + W_ms:
+            if not hasattr(w, fld):
+                setattr(w, fld, None)
+    W = W_regular + W_ms
+    for i, w in enumerate(W):
+        w.isMS = i >= len(W_regular)
+    return W
+
+
+combineMSwithRegularWells = combine_ms_with_regular_wells
 
 
 def _fields(item: Any) -> set[str]:
@@ -37,7 +65,7 @@ def _as_list(wells: Iterable[Any] | Any) -> List[Any]:
     return list(wells)
 
 
-def combine_ms_with_regular_wells(
+def combine_ms_with_regular_wells_ad(
     regular_wells: Iterable[Any] | Any,
     multisegment_wells: Iterable[Any] | Any,
 ) -> List[Any]:
@@ -56,6 +84,37 @@ def combine_ms_with_regular_wells(
             + [_normalized(w, all_fields, True) for w in ms])
 
 
-combineMSwithRegularWells = combine_ms_with_regular_wells
+__all__ = ["combine_ms_with_regular_wells", "combine_ms_with_regular_wells_ad",
+           "combineMSwithRegularWells"]
 
-__all__ = ["combine_ms_with_regular_wells", "combineMSwithRegularWells"]
+
+if __name__ == "__main__":
+    import numpy as np
+
+    from pymrst.params.wells_and_bc.types import Well
+
+    def _well(name: str, cells) -> Well:
+        return Well(cells=np.asarray(cells), type="rate", val=1.0, r=np.array([0.1]),
+                    dir="z", WI=np.ones(len(cells)), dZ=np.zeros(len(cells)), name=name,
+                    compi=np.array([1.0, 0, 0]), refDepth=0.0)
+
+    def test_regular_first_with_the_union_of_fields():
+        ms = _well("MS", [2, 3])
+        ms.nodes = SimpleNamespace(depth=np.array([0.0, 1.0]))
+        out = combine_ms_with_regular_wells(_well("R", [0]), ms)
+        assert [w.name for w in out] == ["R", "MS"]
+        assert [w.isMS for w in out] == [False, True]
+        assert out[0].nodes is None and out[1].nodes is ms.nodes
+        assert type(out[0]) is Well
+        print("ok test_regular_first_with_the_union_of_fields")
+
+    def test_the_inputs_are_not_changed():
+        regular, ms = _well("R", [0]), SimpleNamespace(name="MS", cells=[1], segments=1)
+        combine_ms_with_regular_wells([regular], [ms])
+        assert not hasattr(regular, "isMS") and not hasattr(regular, "segments")
+        assert not hasattr(ms, "WI")
+        print("ok test_the_inputs_are_not_changed")
+
+    test_regular_first_with_the_union_of_fields()
+    test_the_inputs_are_not_changed()
+    print("\nAll tests passed!")

@@ -22,7 +22,7 @@ import numpy as np
 
 from pymrst.gridprocessing import cart_grid, compute_geometry, tensor_grid
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
     initial_state_from_deck,
 )
 from pymrst.modules.ad_core.statefunctions.flowprops import (
@@ -53,7 +53,7 @@ def check_immiscible():
                  compi=np.array([1.0, 0.0]), sign=1)
     w = add_well(w, g, rock, np.array([g.cells.num - 1]), well_type="bhp",
                  val=150 * BARSA, compi=np.array([0.0, 1.0]), sign=-1)
-    model = GenericBlackOilModel(g, rock, fluid, w)
+    model = GenericBlackOilModelAD(g, rock, fluid, w)
     model.FlowPropertyFunctions.set_state_function(
         "PressureReductionFactors", PressureReductionFactors(model))
     st = model.init_state_ad(State(
@@ -83,7 +83,7 @@ def check_blackoil():
                          val=wd["val"], radius=wd["radius"], compi=wd["compi"],
                          sign=wd["sign"], name=name, ref_depth=wd["ref_depth"],
                          gravity=np.array([0.0, 0.0, NORM_GRAVITY]))
-    model = GenericBlackOilModel(g, rock, fluid, wells, disgas=True,
+    model = GenericBlackOilModelAD(g, rock, fluid, wells, disgas=True,
                                  gravity=NORM_GRAVITY)
     model.PVTPropertyFunctions.set_state_function(
         "ShrinkageFactors", BlackOilShrinkageFactors(model))

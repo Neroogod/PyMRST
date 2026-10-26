@@ -5,6 +5,79 @@ from typing import Sequence, Tuple
 import numpy as np
 import scipy.sparse as sp
 
+# scipy's csr_array constructor unconditionally runs `get_index_dtype` +
+# `check_format(full_check=False)` (which itself always calls `prune()`) on
+# every call, even when the caller already knows `indices`/`indptr` are a
+# valid, sorted, pruned CSR structure (e.g. reused verbatim from an
+# already-validated block). Profiling `blackoil_tutorial_spe1.py` showed
+# those four functions alone costing ~13s of a ~53s cProfile run, driven by
+# millions of Jacobian-block constructions in `_diag_mul`/`__add__`. This
+# module's own invariant - no code here ever mutates a block's `indices`/
+# `indptr` in place, only rebinds `.data` - is exactly the case where
+# re-validating them on every arithmetic op is provably redundant.
+_CSR_MAXPRINT = sp.csr_array(
+    (np.zeros(0), np.zeros(0, dtype=np.int64), np.zeros(1, dtype=np.int64)),
+    shape=(0, 0),
+).maxprint
+
+
+def _fast_csr(data: np.ndarray, indices: np.ndarray, indptr: np.ndarray, shape) -> sp.csr_array:
+    """Build a `csr_array` from an already-valid CSR structure, skipping
+    scipy's redundant per-call constructor validation. Only call this with
+    `indices`/`indptr` taken verbatim from an existing, already-validated
+    csr_array - never with freshly derived index arrays."""
+    out = sp.csr_array.__new__(sp.csr_array)
+    out._shape = shape
+    out.maxprint = _CSR_MAXPRINT
+    out.data = data
+    out.indices = indices
+    out.indptr = indptr
+    return out
+
+
+def _jac_add(a: sp.csr_array, b: sp.csr_array) -> sp.csr_array:
+    """`a + b` for two Jacobian blocks. When both already share
+    byte-identical sparsity structure - the common case across Newton
+    iterations, since grid/well connectivity does not change within a
+    timestep - this skips scipy's full symbolic merge (`_binopt`) and its
+    constructor validation entirely, adding only the `.data` arrays.
+    Structurally different blocks fall back to scipy's ordinary `+`."""
+    if (
+        a.indptr.shape == b.indptr.shape
+        and a.indices.shape == b.indices.shape
+        and np.array_equal(a.indptr, b.indptr)
+        and np.array_equal(a.indices, b.indices)
+    ):
+        return _fast_csr(a.data + b.data, a.indices, a.indptr, a.shape)
+    return a + b
+
+
+def _row_select(jac: sp.csr_array, selected: np.ndarray) -> sp.csr_array:
+    """`jac[selected]` (fancy row indexing), skipping scipy's
+    `_major_index_fancy`/`_validate_indices` machinery and the redundant
+    constructor validation on the result. Each output row is a verbatim
+    copy of an already-canonical source row (sorted, no duplicates,
+    in-bounds by construction), so the gathered result is provably still
+    canonical CSR - re-validating it is the same redundant work `_fast_csr`
+    already exists to skip elsewhere in this module.
+
+    `selected` may repeat rows or reorder them arbitrarily (this is what
+    `ADI.__getitem__` needs); a fully vectorized gather handles both without
+    a Python loop over rows.
+    """
+    indptr = jac.indptr
+    starts = indptr[selected]
+    lengths = indptr[selected + 1] - starts
+    new_indptr = np.empty(len(selected) + 1, dtype=np.int64)
+    new_indptr[0] = 0
+    np.cumsum(lengths, out=new_indptr[1:])
+    total = int(new_indptr[-1])
+    row_of_output = np.repeat(np.arange(len(selected)), lengths)
+    offset_within_row = np.arange(total) - new_indptr[:-1][row_of_output]
+    gather_idx = starts[row_of_output] + offset_within_row
+    return _fast_csr(jac.data[gather_idx], jac.indices[gather_idx],
+                     new_indptr, (len(selected), jac.shape[1]))
+
 
 class ADI:
     """Value vector plus a list of sparse Jacobian blocks."""
@@ -44,15 +117,25 @@ class ADI:
     def __add__(self, other) -> "ADI":
         if isinstance(other, ADI):
             u, v = self._align(self, other)
-            return ADI(u.val + v.val, [a + b for a, b in zip(u.jac, v.jac)])
+            return ADI(u.val + v.val, [_jac_add(a, b) for a, b in zip(u.jac, v.jac)])
         values = np.atleast_1d(np.asarray(other, dtype=np.float64)).ravel()
         u = self if values.size == 1 or values.size == len(self) or len(self) > 1 else self._expand(values.size)
-        return ADI(u.val + values, [j.copy() for j in u.jac])
+        # Adding a plain constant does not change the derivative, so the
+        # Jacobian blocks are shared rather than copied. Safe by the same
+        # invariant every block in this port already relies on: nothing here
+        # ever mutates a jac block's sparse data in place. `_diag_mul`
+        # explicitly copies before it mutates; `__setitem__` always
+        # reassigns `self.jac` to newly-built blocks rather than mutating an
+        # existing one; and no code anywhere in this port writes through
+        # `jac.data` in place. `ADI.__init__`'s own `tocsr()` is a no-op on
+        # an already-canonical block, so passing `u.jac` here costs nothing
+        # extra there either.
+        return ADI(u.val + values, u.jac)
 
     __radd__ = __add__
 
     def __neg__(self) -> "ADI":
-        return ADI(-self.val, [-j for j in self.jac])
+        return ADI(-self.val, [_fast_csr(-j.data, j.indices, j.indptr, j.shape) for j in self.jac])
 
     def __sub__(self, other) -> "ADI":
         return self + (-other if isinstance(other, ADI) else -np.asarray(other))
@@ -64,13 +147,14 @@ class ADI:
         if isinstance(other, ADI):
             u, v = self._align(self, other)
             jac = [
-                _diag_mul(v.val, a) + _diag_mul(u.val, b)
+                _jac_add(_diag_mul(v.val, a), _diag_mul(u.val, b))
                 for a, b in zip(u.jac, v.jac)
             ]
             return ADI(u.val * v.val, jac)
         values = np.atleast_1d(np.asarray(other, dtype=np.float64)).ravel()
         if values.size == 1:
-            return ADI(self.val * values[0], [j * values[0] for j in self.jac])
+            jac = [_fast_csr(j.data * values[0], j.indices, j.indptr, j.shape) for j in self.jac]
+            return ADI(self.val * values[0], jac)
         u = self if values.size == len(self) or len(self) > 1 else self._expand(values.size)
         return ADI(u.val * values, [_diag_mul(values, j) for j in u.jac])
 
@@ -115,8 +199,8 @@ class ADI:
         return self.val >= value(other)
 
     def __getitem__(self, idx) -> "ADI":
-        selected = np.atleast_1d(np.arange(len(self))[idx])
-        return ADI(self.val[selected], [j[selected] for j in self.jac])
+        selected = np.atleast_1d(np.arange(len(self))[idx]).astype(np.int64, copy=False)
+        return ADI(self.val[selected], [_row_select(j, selected) for j in self.jac])
 
     def __setitem__(self, idx, val) -> None:
         selected = np.atleast_1d(np.arange(len(self))[idx])
@@ -129,7 +213,7 @@ class ADI:
                 shape=(len(self), selected.size),
             )
             self.jac = [
-                _diag_mul(keep, old) + projector @ new
+                _jac_add(_diag_mul(keep, old), projector @ new)
                 for old, new in zip(self.jac, new_val.jac)
             ]
             self.val[selected] = new_val.val
@@ -147,10 +231,33 @@ def _row_repeat(jac: sp.csr_array, n: int) -> sp.csr_array:
 
 
 def _diag_mul(d: np.ndarray, jac: sp.csr_array) -> sp.csr_array:
-    """Return `diag(d) @ jac` without forming the diagonal matrix."""
-    out = jac.tocsr(copy=True)
-    out.data *= np.repeat(d, np.diff(out.indptr))
-    return out
+    """Return `diag(d) @ jac` without forming the diagonal matrix.
+
+    `jac`'s `indices`/`indptr` are already a validated CSR structure (they
+    came from an earlier, already-validated block and are never mutated in
+    place anywhere in this module), so only `data` needs to change here. A
+    diagonal-backend block scales its own rows.
+    """
+    if hasattr(jac, "left_scale"):
+        return jac.left_scale(d)
+    jac = jac.tocsr()
+    new_data = jac.data * np.repeat(d, np.diff(jac.indptr))
+    return _fast_csr(new_data, jac.indices, jac.indptr, jac.shape)
+
+
+def is_ad(x) -> bool:
+    """Whether `x` carries derivatives: a sparse `ADI` or a diagonal-backend
+    `GenericAD` (MRST's `isa(x, 'ADI')`, which both subclass there)."""
+    return isinstance(x, ADI) or type(x).__name__ == "GenericAD"
+
+
+def ad_from_blocks(val, jac):
+    """An AD value of the type its Jacobian blocks belong to: `GenericAD`
+    for diagonal-backend blocks, `ADI` otherwise."""
+    if jac and hasattr(jac[0], "left_scale"):
+        from pymrst.modules.ad_core.backends.diagonal.generic_ad import GenericAD
+        return GenericAD(val, jac)
+    return ADI(val, jac)
 
 
 if __name__ == "__main__":
@@ -292,6 +399,153 @@ if __name__ == "__main__":
         assert np.allclose(w.jac[0].toarray(), before)
         print("ok test_copy_is_deep_enough_to_be_safe")
 
+    def test_add_constant_shares_jacobian_blocks_without_copying():
+        """Adding a plain constant does not change the derivative, so the
+        result's Jacobian block must be the *same object* as the operand's -
+        not a copy. This is the fix for the redundant `.copy()` `__add__`
+        used to do on every `x + constant`, which profiling found responsible
+        for a large fraction of PyMRST's per-Newton-iteration sparse-matrix
+        construction cost."""
+        (u,) = init_variables_adi(np.array([1.0, 2.0]))
+        w = u + 5.0
+        assert np.allclose(w.val, [6.0, 7.0])
+        assert np.allclose(w.jac[0].toarray(), u.jac[0].toarray())
+        assert w.jac[0] is u.jac[0], (
+            "adding a constant should share the Jacobian block, not copy it")
+        print("ok test_add_constant_shares_jacobian_blocks_without_copying")
+
+    def test_shared_jacobian_blocks_stay_safe_under_further_arithmetic():
+        """The sharing above is only correct if nothing downstream mutates a
+        shared block in place. This takes the shared block through two more
+        arithmetic operations and an in-place-looking assignment on the
+        result, and checks the original operand's Jacobian is untouched -
+        the aliasing-corruption check the sharing optimization needs."""
+        (u,) = init_variables_adi(np.array([1.0, 2.0]))
+        w = u + 5.0
+        before = u.jac[0].toarray().copy()
+        z = (w - 1.0) * 2.0
+        z.val[0] = -999.0
+        assert np.allclose(u.jac[0].toarray(), before), (
+            "downstream arithmetic on a shared block corrupted the original")
+        print("ok test_shared_jacobian_blocks_stay_safe_under_further_arithmetic")
+
+    def test_fast_csr_matches_the_scipy_reference():
+        """`_fast_csr` bypasses scipy's constructor validation entirely, so
+        this checks its output is functionally indistinguishable from an
+        ordinarily constructed csr_array of the same data - not just in
+        values, but in every operation later code depends on (shape, nnz,
+        format, further arithmetic, matmul, and the `tocsr()` round-trip
+        `ADI.__init__` performs on every Jacobian block)."""
+        rng = np.random.default_rng(0)
+        ref = sp.random_array((12, 9), density=0.3, random_state=rng, format="csr")
+        fast = _fast_csr(ref.data.copy(), ref.indices, ref.indptr, ref.shape)
+        assert np.allclose(fast.toarray(), ref.toarray())
+        assert fast.shape == ref.shape and fast.nnz == ref.nnz and fast.format == "csr"
+        assert np.allclose((fast + ref).toarray(), (ref + ref).toarray())
+        assert np.allclose((fast * 2.0).toarray(), (ref * 2.0).toarray())
+        assert np.allclose(fast @ np.ones(9), ref @ np.ones(9))
+        assert np.allclose(fast.tocsr().toarray(), ref.toarray())
+        print("ok test_fast_csr_matches_the_scipy_reference")
+
+    def test_jac_add_fast_path_matches_scipy_when_patterns_match():
+        """When both operands already share byte-identical sparsity - the
+        normal case for two Jacobian blocks built from the same
+        discretization operator - `_jac_add` must return the same values as
+        plain scipy `a + b`, without going through scipy's full symbolic
+        merge."""
+        rng = np.random.default_rng(1)
+        base = sp.random_array((8, 8), density=0.4, random_state=rng, format="csr")
+        a = _fast_csr(base.data * 2.0, base.indices, base.indptr, base.shape)
+        b = _fast_csr(base.data * 3.0, base.indices, base.indptr, base.shape)
+        fast_sum = _jac_add(a, b)
+        ref_sum = a.tocsr(copy=True) + b.tocsr(copy=True)
+        assert np.allclose(fast_sum.toarray(), ref_sum.toarray())
+        # The fast path reuses the shared indices/indptr verbatim rather than
+        # deriving new ones - exactly the redundant work it exists to skip.
+        assert fast_sum.indices is base.indices and fast_sum.indptr is base.indptr
+        print("ok test_jac_add_fast_path_matches_scipy_when_patterns_match")
+
+    def test_jac_add_falls_back_to_scipy_when_patterns_differ():
+        """Two blocks with genuinely different sparsity must still go
+        through scipy's real merge - the fast-path check must not
+        false-positive on same-shape-different-structure matrices."""
+        a = sp.csr_array(np.array([[1.0, 0.0], [0.0, 2.0]]))
+        b = sp.csr_array(np.array([[0.0, 3.0], [4.0, 0.0]]))
+        got = _jac_add(a, b)
+        assert np.allclose(got.toarray(), [[1.0, 3.0], [4.0, 2.0]])
+        print("ok test_jac_add_falls_back_to_scipy_when_patterns_differ")
+
+    def test_diag_mul_uses_fast_path_and_matches_dense_reference():
+        """`_diag_mul(d, jac)` must equal `diag(d) @ jac` exactly, and must
+        not mutate the input block - the aliasing invariant every fast path
+        in this module depends on."""
+        rng = np.random.default_rng(2)
+        jac = sp.random_array((6, 5), density=0.4, random_state=rng, format="csr")
+        before = jac.data.copy()
+        d = np.arange(1, 7, dtype=float)
+        out = _diag_mul(d, jac)
+        assert np.allclose(out.toarray(), np.diag(d) @ jac.toarray())
+        assert np.allclose(jac.data, before), "_diag_mul must not mutate its input"
+        print("ok test_diag_mul_uses_fast_path_and_matches_dense_reference")
+
+    def test_all_arithmetic_fast_paths_still_match_finite_differences():
+        """The fast-path rewrite of __add__/__neg__/__mul__/_diag_mul (added
+        for P4: symbolic sparsity reuse, see ROADMAP.md) must not change a
+        single derivative. Re-runs the finite-difference check through
+        operator combinations chosen to exercise every fast path added here:
+        same-pattern __add__ (u+u), __neg__ (-u), scalar __mul__ (2.5*u), and
+        the ADI*ADI product rule's _diag_mul + _jac_add combination (u*u)."""
+        x = np.array([0.7, 1.3, 2.5])
+        cases = [
+            ("add same pattern", lambda u: u + u, lambda v: v + v),
+            ("neg", lambda u: -u, lambda v: -v),
+            ("scalar mul", lambda u: 2.5 * u, lambda v: 2.5 * v),
+            ("product rule", lambda u: u * u, lambda v: v * v),
+        ]
+        worst = max(_check(name, expr, plain, x) for name, expr, plain in cases)
+        print(f"ok test_all_arithmetic_fast_paths_still_match_finite_differences "
+              f"(worst relative error {worst:.2e})")
+
+    def test_row_select_matches_scipy_fancy_indexing():
+        """`_row_select` reimplements CSR fancy row-indexing (skipping
+        scipy's `_major_index_fancy`/constructor validation) rather than
+        calling it - so this checks its output against scipy's own fancy
+        indexing directly, across selections that repeat rows, reorder
+        them, and select every row, on several random matrices."""
+        rng = np.random.default_rng(3)
+        worst_mismatch = 0.0
+        for _ in range(20):
+            m = rng.integers(1, 40)
+            n = rng.integers(1, 20)
+            jac = sp.random_array((m, n), density=0.4, random_state=rng, format="csr")
+            k = rng.integers(1, m + 6)
+            selected = rng.integers(0, m, size=k).astype(np.int64)
+            got = _row_select(jac, selected)
+            ref = jac.tocsr()[selected]
+            assert got.shape == ref.shape, (got.shape, ref.shape)
+            worst_mismatch = max(worst_mismatch,
+                                 float(np.max(np.abs(got.toarray() - ref.toarray()))))
+        assert worst_mismatch == 0.0, f"exact gather should have zero mismatch, got {worst_mismatch}"
+        print("ok test_row_select_matches_scipy_fancy_indexing (20 random cases, exact match)")
+
+    def test_getitem_indexing_still_works_end_to_end():
+        """`ADI.__getitem__` itself, through the rewritten `_row_select`
+        path, on a case that repeats and reorders rows - not just the
+        contiguous slice `test_indexing_selects_rows_of_the_jacobian_too`
+        already covers."""
+        (u,) = init_variables_adi(np.array([10.0, 20.0, 30.0, 40.0]))
+        w = u * u
+        idx = np.array([3, 0, 0, 2])
+        sub = w[idx]
+        # Row selection permutes/repeats rows of the full 4x4 Jacobian; it
+        # does not touch columns, so the result is not diagonal - full,
+        # independently-computed dense reference instead.
+        full_jac = w.jac[0].toarray()
+        assert np.allclose(sub.val, [1600.0, 100.0, 100.0, 900.0])
+        assert np.allclose(sub.jac[0].toarray(), full_jac[idx])
+        print("ok test_getitem_indexing_still_works_end_to_end "
+              "(repeated and reordered row selection)")
+
     test_arithmetic_derivatives_match_finite_differences()
     test_the_product_rule_is_not_just_elementwise()
     test_blocks_stay_separate()
@@ -300,4 +554,13 @@ if __name__ == "__main__":
     test_indexing_selects_rows_of_the_jacobian_too()
     test_comparisons_use_values_not_objects()
     test_copy_is_deep_enough_to_be_safe()
+    test_add_constant_shares_jacobian_blocks_without_copying()
+    test_shared_jacobian_blocks_stay_safe_under_further_arithmetic()
+    test_fast_csr_matches_the_scipy_reference()
+    test_jac_add_fast_path_matches_scipy_when_patterns_match()
+    test_jac_add_falls_back_to_scipy_when_patterns_differ()
+    test_diag_mul_uses_fast_path_and_matches_dense_reference()
+    test_all_arithmetic_fast_paths_still_match_finite_differences()
+    test_row_select_matches_scipy_fancy_indexing()
+    test_getitem_indexing_still_works_end_to_end()
     print("\nAll tests passed!")

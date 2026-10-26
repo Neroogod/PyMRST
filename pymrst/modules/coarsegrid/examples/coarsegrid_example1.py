@@ -97,7 +97,7 @@ def two_scale_pressure(dims=(20, 20), blocks=(5, 2),
     permeability is simply the same constant. With a real field one would
     upscale here instead, which is what the `upscaling` module is for.
     """
-    from pymrst.modules.incomp import incomp_tpfa, init_single_fluid
+    from pymrst.modules.incomp import incomp_tpfa_ad as incomp_tpfa, init_single_fluid
 
     g = compute_geometry(cart_grid(list(dims), [1.0, 1.0]))
     fluid = init_single_fluid(mu=1.0, rho=1.0)

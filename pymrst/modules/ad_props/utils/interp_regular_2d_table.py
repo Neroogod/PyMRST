@@ -14,7 +14,7 @@ from typing import Tuple
 
 import numpy as np
 
-from pymrst.utils.adi import ADI, _diag_mul, value
+from pymrst.utils.adi import ADI, _diag_mul, ad_from_blocks, is_ad, value
 
 
 @dataclass
@@ -83,16 +83,16 @@ def interp_regular_2d_table(table: RegularTable2D, x, y):
         dx[~missing] = np.sum(corners * wx, axis=1) / table.dx
         dv[~missing] = np.sum(corners * wy, axis=1) / table.dy
 
-    if not isinstance(x, ADI) and not isinstance(y, ADI):
+    if not is_ad(x) and not is_ad(y):
         return values
     jacobians = None
-    if isinstance(x, ADI):
+    if is_ad(x):
         jacobians = [_diag_mul(dx, j) for j in x.jac]
-    if isinstance(y, ADI):
+    if is_ad(y):
         other = [_diag_mul(dv, j) for j in y.jac]
         jacobians = other if jacobians is None else [
             a + b for a, b in zip(jacobians, other)]
-    return ADI(values, jacobians)
+    return ad_from_blocks(values, jacobians)
 
 
 interpRegular2DTable = interp_regular_2d_table

@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Sequence, Tuple
 import numpy as np
 
 from pymrst.gridprocessing.grid import Grid
-from pymrst.modules.ad_blackoil.models.generic_black_oil_model import GenericBlackOilModel
+from pymrst.modules.ad_blackoil.models.generic_black_oil_model import GenericBlackOilModelAD
 from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.modules.ad_mechanics.models.mechanic_model import MechanicModel
 from pymrst.modules.ad_mechanics.models.poromechanics import PoroMechanicalPoreVolume
@@ -16,7 +16,7 @@ from pymrst.params.wells_and_bc import Well
 from pymrst.utils.adi import init_variables_adi, value
 
 
-class MechBlackOilModel(GenericBlackOilModel):
+class MechBlackOilModel(GenericBlackOilModelAD):
     """Black-oil phases and wells fully coupled to VEM mechanics."""
 
     primary_variable_names = ("pressure", "sW", "phase_state", "well_variables", "xd")
@@ -26,6 +26,24 @@ class MechBlackOilModel(GenericBlackOilModel):
         mech: MechanicModel, disgas: bool = False, gravity: float = 0.0,
         tol_mech: float = 1e-9, mrst_oilwater_bug: bool = False, **kwargs,
     ):
+        # The flow models default to MRST's `toleranceCNV = 1e-3`. A coupled
+        # mechanics model keeps the tighter 1e-8/1e-12, for the same reason
+        # `poromechanics` does and one more:
+        #
+        # * `tol_well` also gates the *mechanics* residual through
+        #   `max_extra_residual`, and that is a displacement balance in
+        #   different units from the normalized mass error CNV measures;
+        # * this model is what the adjoint gradient verification runs on, and
+        #   a finite-difference gradient differences two forward solves. Solver
+        #   noise is amplified, not averaged: loosening the forward tolerance
+        #   moved `finite_difference_gradient` from inside the case's named
+        #   1e-6 bound to 3.1e-6, weakening the very claim the case exists to
+        #   make.
+        #
+        # A caller who wants MRST's flow tolerances can still pass them.
+        kwargs.setdefault("tol_cnv", 1e-8)
+        kwargs.setdefault("tol_mb", 1e-12)
+        kwargs.setdefault("tol_well", 1e-10)
         super().__init__(g, rock, fluid, wells, disgas=disgas,
                          gravity=gravity, **kwargs)
         self.mech = mech

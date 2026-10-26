@@ -24,7 +24,7 @@ import numpy as np
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
 )
 from pymrst.modules.ad_core.statefunctions.flux.flow_state import (
     AdaptiveImplicitFlowStateBuilder,
@@ -49,7 +49,7 @@ def build():
                  compi=np.array([1.0, 0.0]), sign=1)
     w = add_well(w, g, rock, np.array([g.cells.num - 1]), well_type="bhp",
                  val=150 * BARSA, compi=np.array([0.0, 1.0]), sign=-1)
-    model = GenericBlackOilModel(g, rock, fluid, w, gravity=9.80665)
+    model = GenericBlackOilModelAD(g, rock, fluid, w, gravity=9.80665)
     st0 = State(pressure=np.linspace(230, 180, g.cells.num) * BARSA,
                 sW=np.full(g.cells.num, 0.4),
                 qWs=np.array([3e-3]), qOs=np.array([-3e-3]),

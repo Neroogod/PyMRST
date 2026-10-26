@@ -78,7 +78,7 @@
             "vapoil": false
           },
           "fingerprint": "",
-          "owner": "pymrst.modules.ad_blackoil.models:GenericBlackOilModel"
+          "owner": "pymrst.modules.ad_blackoil.models:GenericBlackOilModelAD"
         },
         "name": "SPE1 time-integration formulation study",
         "outputs": [
@@ -326,7 +326,7 @@
             "vapoil": false
           },
           "fingerprint": "",
-          "owner": "pymrst.modules.ad_blackoil.models:GenericBlackOilModel"
+          "owner": "pymrst.modules.ad_blackoil.models:GenericBlackOilModelAD"
         },
         "name": "SPE1 time-integration formulation study",
         "outputs": [
@@ -618,7 +618,7 @@
             "vapoil": false
           },
           "fingerprint": "",
-          "owner": "pymrst.modules.ad_blackoil.models:GenericBlackOilModel"
+          "owner": "pymrst.modules.ad_blackoil.models:GenericBlackOilModelAD"
         },
         "name": "SPE1 time-integration formulation study",
         "outputs": [

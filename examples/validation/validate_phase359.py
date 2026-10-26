@@ -16,7 +16,10 @@ from pathlib import Path
 
 from scipy.io import loadmat
 
-from pymrst.modules.ad_core.utils.select_model_from_deck import deck_model_choice
+from pymrst.modules.ad_core.utils.select_model_from_deck import (
+    deck_model_choice,
+    select_model_from_deck,
+)
 
 REF = Path(__file__).with_name("ref_p359_selectmodel.mat")
 
@@ -72,6 +75,15 @@ def main() -> int:
                      choice["disgas"] == mrst_disgas)
     failed += _check(f"vapoil matches ({choice['vapoil']})",
                      choice["vapoil"] == mrst_vapoil)
+
+    model = select_model_from_deck(None, None, {}, deck)
+    print(f"select_model_from_deck (the port) builds {type(model).__name__}:")
+    failed += _check("class is MRST's", type(model).__name__ == mrst_class)
+    failed += _check(f"disgas matches ({model.disgas})", model.disgas == mrst_disgas)
+    failed += _check(f"vapoil matches ({model.vapoil})", model.vapoil == mrst_vapoil)
+    failed += _check("minimumPressure is 0", model.minimumPressure == 0)
+    failed += _check("facility is GenericFacilityModel",
+                     type(model.FacilityModel).__name__ == "GenericFacilityModel")
 
     print("\nModel selection matches MRST!" if failed == 0
           else f"\n{failed} checks FAILED")

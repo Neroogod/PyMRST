@@ -14,8 +14,8 @@ if str(ROOT) not in sys.path:
 from pymrst.modules.compositional.examples._shared import (  # noqa: E402
     ScheduleControl,
     SimulationResult,
-    get_multiple_packed_simulator_outputs,
-    pack_simulation_problem,
+    get_multiple_packed_simulator_outputs_ad,
+    pack_simulation_problem_ad,
     simple_schedule,
 )
 
@@ -26,7 +26,7 @@ def _check(name: str, condition: bool) -> int:
 
 
 def _legacy_reports_for(schedule):
-    problem = pack_simulation_problem(
+    problem = pack_simulation_problem_ad(
         0.0,
         object(),
         schedule,
@@ -38,7 +38,7 @@ def _legacy_reports_for(schedule):
         iterations=np.asarray([2, 2, 2], dtype=int),
         reports=None,
     )
-    _, _, reports, _ = get_multiple_packed_simulator_outputs([problem])
+    _, _, reports, _ = get_multiple_packed_simulator_outputs_ad([problem])
     return reports[0]
 
 

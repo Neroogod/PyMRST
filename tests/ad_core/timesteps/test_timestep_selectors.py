@@ -10,8 +10,8 @@ import numpy as np
 
 from pymrst.modules.ad_core.statefunctions import State
 from pymrst.modules.ad_core.timesteps import (
-    FactorTimeStepSelector,
-    SimpleTimeStepSelector,
+    FactorTimeStepSelectorAD as FactorTimeStepSelector,
+    SimpleTimeStepSelectorAD as SimpleTimeStepSelector,
     rampup_timesteps,
 )
 

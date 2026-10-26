@@ -65,7 +65,7 @@ def test_multiple_cases_and_custom_reducer_are_supported():
 def test_real_reservoir_model_assembles_during_benchmark():
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-        GenericBlackOilModel,
+        GenericBlackOilModelAD,
     )
     from pymrst.modules.ad_props import init_simple_adi_fluid
     from pymrst.params import make_rock
@@ -75,7 +75,7 @@ def test_real_reservoir_model_assembles_during_benchmark():
     fluid = init_simple_adi_fluid(
         mu=[1.0, 2.0], rho=[1000.0, 800.0], n=[2, 2]
     )
-    model = GenericBlackOilModel(grid, rock, fluid, [])
+    model = GenericBlackOilModelAD(grid, rock, fluid, [])
     state = State(
         pressure=np.full(grid.cells.num, 1e7),
         sW=np.full(grid.cells.num, 0.3),

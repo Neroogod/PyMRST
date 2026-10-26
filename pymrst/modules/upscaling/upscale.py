@@ -23,7 +23,7 @@ import numpy as np
 from pymrst.gridprocessing.grid import Grid
 from pymrst.gridprocessing.tensor_grid import tensor_grid
 from pymrst.gridprocessing.geometry import compute_geometry
-from pymrst.modules.incomp import incomp_tpfa, init_single_fluid
+from pymrst.modules.incomp import incomp_tpfa_ad as incomp_tpfa, init_single_fluid
 from pymrst.params.rock import Rock, make_rock, pore_volume
 from pymrst.params.wells_and_bc import add_bc
 from pymrst.solvers.state import init_res_sol

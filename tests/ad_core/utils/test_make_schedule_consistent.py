@@ -3,7 +3,7 @@ import numpy as np
 from pymrst.modules.ad_core.utils import (
     Control,
     Schedule,
-    make_schedule_consistent,
+    make_schedule_consistent_ad,
 )
 from pymrst.params.wells_and_bc import Well
 
@@ -30,7 +30,7 @@ def test_union_of_wells_and_perforations_is_stable():
             ]),
         ],
     )
-    result = make_schedule_consistent(schedule)
+    result = make_schedule_consistent_ad(schedule)
     assert [w.name for w in result.controls[0].W] == ["A", "B"]
     assert [w.name for w in result.controls[1].W] == ["A", "B"]
     assert np.array_equal(result.controls[0].W[0].cells, [0, 2, 3])
@@ -49,7 +49,7 @@ def test_shut_well_keeps_first_active_control_but_closes_connections():
             Control(W=[_well("A", [0], [5.0], val=50.0, status=False)]),
         ],
     )
-    result = make_schedule_consistent(schedule)
+    result = make_schedule_consistent_ad(schedule)
     shut = result.controls[1].W[0]
     assert shut.status is False
     assert shut.val == 100.0

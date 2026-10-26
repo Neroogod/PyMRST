@@ -1,6 +1,6 @@
 """Automatic differentiation helpers, ported from MRST `utils/ADI.m`."""
 
-from pymrst.utils.adi.adi import ADI, _diag_mul
+from pymrst.utils.adi.adi import ADI, _diag_mul, ad_from_blocks, is_ad
 from pymrst.utils.adi.adi2 import (
     ADI2,
     ad2_atan2,
@@ -33,6 +33,8 @@ __all__ = [
     "ADI",
     "ADI2",
     "_diag_mul",
+    "ad_from_blocks",
+    "is_ad",
     "ad2_matmul",
     "ad2_atan2",
     "ad2_cos",

@@ -1,13 +1,14 @@
-"""Tests for MRST ``NumericalPressureReductionFactors``."""
+"""Tests for `NumericalPressureReductionFactorsAD`, PyMRST's earlier version of
+MRST ``NumericalPressureReductionFactors`` for the legacy models."""
 
 import numpy as np
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
 )
 from pymrst.modules.ad_core.statefunctions.flowprops import (
-    NumericalPressureReductionFactors,
+    NumericalPressureReductionFactorsAD,
 )
 from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.modules.ad_props import init_simple_adi_fluid
@@ -24,7 +25,7 @@ def test_local_mass_jacobian_weights_cancel_nonpressure_derivative():
         2.0 * pressure + 3.0 * saturation,
         5.0 * pressure + 7.0 * saturation,
     ]
-    weights = NumericalPressureReductionFactors.get_weights(
+    weights = NumericalPressureReductionFactorsAD.get_weights(
         mass, [np.zeros(2), np.zeros(2)], 1.0, ncell=2, ncomp=2
     )
     expected = np.linalg.solve(
@@ -41,7 +42,7 @@ def test_local_mass_jacobian_weights_cancel_nonpressure_derivative():
 
 
 def test_numeric_mass_fallback_and_weight_pressure_derivative():
-    numeric = NumericalPressureReductionFactors.get_weights(
+    numeric = NumericalPressureReductionFactorsAD.get_weights(
         [np.ones(2), np.ones(2)],
         [np.zeros(2), np.zeros(2)],
         1.0,
@@ -50,7 +51,7 @@ def test_numeric_mass_fallback_and_weight_pressure_derivative():
     )
     assert np.array_equal(numeric, np.ones((2, 2)))
 
-    derivative = NumericalPressureReductionFactors.get_weight_derivatives(
+    derivative = NumericalPressureReductionFactorsAD.get_weight_derivatives(
         weights=np.array([[2.0, 1.0], [4.0, 2.0]]),
         previous_weights=np.array([[1.0, 1.0], [2.0, 2.0]]),
         pressure=np.array([110.0, 200.0]),
@@ -71,7 +72,7 @@ def test_evaluate_on_real_model_returns_ad_pressure_weights():
         c=[1e-6 / BARSA, 1e-4 / BARSA],
         p_ref=200 * BARSA,
     )
-    model = GenericBlackOilModel(grid, rock, fluid, [])
+    model = GenericBlackOilModelAD(grid, rock, fluid, [])
     base = State(
         pressure=np.full(3, 200 * BARSA),
         sW=np.array([0.2, 0.5, 0.8]),
@@ -87,7 +88,7 @@ def test_evaluate_on_real_model_returns_ad_pressure_weights():
         "weights": np.ones((3, 2)),
         "pressure": np.full(3, 199 * BARSA),
     }
-    weights = NumericalPressureReductionFactors(model).evaluate_on_domain(
+    weights = NumericalPressureReductionFactorsAD(model).evaluate_on_domain(
         model, state
     )
     assert len(weights) == 2

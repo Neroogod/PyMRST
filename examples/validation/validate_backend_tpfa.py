@@ -6,7 +6,7 @@ import numpy as np
 
 from pymrst.backends import get_backend
 from pymrst.gridprocessing import cart_grid, compute_geometry
-from pymrst.modules.incomp import incomp_tpfa, incomp_tpfa_backend_pressure
+from pymrst.modules.incomp import incomp_tpfa_ad as incomp_tpfa, incomp_tpfa_backend_pressure
 from pymrst.modules.incomp.fluid import init_single_fluid
 from pymrst.params.gravity_const import gravity_vector
 from pymrst.params.rock import make_rock

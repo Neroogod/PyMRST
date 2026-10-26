@@ -1,0 +1,133 @@
+{
+  "device": "cpu",
+  "folds": 7,
+  "input_digest": "f3434146000e15a80e154f58c446598c56d71a7adac22d301a902c1c1f263000",
+  "model": "beta2.2",
+  "mrst_included": true,
+  "phase_confusion_vs_reference": {
+    "mrst": [
+      [
+        0,
+        2,
+        20
+      ],
+      [
+        88,
+        5862,
+        1610
+      ],
+      [
+        27,
+        795,
+        1596
+      ]
+    ],
+    "pymrst": [
+      [
+        0,
+        2,
+        20
+      ],
+      [
+        88,
+        5862,
+        1610
+      ],
+      [
+        27,
+        795,
+        1596
+      ]
+    ]
+  },
+  "phase_filter": "all",
+  "physical_metrics": {
+    "mrst": {
+      "log_fugacity_max": 9.999988908351853e-05,
+      "log_fugacity_rmse": 3.21945709648745e-05,
+      "material_balance_max": 9.960365865424592e-11,
+      "material_balance_rmse": 2.157336414444152e-11,
+      "nonfinite_count": 0,
+      "out_of_bounds_count": 0,
+      "phase_counts": {
+        "gas": 115,
+        "liquid": 6659,
+        "two-phase": 3226
+      },
+      "x_closure_rmse": 4.224686731655425e-17,
+      "y_closure_rmse": 5.455930096734114e-17
+    },
+    "pymrst": {
+      "log_fugacity_max": 2.922506503466593e-08,
+      "log_fugacity_rmse": 3.0151381546093607e-10,
+      "material_balance_max": 9.960365865424592e-11,
+      "material_balance_rmse": 2.157325021212512e-11,
+      "nonfinite_count": 0,
+      "out_of_bounds_count": 0,
+      "phase_counts": {
+        "gas": 115,
+        "liquid": 6659,
+        "two-phase": 3226
+      },
+      "x_closure_rmse": 5.831577881329551e-17,
+      "y_closure_rmse": 6.567229613971937e-17
+    },
+    "reference": {
+      "log_fugacity_max": 8.764924504319643,
+      "log_fugacity_rmse": 2.7906614013726587,
+      "material_balance_max": 8.424541765861271e-06,
+      "material_balance_rmse": 5.481775061012422e-07,
+      "nonfinite_count": 0,
+      "out_of_bounds_count": 0,
+      "phase_counts": {
+        "gas": 22,
+        "liquid": 7560,
+        "two-phase": 2418
+      },
+      "x_closure_rmse": 9.640418839259551e-17,
+      "y_closure_rmse": 1.1914094977513224e-16
+    },
+    "victory": {
+      "log_fugacity_max": 14.113438080725285,
+      "log_fugacity_rmse": 3.5220460715926767,
+      "material_balance_max": 0.13883439613922727,
+      "material_balance_rmse": 0.00638565341480382,
+      "nonfinite_count": 0,
+      "out_of_bounds_count": 0,
+      "phase_counts": {
+        "gas": 22,
+        "liquid": 7560,
+        "two-phase": 2418
+      },
+      "x_closure_rmse": 0.0018732562894001603,
+      "y_closure_rmse": 0.0009932188550010324
+    }
+  },
+  "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+  "pressure_range_Pa": [
+    101008.19434491648,
+    34473786.4658418
+  ],
+  "pymrst_flash_iterations": 200,
+  "python": "3.14.5 (v3.14.5:5607950ef23, May 10 2026, 07:38:09) [Clang 21.0.0 (clang-2100.0.123.102)]",
+  "rows": 10000,
+  "schema_version": "victory-flash-comparison-v1",
+  "seed": 42,
+  "temperature_K": 353.0,
+  "timings_seconds": {
+    "mrst": 0.909419875,
+    "pymrst": 1.1236829590052366,
+    "reference": null,
+    "victory": 0.05574629199691117
+  },
+  "victory_phase_flags_from_reference": true,
+  "victory_uncertainty_error_correlation": {
+    "L": 0.39281577089058645,
+    "x1": 0.39374518313557744,
+    "x14": 0.29380038673639114,
+    "x3": 0.5653747869731748,
+    "y1": 0.23732277766817797,
+    "y14": 0.6808606421577307,
+    "y3": 0.2476471325226504
+  }
+}

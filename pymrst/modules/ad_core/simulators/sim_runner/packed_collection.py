@@ -1,4 +1,9 @@
-"""Collection and copy helpers for packed simulation problems."""
+"""Collection and copy helpers for packed simulation problems.
+
+`copy_packed_problem_ad` is PyMRST's earlier version of MRST
+`copyPackedProblem`, kept for its callers; the port is in
+`copy_packed_problem.py`.
+"""
 
 from __future__ import annotations
 
@@ -8,7 +13,7 @@ from typing import Iterable
 import numpy as np
 
 from pymrst.modules.ad_core.simulators.sim_runner.packed_output import (
-    get_packed_simulator_output,
+    get_packed_simulator_output_ad,
 )
 from pymrst.modules.ad_core.simulators.sim_runner.packed_problem import (
     PackedSimulationProblem,
@@ -16,7 +21,7 @@ from pymrst.modules.ad_core.simulators.sim_runner.packed_problem import (
 )
 
 
-def get_multiple_packed_simulator_outputs(
+def get_multiple_packed_simulator_outputs_ad(
     problems: Iterable[PackedSimulationProblem], *, min_steps: int = 0,
     read_from_disk: bool = True,
 ):
@@ -24,7 +29,7 @@ def get_multiple_packed_simulator_outputs(
     all_wells, all_states, all_reports = [], [], []
     names, times, grids, active = [], [], [], []
     for problem in list(problems):
-        wells, states, reports, _ = get_packed_simulator_output(
+        wells, states, reports, _ = get_packed_simulator_output_ad(
             problem, read_from_disk=read_from_disk
         )
         count = len(problem.OutputHandlers.states)
@@ -51,7 +56,7 @@ def get_multiple_packed_simulator_outputs(
     )
 
 
-def copy_packed_problem(
+def copy_packed_problem_ad(
     problem: PackedSimulationProblem,
     new_base_name: str,
     *,
@@ -87,12 +92,7 @@ def copy_packed_problem(
     )
 
 
-getMultiplePackedSimulatorOutputs = get_multiple_packed_simulator_outputs
-copyPackedProblem = copy_packed_problem
-
 __all__ = [
-    "get_multiple_packed_simulator_outputs",
-    "getMultiplePackedSimulatorOutputs",
-    "copy_packed_problem",
-    "copyPackedProblem",
+    "get_multiple_packed_simulator_outputs_ad",
+    "copy_packed_problem_ad",
 ]

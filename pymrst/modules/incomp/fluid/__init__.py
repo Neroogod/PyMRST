@@ -2,13 +2,15 @@
 
 A Fluid bundles constant viscosities and densities per phase with a
 relative-permeability function kr(s) and, for transport solvers, its
-derivative dkr(s). init_single_fluid mirrors initSingleFluid (kr = s);
+derivative dkr(s). init_single_fluid is MRST's initSingleFluid (kr = 1, in
+`incompressible/init_single_fluid.py`); init_single_fluid_ad, PyMRST's
+earlier version, has kr = s;
 init_simple_fluid mirrors initSimpleFluid (Corey power-law relperms
 krW = s^n1, krO = (1-s)^n2).
 """
 
 from dataclasses import dataclass
-from typing import Callable, Optional, Sequence
+from typing import Any, Callable, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -31,6 +33,14 @@ class Fluid:
     def n_phases(self) -> int:
         return self.mu.size
 
+    def properties(self, state: Any = None) -> Tuple[np.ndarray, np.ndarray]:
+        """MRST's `[mu, rho] = fluid.properties(state)`."""
+        return self.mu, self.rho
+
+    def saturation(self, state: Any) -> np.ndarray:
+        """MRST's `s = fluid.saturation(state)`."""
+        return state.s
+
     def mobility(self, s: np.ndarray) -> np.ndarray:
         """Phase mobilities kr(s)/mu, shape (nc, n_phases)."""
         return self.relperm(s) / self.mu
@@ -41,7 +51,7 @@ class Fluid:
         return self.d_relperm(s) / self.mu
 
 
-def init_single_fluid(mu: float, rho: float) -> Fluid:
+def init_single_fluid_ad(mu: float, rho: float) -> Fluid:
     """Single incompressible phase with viscosity mu (Pa*s), density rho."""
     return Fluid(
         mu=np.array([float(mu)]),
@@ -76,12 +86,24 @@ def init_simple_fluid(
     return Fluid(mu=mu, rho=rho, relperm=relperm, d_relperm=d_relperm)
 
 
+def __getattr__(name: str) -> Any:
+    """`init_single_fluid` is MRST's port in `incompressible/`, which builds on
+    `Fluid` above; it is loaded on first use so the two modules do not import
+    each other at import time."""
+    if name == "init_single_fluid":
+        from pymrst.modules.incomp.fluid.incompressible.init_single_fluid import (
+            init_single_fluid,
+        )
+        return init_single_fluid
+    raise AttributeError(name)
+
+
 if __name__ == "__main__":
     from pymrst.utils.units import CENTI, POISE
 
     def test_single_fluid():
         """kr equals saturation; mobility is s/mu."""
-        f = init_single_fluid(mu=1 * CENTI * POISE, rho=1000.0)
+        f = init_single_fluid_ad(mu=1 * CENTI * POISE, rho=1000.0)
         assert f.n_phases == 1
         s = np.ones((5, 1))
         assert np.allclose(f.relperm(s), 1.0)

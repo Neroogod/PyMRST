@@ -7,7 +7,7 @@ pressure its rate required, however unphysical, and a BHP producer would pull
 whatever the reservoir would give.
 
 `dump_phase39_reference.m` runs the same case twice through MRST's
-`GenericBlackOilModel`:
+`GenericBlackOilModelAD`:
 
 - **with limits** the injector cannot hold its rate within 300 bar and the
   producer pulls more liquid than it is allowed, so both must switch;
@@ -26,7 +26,7 @@ import numpy as np
 import scipy.io
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
-from pymrst.modules.ad_blackoil import GenericBlackOilModel
+from pymrst.modules.ad_blackoil import GenericBlackOilModelAD
 from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
 from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.modules.ad_props import init_simple_adi_fluid
@@ -65,7 +65,7 @@ def run_python(ref, tight: bool):
                  val=bhp_prod, compi=np.array([0.0, 1.0]), sign=-1,
                  radius=0.1, name="prod", lims=prod_lims)
 
-    model = GenericBlackOilModel(g, rock, fluid, w)
+    model = GenericBlackOilModelAD(g, rock, fluid, w)
     st = State(
         pressure=np.full(g.cells.num, p_ref),
         sW=np.full(g.cells.num, 0.2),

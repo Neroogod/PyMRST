@@ -1,4 +1,13 @@
-"""Three-phase black-oil model with dissolved gas (MRST equationsBlackOil).
+"""MRST ``ad-blackoil/models/ThreePhaseBlackOilModel.m``.
+
+`ThreePhaseBlackOilModel` is MRST's class on the AD-OO framework: equations
+from `equationsBlackOil`, Newton updates with MRST's variable switching and
+`computeFlashBlackOil`, and everything else inherited from `ReservoirModel`.
+
+`ThreePhaseBlackOilModelAD`, below it, is PyMRST's earlier hand-built live-oil
+model on the legacy contract, kept for the code built on it:
+
+Three-phase black-oil model with dissolved gas (MRST equationsBlackOil).
 
 Fully-implicit water/oil/gas conservation in surface volumes with live
 oil (disgas, no vapoil). The hydrocarbon primary variable x switches
@@ -10,8 +19,9 @@ volume accounting. Connection pressure drops (cdp) are zero, which is
 exact for SPE 1 (refDepth equals the perforation depth).
 """
 
+from copy import copy
 from dataclasses import dataclass
-from typing import List, Sequence, Tuple
+from typing import Any, List, Sequence, Tuple
 
 import numpy as np
 import scipy.sparse.linalg as spla
@@ -21,14 +31,34 @@ from pymrst.modules.ad_props.props.init_deck_adi_fluid import BlackOilFluid
 from pymrst.params.gravity_const import NORM_GRAVITY
 from pymrst.params.rock import Rock, pore_volume
 from pymrst.params.wells_and_bc import Well
+from pymrst.modules.ad_core.models.physical_model import PhysicalModel
 from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
 from pymrst.modules.ad_core.utils.convergence import cnv_mb_convergence
-from pymrst.modules.ad_blackoil.utils.get_b_g_bo import get_b_g_bo
-from pymrst.modules.ad_blackoil.utils.get_b_o_bo import get_b_o_bo
-from pymrst.modules.ad_blackoil.utils.flux_and_props_bo import (
+from pymrst.modules.ad_blackoil.utils.get_b_g_bo import get_b_g_bo_ad
+from pymrst.modules.ad_blackoil.utils.get_b_o_bo import get_b_o_bo_ad
+from pymrst.modules.ad_blackoil.utils.get_flux_and_props_gas_bo import (
     get_flux_and_props_gas_bo,
+)
+from pymrst.modules.ad_blackoil.utils.get_flux_and_props_oil_bo import (
     get_flux_and_props_oil_bo,
+)
+from pymrst.modules.ad_blackoil.utils.get_flux_and_props_water_bo import (
     get_flux_and_props_water_bo,
+)
+from pymrst.modules.ad_blackoil.utils.calculate_hydrocarbons_from_status_bo import (
+    calculate_hydrocarbons_from_status_bo,
+)
+from pymrst.modules.ad_blackoil.utils.compute_flash_black_oil import (
+    compute_flash_black_oil,
+)
+from pymrst.modules.ad_blackoil.utils.equations_black_oil import equations_black_oil
+from pymrst.modules.ad_blackoil.utils.get_cell_status_vo import get_cell_status_vo
+from pymrst.modules.ad_core.ad_oo.physical_model import (
+    copy_state,
+    merge_options_relaxed,
+)
+from pymrst.modules.ad_core.ad_oo.reservoir_model import (
+    ReservoirModel as AdOoReservoirModel,
 )
 from pymrst.utils.adi import (
     ad_sum,
@@ -60,8 +90,28 @@ class BOState:
             self.qWs, self.qOs, self.qGs, self.bhp)))
 
 
-class ThreePhaseBlackOilModelAD:
-    """Fully-implicit black-oil model with dissolved gas."""
+class ThreePhaseBlackOilModelAD(PhysicalModel):
+    """Fully-implicit black-oil model with dissolved gas.
+
+    Sits on `PhysicalModel`. It did not, and the consequence was the same one
+    the two-phase model had before its own migration: the class inherited from
+    `object`, so it reached none of the shared AD-OO machinery and carried
+    none of MRST's `ThreePhaseBlackOilModel` protocol - nine methods, from
+    `getDissolutionMatrix` through `validateState`, simply absent.
+
+    Inheriting adds 76 names, 8 of which are probed by `hasattr`/`getattr`
+    elsewhere in the package, so this is one of the changes in the port that
+    can move numbers without touching a formula. One of those probes had to be
+    fixed first: `cfl.py` asked `hasattr(model, "init_state_ad")` and then
+    called it with one argument, while `PhysicalModel.init_state_ad` takes
+    three - so the probe would have flipped `True` and the call raised. It now
+    tests whether the method is the base's rather than whether the name
+    exists, which is the same fix the `get_equations` and `get_prop` probes
+    needed in earlier phases.
+
+    The characterization gate is what makes the migration checkable: it must
+    stay bit-identical across all eight frozen cases.
+    """
 
     def __init__(
         self,
@@ -71,11 +121,18 @@ class ThreePhaseBlackOilModelAD:
         wells: Sequence[Well],
         gravity: float = NORM_GRAVITY,
         ds_max: float = 0.2,
-        tol_cnv: float = 1e-8,
-        tol_mb: float = 1e-12,
-        tol_well: float = 1e-8,
+        # MRST's own defaults (`ReservoirModel.m`): `toleranceCNV = 1e-3`,
+        # `toleranceMB = 1e-7`, computed here with MRST's exact formulas so the
+        # numbers are directly comparable. The previous 1e-8/1e-12 were five
+        # orders tighter than the code being ported; see
+        # `generic_black_oil_model` for the measurement and the reasoning,
+        # including why `tol_well` is a mapping rather than a transcription.
+        tol_cnv: float = 1e-3,
+        tol_mb: float = 1e-7,
+        tol_well: float = 1e-6,
         max_iterations: int = 25,
     ):
+        super().__init__()
         self.g = g
         self.rock = rock
         self.fluid = fluid
@@ -87,12 +144,171 @@ class ThreePhaseBlackOilModelAD:
         self.operators = self.ops
         self.G = g
         self.pv_ref = pore_volume(g, rock)
-        self.gdz = gravity * self.ops.grad(g.cells.centroids[:, 2])
+        self.gdz = gravity * self.ops.grad(g.cells.centroids[:, -1])
         self.ds_max = ds_max
         self.tol_cnv = tol_cnv
         self.tol_mb = tol_mb
         self.tol_well = tol_well
         self.max_iterations = max_iterations
+
+    # ======================================================================
+    # MRST `ThreePhaseBlackOilModel.m`'s own protocol.
+    #
+    # Inheriting `PhysicalModel` supplied five of the nine methods this class
+    # was missing. These four are the black-oil-specific ones - they are about
+    # dissolved gas and vaporised oil, which the base has no notion of.
+    # ======================================================================
+
+    def get_dissolution_matrix(self, rs=None, rv=None):
+        """The `n_phase x n_phase` table of dissolved-component ratios.
+
+        `dismat[i][j]` is how much of component `j` rides in phase `i`: `rv`
+        in the oil-gas slot, `rs` in the gas-oil slot, `None` everywhere else.
+        MRST returns it as a nested cell array and the conservation equations
+        index it directly, so the shape - one row per *active* phase, not per
+        possible phase - is what a caller relies on. A three-phase table
+        handed to a two-phase model would put the gas ratio in the oil slot.
+
+        The ratios are dropped when the model does not carry them: a dead-oil
+        model has no `rs` however much a caller passes, and silently keeping it
+        would add solution gas to a fluid that has none.
+        """
+        if not self.disgas:
+            rs = None
+        if not self.vapoil:
+            rv = None
+
+        names = [str(n).upper() for n in self.get_phase_names()]
+        n = len(names)
+        table = [[None]*n for _ in range(n)]
+        if "O" in names and "G" in names:
+            oil, gas = names.index("O"), names.index("G")
+            table[oil][gas] = rv
+            table[gas][oil] = rs
+        return table
+
+    getDissolutionMatrix = get_dissolution_matrix
+
+    def get_dissolution_matrix_max(self, pressure):
+        """The dissolution matrix at *saturated* conditions.
+
+        The most gas the oil can hold at this pressure, and vice versa. Used
+        as the ceiling when a cell crosses the bubble point: above it the
+        extra gas must come out as a free phase rather than staying dissolved.
+        """
+        rs_max = self._saturated_ratio("rs", pressure) if self.disgas else None
+        rv_max = self._saturated_ratio("rv", pressure) if self.vapoil else None
+        return self.get_dissolution_matrix(rs_max, rv_max)
+
+    getDissolutionMatrixMax = get_dissolution_matrix_max
+
+    def get_scaling_factors_cpr(self, problem=None, names=None,
+                                scaling_type: str = "trueimpes"):
+        """Per-equation CPR weights, `1/b` per phase.
+
+        The weighting is what makes CPR work at all, and the reason is the
+        cancellation: the equations are in surface volume, `pv b_i s_i`, so
+        dividing by `b_i` gives reservoir volume `pv s_i`, and summing over
+        phases gives `pv` - the saturations cancel exactly and what is left is
+        a function of pressure alone. That is the elliptic system AMG wants.
+        An unweighted sum cancels nothing.
+
+        `trueimpes` defers to the model's `PressureReductionFactors` where the
+        state-function graph provides them; otherwise the `1/b` weights are
+        evaluated at the mean pressure, which is MRST's `quasiimpes` fallback.
+        """
+        names = list(names or [])
+        pressure = self._mean_pressure(problem)
+        fluid = getattr(self, "raw_fluid", None) or self.fluid
+
+        if str(scaling_type).lower() == "trueimpes":
+            factors = self._pressure_reduction_factors(problem)
+            if factors is not None:
+                return list(factors)[:len(names)] or [1]*len(names)
+
+        scaling = []
+        for name in names:
+            key = str(name).lower()
+            if key == "water":
+                b = self._eval(getattr(fluid, "b_w", getattr(fluid, "bW", None)),
+                               pressure)
+            elif key == "oil":
+                if self.disgas:
+                    rs = self._saturated_ratio("rs", pressure)
+                    b = self._eval(getattr(fluid, "b_o", getattr(fluid, "bO", None)),
+                                   pressure, rs, True)
+                else:
+                    b = self._eval(getattr(fluid, "b_o", getattr(fluid, "bO", None)),
+                                   pressure)
+            elif key == "gas":
+                if self.vapoil:
+                    rv = self._saturated_ratio("rv", pressure)
+                    b = self._eval(getattr(fluid, "b_g", getattr(fluid, "bG", None)),
+                                   pressure, rv, True)
+                else:
+                    b = self._eval(getattr(fluid, "b_g", getattr(fluid, "bG", None)),
+                                   pressure)
+            else:
+                scaling.append(1)
+                continue
+            scaling.append(1.0/b if b not in (None, 0) else 1)
+        return scaling
+
+    getScalingFactorsCPR = get_scaling_factors_cpr
+
+    @staticmethod
+    def eval_single(fn, *args):
+        """Call `fn`, unwrapping a one-element region list first.
+
+        MRST's regionalised properties arrive as cell arrays even when there
+        is a single region, and `fn{1}` is how it reaches the function. The
+        same shape occurs here, so the unwrapping is not MATLAB bookkeeping -
+        a list would otherwise be called as though it were a function.
+        """
+        if isinstance(fn, (list, tuple)):
+            fn = fn[0]
+        return fn(*args)
+
+    evalSingle = eval_single
+
+    # -- helpers for the four above -----------------------------------------
+
+    def _saturated_ratio(self, which: str, pressure):
+        """`rs_sat` / `rv_sat` at `pressure`, under either spelling."""
+        fluid = getattr(self, "raw_fluid", None) or self.fluid
+        for name in (f"{which}_sat", f"{which}Sat"):
+            fn = getattr(fluid, name, None)
+            if fn is not None:
+                return self.eval_single(fn, pressure)
+        return None
+
+    @staticmethod
+    def _eval(fn, *args):
+        if fn is None:
+            return None
+        if isinstance(fn, (list, tuple)):
+            fn = fn[0]
+        result = fn(*args)
+        return float(np.ravel(value(result))[0])
+
+    @staticmethod
+    def _mean_pressure(problem) -> float:
+        state = getattr(problem, "state", None) if problem is not None else None
+        if state is None:
+            return 0.0
+        pressure = state["pressure"] if "pressure" in state else \
+            getattr(state, "pressure", 0.0)
+        return float(np.mean(np.asarray(value(pressure), dtype=float)))
+
+    def _pressure_reduction_factors(self, problem):
+        """MRST's `trueimpes` weights, when the property graph supplies them."""
+        state = getattr(problem, "state", None) if problem is not None else None
+        if state is None or not hasattr(self, "get_prop"):
+            return None
+        try:
+            return self.get_prop(state, "PressureReductionFactors")
+        except Exception:
+            return None
 
     # -- assembly ----------------------------------------------------------
     def assemble(self, st0: BOState, st: BOState, p, sw, x,
@@ -135,8 +351,8 @@ class ThreePhaseBlackOilModelAD:
         st3_0 = st0.status == 3
         pv0 = self.pv_ref * value(f.pv_mult(p0))
         b_w0 = value(f.b_w(p0))
-        b_o0 = value(get_b_o_bo(self, p0, rs0, st3_0))
-        b_g0 = value(get_b_g_bo(self, p0))
+        b_o0 = value(get_b_o_bo_ad(self, p0, rs0, st3_0))
+        b_g0 = value(get_b_g_bo_ad(self, p0))
 
         water = (1.0 / dt) * (pv * b_w * sw - pv0 * b_w0 * s0[:, 0])
         oil = (1.0 / dt) * (pv * b_o * so - pv0 * b_o0 * s0[:, 1])
@@ -302,8 +518,8 @@ class ThreePhaseBlackOilModelAD:
         """
         f = self.fluid
         p = st.pressure
-        b = [f.b_w(p), get_b_o_bo(self, p, st.rs, st.status == 3),
-             get_b_g_bo(self, p)]
+        b = [f.b_w(p), get_b_o_bo_ad(self, p, st.rs, st.status == 3),
+             get_b_g_bo_ad(self, p)]
         b_avg = np.array([float(np.mean(1.0 / np.asarray(value(x), float)))
                           for x in b])
         pv = self.pv_ref * np.asarray(value(f.pv_mult(p)), dtype=float)
@@ -373,6 +589,389 @@ def initial_state_spe1(model: ThreePhaseBlackOilModelAD, deck) -> BOState:
                    qWs=qws, qOs=qos, qGs=qgs, bhp=bhp)
 
 
+class ThreePhaseBlackOilModel(AdOoReservoirModel):
+    """MRST `ThreePhaseBlackOilModel`: water, oil and gas with optional
+    dissolved gas (`disgas`) and vaporised oil (`vapoil`)."""
+
+    def __init__(self, G: Any, rock: Any, fluid: Any, *, inputdata: Any = None,
+                 **options: Any):
+        super().__init__(G, rock, fluid, inputdata=inputdata)
+        self.vapoil = False
+        self.disgas = False
+        self.drsMaxAbs = float("inf")
+        self.drsMaxRel = float("inf")
+        self.useCNVConvergence = True
+        self.oil = True
+        self.gas = True
+        self.water = True
+        merge_options_relaxed(self, options)
+        d = self.inputdata
+        if d is not None:
+            runspec = _deck_field(d, "RUNSPEC")
+            if runspec is None:
+                raise ValueError("Unknown dataset format!")
+            if _deck_field(runspec, "VAPOIL") is not None:
+                self.vapoil = bool(_deck_field(runspec, "VAPOIL"))
+            if _deck_field(runspec, "DISGAS") is not None:
+                self.disgas = bool(_deck_field(runspec, "DISGAS"))
+        self.OutputStateFunctions = ["PoreVolume", "ShrinkageFactors"]
+
+    def get_variable_field(self, name: str, throw_error: bool = True):
+        if name.lower() in ("rs", "rv"):
+            return name.lower(), ":"
+        return super().get_variable_field(name, throw_error)
+
+    def get_primary_variables(self, state: Any):
+        """`pressure`, every saturation but oil's, the switched `x`, wells."""
+        phases = list(self.get_phase_names())
+        nph = len(phases)
+        ix = phases.index("O") if self.oil else nph - 1
+        phases.pop(ix)
+        snames = [f"s{x}" for x in phases]
+        p = self.get_prop(state, "pressure")
+        s = [self.get_prop(state, n) for n in snames]
+        rs, rv = self.get_props(state, "rs", "rv")
+        if self.disgas or self.vapoil:
+            assert self.oil, "Cannot have disgas/vapoil without oil phase."
+            assert self.gas, "Cannot have disgas/vapoil without gas phase."
+            s_w = s[phases.index("W")] if self.water else 0.0
+            is_g = phases.index("G")
+            s_g = s[is_g]
+            st = self.get_cell_status_vo(state, 1 - s_w - s_g, s_w, s_g)
+            s[is_g] = (_as_float(st[0])*rs + _as_float(st[1])*rv
+                       + _as_float(st[2])*s_g)
+            snames[is_g] = "x"
+        variables = [p] + s
+        names = ["pressure"] + snames
+        origin = [type(self).__name__]*len(variables)
+        if self.FacilityModel is not None:
+            v, n, o = self.FacilityModel.get_primary_variables(state)
+            variables += list(v)
+            names += list(n)
+            origin += list(o)
+        return variables, names, origin
+
+    def init_state_ad(self, state: Any, variables, names, origin):
+        """Set saturations (and `rs`/`rv`) from the switched variable."""
+        variables, names, origin = list(variables), list(names), list(origin)
+        lowered = [n.lower() for n in names]
+        removed = [False]*len(variables)
+        st = None
+        x = None
+        if self.disgas or self.vapoil:
+            if self.water:
+                isw = lowered.index("sw")
+                s_w = variables[isw]
+                removed[isw] = True
+            else:
+                s_w = 0.0
+            isx = lowered.index("x")
+            x = variables[isx]
+            s_g = self.get_props(state, "sg")
+            st = self.get_cell_status_vo(state, 1 - s_w - s_g, s_w, s_g)
+            s_g = _as_float(st[1])*(1 - s_w) + _as_float(st[2])*x
+            s_o = _as_float(st[0])*(1 - s_w) + _as_float(~np.asarray(st[0]))*(1 - s_w - s_g)
+            sat = [s_w, s_o, s_g] if self.water else [s_o, s_g]
+            removed[isx] = True
+        else:
+            phases = self.get_phase_names()
+            sat: List[Any] = [None]*len(phases)
+            fill = np.ones(self.G.cells.num)
+            missing = []
+            for i, letter in enumerate(phases):
+                key = f"s{letter}".lower()
+                if key in lowered:
+                    k = lowered.index(key)
+                    fill = fill - variables[k]
+                    removed[k] = True
+                    sat[i] = variables[k]
+                else:
+                    missing.append(i)
+            for i in missing:
+                sat[i] = fill
+        state = self.set_prop(state, "s", sat)
+        if self.FacilityModel is not None:
+            fm = type(self.FacilityModel).__name__
+            is_f = [o == fm for o in origin]
+            state = self.FacilityModel.init_state_ad(
+                state, [v for v, f in zip(variables, is_f) if f],
+                [n for n, f in zip(names, is_f) if f],
+                [o for o, f in zip(origin, is_f) if f])
+            removed = [r or f for r, f in zip(removed, is_f)]
+        keep = [not r for r in removed]
+        state = super().init_state_ad(
+            state, [v for v, k in zip(variables, keep) if k],
+            [n for n, k in zip(names, keep) if k],
+            [o for o, k in zip(origin, keep) if k])
+        if self.disgas:
+            rs_sat = self.get_prop(state, "RsMax")
+            rs = _as_float(~np.asarray(st[0]))*rs_sat + _as_float(st[0])*x
+            state = self.set_prop(state, "rs", rs)
+        if self.vapoil:
+            rv_sat = self.get_prop(state, "RvMax")
+            rv = _as_float(~np.asarray(st[1]))*rv_sat + _as_float(st[1])*x
+            state = self.set_prop(state, "rv", rv)
+            bad_oil = (np.asarray(value(s_o)) == 0) & (np.asarray(value(rv)) == 0)
+            if np.any(bad_oil):
+                rows = np.flatnonzero(bad_oil)
+                s_o = s_o + 0.0
+                s_o[rows] = 1 - _rows(s_w, rows) - np.asarray(value(s_g))[rows]
+                state = self.set_prop(state, "sO", s_o)
+        return state
+
+    def get_equations(self, state0: Any, state: Any, dt: float,
+                      driving_forces: Any, **options: Any):
+        return equations_black_oil(state0, state, self, dt, driving_forces,
+                                   **options)
+
+    def validate_model(self, *args: Any):
+        model = super().validate_model(*args)
+        if (model.disgas or model.vapoil) and not np.isfinite(model.minimumPressure):
+            import warnings
+            warnings.warn("Black-oil case with no lower limit "
+                          "(model.minimumPressure) on pressure may result in "
+                          "convergence issues.")
+        return model
+
+    def validate_state(self, state: Any):
+        """Saturated `rs`/`rv` where the other hydrocarbon phase exists."""
+        state = super().validate_state(state)
+        nc = self.G.cells.num
+        if self.disgas:
+            self.check_property(state, "rs", nc, 1)
+            rs_max = np.asarray(value(self.get_prop(state, "rsMax")), dtype=float)
+            sg, so, rs = (np.array(value(x), dtype=float, copy=True)
+                          for x in self.get_props(state, "sg", "so", "rs"))
+            rs[sg > 0] = rs_max[sg > 0]
+            state = self.set_prop(state, "rs", rs*(so > 0))
+        elif "rs" not in state:
+            if self.verbose:
+                print('Missing field "rs" added since disgas is not enabled.')
+            state["rs"] = 0.0
+        if self.vapoil:
+            self.check_property(state, "rv", nc, 1)
+            rv_max = np.asarray(value(self.get_prop(state, "RvMax")), dtype=float)
+            so, sg, rv = (np.array(value(x), dtype=float, copy=True)
+                          for x in self.get_props(state, "so", "sg", "rv"))
+            rv[so > 0] = rv_max[so > 0]
+            state = self.set_prop(state, "rv", rv*(sg > 0))
+        elif "rv" not in state:
+            if self.verbose:
+                print('Missing field "rv" added since vapoil is not enabled.')
+            state["rv"] = 0.0
+        return state
+
+    def update_state(self, state: Any, problem: Any, dx, driving_forces: Any):
+        """Newton update with variable switching and the black-oil flash."""
+        variables = list(problem.primary_variables)
+        removed = [False]*len(variables)
+        if self.disgas or self.vapoil:
+            state0 = copy_state(state)
+            state = self.init_state_function_containers(state)
+            state, _, _ = self.update_state_from_increment(
+                state, dx, problem, "pressure", self.dpMaxRel, self.dpMaxAbs)
+            state = self.cap_property(state, "pressure", self.minimumPressure,
+                                      self.maximumPressure)
+            variables, gone = self.strip_vars(variables, "pressure")
+            removed = _mark_removed(removed, gone)
+            so, sg = (np.asarray(value(x), dtype=float)
+                      for x in self.get_props(state, "so", "sg"))
+            if self.water:
+                sw = np.asarray(value(self.get_prop(state, "sw")), dtype=float)
+                dsw = np.asarray(value(self.get_increment(dx, problem, "sw")), dtype=float)
+            else:
+                sw = dsw = 0.0
+            st = self.get_cell_status_vo(state0, so, sw, sg)
+            dr = np.asarray(value(self.get_increment(dx, problem, "x")), dtype=float)
+            dsg = _as_float(st[2])*dr - _as_float(st[1])*dsw
+            if self.disgas:
+                drs = self._dissolution_limit(state, "rsMax")
+                state, _, _ = self.update_state_from_increment(
+                    state, _as_float(st[0])*dr, problem, "rs", np.inf, drs)
+                state = self.cap_property(state, "rs", 0)
+            if self.vapoil:
+                drv = self._dissolution_limit(state, "rvMax")
+                state, _, _ = self.update_state_from_increment(
+                    state, _as_float(st[1])*dr, problem, "rv", np.inf, drv)
+                state = self.cap_property(state, "rv", 0)
+            dso = -(dsg + dsw)
+            n_ph = int(np.count_nonzero(self.get_active_phases()))
+            ds = np.zeros((so.size, n_ph))
+            ph = self.get_phase_indices()
+            if self.water:
+                ds[:, ph[0]] = dsw
+            if self.oil:
+                ds[:, ph[1]] = dso
+            if self.gas:
+                ds[:, ph[2]] = dsg
+            state, _, _ = self.update_state_from_increment(state, ds, problem, "s",
+                                                           np.inf, self.dsMaxAbs)
+            kr = self.FlowPropertyFunctions.get_state_function("RelativePermeability")
+            state, _ = kr.apply_immobile_chop(self, state, state0)
+            assert "so" not in [v.lower() for v in variables]
+            state = compute_flash_black_oil(state, state0, self, st)
+            s = np.asarray(state["s"], dtype=float)
+            state["s"] = s/s.sum(axis=1, keepdims=True)
+            variables, gone = self.strip_vars(variables,
+                                              ["sw", "so", "sg", "rs", "rv", "x"])
+            removed = _mark_removed(removed, gone)
+        # MATLAB passes `problem` by value: the stripped variable list must not
+        # reach the caller (a line search calls this again with the same one).
+        problem = copy(problem)
+        problem.primary_variables = variables
+        dx = [d for d, r in zip(dx, removed) if not r]
+        return super().update_state(state, problem, dx, driving_forces)
+
+    def _dissolution_limit(self, state: Any, saturated: str) -> Any:
+        """MRST's `drs`: `min(drsMaxAbs, rsMax*drsMaxRel)`, or unlimited."""
+        if np.isfinite(self.drsMaxRel):
+            relative = np.asarray(value(self.get_prop(state, saturated)))*self.drsMaxRel
+            return np.minimum(self.drsMaxAbs, relative)
+        return np.inf
+
+    def get_scaling_factors_cpr(self, problem: Any, names, solver_type="trueimpes"):
+        """CPR weights: true-IMPES reduction factors, or `1/b` scaled."""
+        n_names = len(names)
+        scaling: List[Any] = [None]*n_names
+        handled = [False]*n_names
+        state = problem.state
+        fluid = self.fluid
+        is_surf_vol = not self.isGenericReservoirModel
+        rho_s = self.get_surface_densities() if is_surf_vol else None
+        ph = self.get_phase_names()
+        if solver_type.lower() == "trueimpes":
+            w = self.get_prop(state, "PressureReductionFactors")
+            for i in range(len(w)):
+                scaling[i] = w[i]
+                handled[i] = True
+        else:
+            p = float(np.mean(value(state["pressure"])))
+            for i, name in enumerate(n.lower() for n in names):
+                if name == "oil":
+                    if self.disgas:
+                        rs = self._eval_single(fluid.rsSat, p)
+                        b_o = self._eval_single(fluid.bO, p, rs, True)
+                    else:
+                        b_o = self._eval_single(fluid.bO, p)
+                    s = 1/b_o
+                elif name == "water":
+                    s = 1/self._eval_single(fluid.bW, p)
+                elif name == "gas":
+                    if self.vapoil:
+                        rv = self._eval_single(fluid.rvSat, p)
+                        b_g = self._eval_single(fluid.bG, p, rv, True)
+                    else:
+                        b_g = self._eval_single(fluid.bG, p)
+                    s = 1/b_g
+                else:
+                    continue
+                scaling[i] = s
+                for k, eq_name in enumerate(problem.equation_names):
+                    if eq_name.lower() == name and k < n_names:
+                        handled[k] = True
+        if is_surf_vol:
+            column = {"oil": ph.find("O"), "water": ph.find("W"), "gas": ph.find("G")}
+            for i, name in enumerate(n.lower() for n in names):
+                if name in column and scaling[i] is not None:
+                    scaling[i] = scaling[i]*rho_s[0, column[name]]
+        if not all(handled):
+            other = super().get_scaling_factors_cpr(
+                problem, [n for n, h in zip(names, handled) if not h])
+            slots = [i for i, h in enumerate(handled) if not h]
+            for i, item in zip(slots, other):
+                scaling[i] = item
+        return scaling
+
+    def get_cell_status_vo(self, state: Any, s_o: Any, s_w: Any, s_g: Any):
+        status = state.get("status") if isinstance(state, dict) else None
+        return get_cell_status_vo(s_o, s_w, s_g, status=status,
+                                  vapoil=self.vapoil, disgas=self.disgas)
+
+    def calculate_hydrocarbons_from_status_bo(self, status, s_o, x, rs, rv,
+                                              pressure):
+        return calculate_hydrocarbons_from_status_bo(
+            self.fluid, status, s_o, x, rs, rv, pressure, self.disgas,
+            self.vapoil)
+
+    def get_dissolution_matrix(self, rs: Any, rv: Any):
+        """`dismat[i][j]`: phase `j` dissolved in phase `i` (rs, rv)."""
+        act = self.get_active_phases()
+        n_ph = int(np.count_nonzero(act))
+        rs = rs if self.disgas else None
+        rv = rv if self.vapoil else None
+        dismat: List[List[Any]] = [[None]*n_ph for _ in range(n_ph)]
+        ix = 0
+        for i in range(3):
+            if not act[i]:
+                continue
+            jx = 0
+            for j in range(3):
+                if not act[j]:
+                    continue
+                if i == 1 and j == 2:
+                    dismat[ix][jx] = rv
+                elif i == 2 and j == 1:
+                    dismat[ix][jx] = rs
+                jx += 1
+            ix += 1
+        return dismat
+
+    def get_dissolution_matrix_max(self, pressure: Any):
+        rs_max = self.fluid.rsSat(pressure) if self.disgas else None
+        rv_max = self.fluid.rvSat(pressure) if self.vapoil else None
+        return self.get_dissolution_matrix(rs_max, rv_max)
+
+    @staticmethod
+    def _eval_single(fn: Any, *args: Any) -> Any:
+        if isinstance(fn, (list, tuple)):
+            fn = fn[0]
+        return fn(*args)
+
+    getVariableField = get_variable_field
+    getPrimaryVariables = get_primary_variables
+    initStateAD = init_state_ad
+    getEquations = get_equations
+    validateModel = validate_model
+    validateState = validate_state
+    updateState = update_state
+    getScalingFactorsCPR = get_scaling_factors_cpr
+    getCellStatusVO = get_cell_status_vo
+    calculateHydrocarbonsFromStatusBO = calculate_hydrocarbons_from_status_bo
+    getDissolutionMatrix = get_dissolution_matrix
+    getDissolutionMatrixMax = get_dissolution_matrix_max
+
+
+def _deck_field(obj: Any, name: str) -> Any:
+    if obj is None:
+        return None
+    if isinstance(obj, dict):
+        return obj.get(name)
+    return getattr(obj, name, None)
+
+
+def _as_float(mask: Any) -> Any:
+    return np.asarray(mask, dtype=float)
+
+
+def _rows(x: Any, rows: np.ndarray) -> Any:
+    """MATLAB `x(rows)`, keeping derivatives when `x` is AD; a scalar is
+    returned as it is (`sW = 0` without water)."""
+    if hasattr(x, "jac"):
+        return x[rows]
+    if np.ndim(x) == 0:
+        return float(x)
+    return np.asarray(x)[rows]
+
+
+def _mark_removed(removed: List[bool], gone: List[bool]) -> List[bool]:
+    """MRST's `removed(~removed) = removed(~removed) | ix`."""
+    out = list(removed)
+    slots = [i for i, r in enumerate(out) if not r]
+    for slot, g in zip(slots, gone):
+        out[slot] = out[slot] or g
+    return out
+
+
 if __name__ == "__main__":
     from pathlib import Path
 
@@ -433,8 +1032,8 @@ if __name__ == "__main__":
 
     def _surface_gas(model, st):
         f = model.fluid
-        b_g = value(get_b_g_bo(model, st.pressure))
-        b_o = value(get_b_o_bo(model, st.pressure, st.rs, st.status == 3))
+        b_g = value(get_b_g_bo_ad(model, st.pressure))
+        b_o = value(get_b_o_bo_ad(model, st.pressure, st.rs, st.status == 3))
         pv = model.pv_ref * value(f.pv_mult(st.pressure))
         return np.sum(pv * (b_g * st.s[:, 2] + st.rs * b_o * st.s[:, 1]))
 

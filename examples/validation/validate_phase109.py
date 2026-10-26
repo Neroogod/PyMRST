@@ -17,7 +17,7 @@ import numpy as np
 import scipy.io
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
-from pymrst.modules.ad_blackoil.models.generic_black_oil_model import GenericBlackOilModel
+from pymrst.modules.ad_blackoil.models.generic_black_oil_model import GenericBlackOilModelAD
 from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
 from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.modules.ad_props import init_simple_adi_fluid
@@ -55,7 +55,7 @@ def build_case(rate=1e-6):
         wells, g, rock, np.array([2]), well_type="bhp", val=195 * BARSA,
         compi=np.array([0.0, 1.0]), sign=-1, radius=0.1, name="PROD",
     )
-    model = GenericBlackOilModel(
+    model = GenericBlackOilModelAD(
         g, rock, fluid, wells, tol_cnv=1e-8, tol_mb=1e-12, tol_well=1e-8,
     )
     state = State(

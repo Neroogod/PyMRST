@@ -41,6 +41,46 @@ class DiagonalAutoDiffBackend(AutoDiffBackend):
                 "Compiled diagonal kernels require Numba; install numba to activate the MEX-labelled backend rows.",
             )
 
+    def init_variables_ad(self, *values, **kwargs):
+        """Seed AD variables in the diagonal representation.
+
+        The row-major layout is a different storage order, not a different
+        answer - which is why `test_both_layouts_give_the_same_derivatives`
+        compares them rather than trusting the label.
+        """
+        from pymrst.modules.ad_core.backends.diagonal.utils import (
+            init_variables_ad_diagonal, init_variables_ad_diagonal_row_major,
+        )
+        use_mex = kwargs.pop("use_mex", self.use_mex and self.available)
+        builder = (init_variables_ad_diagonal_row_major if self.row_major
+                   else init_variables_ad_diagonal)
+        return builder(*values, use_mex=use_mex, **kwargs)
+
+    initVariablesAD = init_variables_ad
+
+    def convert_to_ad(self, v, sample):
+        from pymrst.modules.ad_core.backends.diagonal.utils import (
+            double_to_generic_ad,
+        )
+        return double_to_generic_ad(v, sample)
+
+    convertToAD = convert_to_ad
+
+    def get_backend_description(self) -> str:
+        out = "Diagonal-MEX" if self.use_mex else "Diagonal"
+        return out + "-RowMajor" if self.row_major else out
+
+    getBackendDescription = get_backend_description
+
+    def update_discrete_operators(self, model):
+        """The diagonal backend can rebuild the discrete operators in its own
+        representation. PyMRST's operators are backend-agnostic, so this is a
+        no-op that exists so a caller written against MRST does not have to
+        special-case it."""
+        return model
+
+    updateDiscreteOperators = update_discrete_operators
+
     def label(self) -> str:
         if self.name != "Diagonal":
             return self.name

@@ -1,0 +1,2455 @@
+........................................................................ [  1%]
+........................................................................ [  3%]
+........................................................................ [  5%]
+........................................................................ [  7%]
+........................................................................ [  9%]
+........................................................................ [ 11%]
+........................................................................ [ 13%]
+........................................................................ [ 15%]
+........................................................................ [ 17%]
+........................................................................ [ 19%]
+........................................................................ [ 21%]
+........................................................................ [ 23%]
+........................................................................ [ 25%]
+........................................................................ [ 27%]
+........................................................................ [ 28%]
+........................................................................ [ 30%]
+........................................................................ [ 32%]
+........................................................................ [ 34%]
+........................................................................ [ 36%]
+........................................................................ [ 38%]
+........................................................................ [ 40%]
+........................................................................ [ 42%]
+........................................................................ [ 44%]
+........................................................................ [ 46%]
+........................................................................ [ 48%]
+............................F...........F............................... [ 50%]
+........................................................................ [ 52%]
+.......................................................................F [ 54%]
+.FFFFFF...FFFFFFFF.F.....FF.FF..FFFFF.F...FF...FFF.FF.....FF......F.F... [ 55%]
+...F....FF................................................s...s......... [ 57%]
+........................................................................ [ 59%]
+........................................................................ [ 61%]
+........................................................................ [ 63%]
+........................................................................ [ 65%]
+........................................................................ [ 67%]
+............................................s.........................F. [ 69%]
+.................FF.FFFFF..............................FF.F.FFFF........ [ 71%]
+........................................................................ [ 73%]
+........................................................................ [ 75%]
+........................................................................ [ 77%]
+........................................................................ [ 79%]
+........................................................................ [ 81%]
+........................................................................ [ 82%]
+........................................................................ [ 84%]
+...................F..................F................................. [ 86%]
+........................................................................ [ 88%]
+........................................................................ [ 90%]
+........................................................................ [ 92%]
+........................................................................ [ 94%]
+........................................................................ [ 96%]
+.............................................s.......................... [ 98%]
+............................................................             [100%]
+=================================== FAILURES ===================================
+_ test_module_selftests[pymrst/modules/ad_core/statefunctions/flux/flow_state/explicit_flow_state_builder.py] _
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/ad_core/statefunctions/flux/flow_state/explicit_flow_state_builder.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/ad_core/statefunctions/flux/flow_state/explicit_flow_state_builder.py failed:
+E         ok test_frozen_face_mobility_is_explicit
+E         ok test_pressure_stays_implicit
+E         ok test_impes_flux_matches_manual_split
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/ad_core/statefunctions/flux/flow_state/explicit_flow_state_builder.py", line 223, in <module>
+E             test_missing_terms_are_skipped()
+E             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E         NameError: name 'test_missing_terms_are_skipped' is not defined
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...re_skipped()\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nNameError: name \'test_missing_terms_are_skipped\' is not defined\n').returncode
+
+tests/test_all.py:98: AssertionError
+_ test_module_selftests[pymrst/modules/ad_core/statefunctions/utils/dependency_graph.py] _
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/ad_core/statefunctions/utils/dependency_graph.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/ad_core/statefunctions/utils/dependency_graph.py failed:
+E         ok test_graph_covers_all_groupings
+E         ok test_topological_order_respects_dependencies
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/ad_core/statefunctions/utils/dependency_graph.py", line 250, in <module>
+E             test_ancestors_are_the_evaluation_subtree()
+E             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/ad_core/statefunctions/utils/dependency_graph.py", line 230, in test_ancestors_are_the_evaluation_subtree
+E             assert "FluxDisc.PhaseFlux" in anc
+E                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E         AssertionError
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/..._evaluation_subtree\n    assert "FluxDisc.PhaseFlux" in anc\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n').returncode
+
+tests/test_all.py:98: AssertionError
+__________ test_module_selftests[pymrst/modules/adfne15/backbone.py] ___________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/backbone.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/backbone.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/backbone.py", line 4, in <module>
+E             from .isolated import isolated
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...n <module>\n    from .isolated import isolated\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+__________ test_module_selftests[pymrst/modules/adfne15/boundary.py] ___________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/boundary.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/boundary.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/boundary.py", line 3, in <module>
+E             from .snap import snap
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...ine 3, in <module>\n    from .snap import snap\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+__________ test_module_selftests[pymrst/modules/adfne15/cbackbone.py] __________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/cbackbone.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/cbackbone.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/cbackbone.py", line 4, in <module>
+E             from .backbone import backbone
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...n <module>\n    from .backbone import backbone\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+____________ test_module_selftests[pymrst/modules/adfne15/cdata.py] ____________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/cdata.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/cdata.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/cdata.py", line 5, in <module>
+E             from .translate import translate
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...<module>\n    from .translate import translate\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+___________ test_module_selftests[pymrst/modules/adfne15/center.py] ____________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/center.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/center.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/center.py", line 3, in <module>
+E             from .plane import plane
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...e 3, in <module>\n    from .plane import plane\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+____________ test_module_selftests[pymrst/modules/adfne15/cext.py] _____________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/cext.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/cext.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/cext.py", line 3, in <module>
+E             from .polyclip import _clip_halfspace
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...le>\n    from .polyclip import _clip_halfspace\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+___________ test_module_selftests[pymrst/modules/adfne15/cgraph.py] ____________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/cgraph.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/cgraph.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/cgraph.py", line 4, in <module>
+E             from .graph import graph
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...e 4, in <module>\n    from .graph import graph\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+___________ test_module_selftests[pymrst/modules/adfne15/contour.py] ___________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/contour.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/contour.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/contour.py", line 5, in <module>
+E             from .idw import inverse_distance_weighting
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...   from .idw import inverse_distance_weighting\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+___________ test_module_selftests[pymrst/modules/adfne15/convert.py] ___________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/convert.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/convert.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/convert.py", line 5, in <module>
+E             from .center import center
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...5, in <module>\n    from .center import center\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+_____ test_module_selftests[pymrst/modules/adfne15/core3d_naturalfracs.py] _____
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/core3d_naturalfracs.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/core3d_naturalfracs.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/core3d_naturalfracs.py", line 3, in <module>
+E             from .dfn_bin import dfn_bin
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/... in <module>\n    from .dfn_bin import dfn_bin\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+____________ test_module_selftests[pymrst/modules/adfne15/cpipe.py] ____________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/cpipe.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/cpipe.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/cpipe.py", line 4, in <module>
+E             from .pipe import pipe
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...ine 4, in <module>\n    from .pipe import pipe\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+____________ test_module_selftests[pymrst/modules/adfne15/demo.py] _____________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/demo.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/demo.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/demo.py", line 2, in <module>
+E             from .dfn import generate_dfn
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...in <module>\n    from .dfn import generate_dfn\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+_____________ test_module_selftests[pymrst/modules/adfne15/dfn.py] _____________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/dfn.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/dfn.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/dfn.py", line 6, in <module>
+E             from .angle import angle
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...e 6, in <module>\n    from .angle import angle\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+___________ test_module_selftests[pymrst/modules/adfne15/dfn_bin.py] ___________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/dfn_bin.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/dfn_bin.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/dfn_bin.py", line 2, in <module>
+E             from .dfn_orig import dfn_orig
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...n <module>\n    from .dfn_orig import dfn_orig\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+__________ test_module_selftests[pymrst/modules/adfne15/dfn_orig.py] ___________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/dfn_orig.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/dfn_orig.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/dfn_orig.py", line 2, in <module>
+E             from .dfn import generate_dfn
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...in <module>\n    from .dfn import generate_dfn\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+__________ test_module_selftests[pymrst/modules/adfne15/distance.py] ___________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/distance.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/distance.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/distance.py", line 5, in <module>
+E             from .plane import plane
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...e 5, in <module>\n    from .plane import plane\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+__________ test_module_selftests[pymrst/modules/adfne15/geometry.py] ___________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/geometry.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/geometry.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/geometry.py", line 6, in <module>
+E             from .rotate import rotate
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...6, in <module>\n    from .rotate import rotate\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+________ test_module_selftests[pymrst/modules/adfne15/getshapepoly.py] _________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/getshapepoly.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/getshapepoly.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/getshapepoly.py", line 5, in <module>
+E             from .translate import translate
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...<module>\n    from .translate import translate\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+____________ test_module_selftests[pymrst/modules/adfne15/graph.py] ____________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/graph.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/graph.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/graph.py", line 4, in <module>
+E             from .orientation import orientation
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...ule>\n    from .orientation import orientation\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+____________ test_module_selftests[pymrst/modules/adfne15/grid.py] _____________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/grid.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/grid.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/grid.py", line 3, in <module>
+E             from .clip import clip_lines
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/... in <module>\n    from .clip import clip_lines\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+____________ test_module_selftests[pymrst/modules/adfne15/info.py] _____________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/info.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/info.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/info.py", line 6, in <module>
+E             from .center import center
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...6, in <module>\n    from .center import center\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+___________ test_module_selftests[pymrst/modules/adfne15/inpoly.py] ____________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/inpoly.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/inpoly.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/inpoly.py", line 5, in <module>
+E             from .plane import plane
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...e 5, in <module>\n    from .plane import plane\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+__________ test_module_selftests[pymrst/modules/adfne15/intersect.py] __________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/intersect.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/intersect.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/intersect.py", line 6, in <module>
+E             from .bbox import bounding_box
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...n <module>\n    from .bbox import bounding_box\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+__________ test_module_selftests[pymrst/modules/adfne15/isolated.py] ___________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/isolated.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/isolated.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/isolated.py", line 5, in <module>
+E             from .occurrence import occurrence
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...odule>\n    from .occurrence import occurrence\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+___________ test_module_selftests[pymrst/modules/adfne15/kriging.py] ___________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/kriging.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/kriging.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/kriging.py", line 7, in <module>
+E             from .variomodel import variomodel
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...odule>\n    from .variomodel import variomodel\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+___________ test_module_selftests[pymrst/modules/adfne15/length.py] ____________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/length.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/length.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/length.py", line 3, in <module>
+E             from .center import center
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...3, in <module>\n    from .center import center\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+___ test_module_selftests[pymrst/modules/adfne15/naturalfrac2d_direction.py] ___
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/naturalfrac2d_direction.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/naturalfrac2d_direction.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/naturalfrac2d_direction.py", line 3, in <module>
+E             from .dfn_bin import dfn_bin
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/... in <module>\n    from .dfn_bin import dfn_bin\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+____ test_module_selftests[pymrst/modules/adfne15/naturalfrac2d_random.py] _____
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/naturalfrac2d_random.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/naturalfrac2d_random.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/naturalfrac2d_random.py", line 3, in <module>
+E             from .dfn_orig import dfn_orig
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...n <module>\n    from .dfn_orig import dfn_orig\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+__________ test_module_selftests[pymrst/modules/adfne15/omo_cases.py] __________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/omo_cases.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/omo_cases.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/omo_cases.py", line 3, in <module>
+E             from .stereonet import stereonet
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...<module>\n    from .stereonet import stereonet\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+___________ test_module_selftests[pymrst/modules/adfne15/option.py] ____________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/option.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/option.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/option.py", line 3, in <module>
+E             from .setstructfields import setstructfields
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...  from .setstructfields import setstructfields\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+_________ test_module_selftests[pymrst/modules/adfne15/orientation.py] _________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/orientation.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/orientation.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/orientation.py", line 6, in <module>
+E             from .angle import angle
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...e 6, in <module>\n    from .angle import angle\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+____________ test_module_selftests[pymrst/modules/adfne15/pipe.py] _____________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/pipe.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/pipe.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/pipe.py", line 4, in <module>
+E             from .split import split
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...e 4, in <module>\n    from .split import split\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+____________ test_module_selftests[pymrst/modules/adfne15/plane.py] ____________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/plane.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/plane.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/plane.py", line 3, in <module>
+E             from .unique import unique_rows
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/... <module>\n    from .unique import unique_rows\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+____________ test_module_selftests[pymrst/modules/adfne15/rand.py] _____________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/rand.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/rand.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/rand.py", line 5, in <module>
+E             from .angle import angle
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...e 5, in <module>\n    from .angle import angle\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+_____________ test_module_selftests[pymrst/modules/adfne15/ray.py] _____________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/ray.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/ray.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/ray.py", line 5, in <module>
+E             from .center import center
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...5, in <module>\n    from .center import center\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+____________ test_module_selftests[pymrst/modules/adfne15/solve.py] ____________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/solve.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/solve.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/solve.py", line 6, in <module>
+E             from .boundary import boundary
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...n <module>\n    from .boundary import boundary\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+____________ test_module_selftests[pymrst/modules/adfne15/split.py] ____________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/split.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/split.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/split.py", line 6, in <module>
+E             from .length import lengths
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/..., in <module>\n    from .length import lengths\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+____________ test_module_selftests[pymrst/modules/adfne15/ticot.py] ____________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/ticot.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/ticot.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/ticot.py", line 5, in <module>
+E             from .convert import clock
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...5, in <module>\n    from .convert import clock\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+_________ test_module_selftests[pymrst/modules/adfne15/variocloud.py] __________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/variocloud.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/variocloud.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/variocloud.py", line 6, in <module>
+E             from .flatri import flatri
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...6, in <module>\n    from .flatri import flatri\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+__________ test_module_selftests[pymrst/modules/adfne15/variogram.py] __________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/variogram.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/modules/adfne15/variogram.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/adfne15/variogram.py", line 6, in <module>
+E             from .variocloud import variocloud
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...odule>\n    from .variocloud import variocloud\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+_____ test_module_selftests[pymrst/research_studio/components/guarded.py] ______
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/components/guarded.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/research_studio/components/guarded.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/components/guarded.py", line 12, in <module>
+E             from .surrogate import SurrogateContract, SurrogatePrediction
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/... import SurrogateContract, SurrogatePrediction\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+____ test_module_selftests[pymrst/research_studio/experiments/branching.py] ____
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/experiments/branching.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/research_studio/experiments/branching.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/experiments/branching.py", line 13, in <module>
+E             from .definition import canonical_value, content_digest
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...inition import canonical_value, content_digest\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+___ test_module_selftests[pymrst/research_studio/experiments/comparison.py] ____
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/experiments/comparison.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/research_studio/experiments/comparison.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/experiments/comparison.py", line 14, in <module>
+E             from .execution import LazyMemberResult
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...>\n    from .execution import LazyMemberResult\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+____ test_module_selftests[pymrst/research_studio/experiments/ensemble.py] _____
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/experiments/ensemble.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/research_studio/experiments/ensemble.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/experiments/ensemble.py", line 13, in <module>
+E             from .execution import MemberOutcome, MemberResultStore, execute_member
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...mberOutcome, MemberResultStore, execute_member\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+____ test_module_selftests[pymrst/research_studio/experiments/execution.py] ____
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/experiments/execution.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/research_studio/experiments/execution.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/experiments/execution.py", line 15, in <module>
+E             from .definition import canonical_value
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...>\n    from .definition import canonical_value\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+___ test_module_selftests[pymrst/research_studio/experiments/publishing.py] ____
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/experiments/publishing.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/research_studio/experiments/publishing.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/experiments/publishing.py", line 16, in <module>
+E             from .definition import canonical_value, content_digest
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...inition import canonical_value, content_digest\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+____ test_module_selftests[pymrst/research_studio/experiments/registry.py] _____
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/experiments/registry.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/research_studio/experiments/registry.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/experiments/registry.py", line 11, in <module>
+E             from .definition import ExperimentDefinition
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...  from .definition import ExperimentDefinition\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+_____ test_module_selftests[pymrst/research_studio/experiments/runners.py] _____
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/experiments/runners.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/research_studio/experiments/runners.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/experiments/runners.py", line 8, in <module>
+E             from .execution import MemberExecutionContext, MemberPayload
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...n import MemberExecutionContext, MemberPayload\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+_ test_module_selftests[pymrst/research_studio/validation/benchmarks/foundation.py] _
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/validation/benchmarks/foundation.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/research_studio/validation/benchmarks/foundation.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/validation/benchmarks/foundation.py", line 30, in <module>
+E             from ..analytic import (
+E             ...<2 lines>...
+E             )
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/....analytic import (\n    ...<2 lines>...\n    )\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+____ test_module_selftests[pymrst/research_studio/validation/comparison.py] ____
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/validation/comparison.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/research_studio/validation/comparison.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/validation/comparison.py", line 10, in <module>
+E             from .mappings import EntityMapping, identity_mapping
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...appings import EntityMapping, identity_mapping\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+______ test_module_selftests[pymrst/research_studio/validation/graph.py] _______
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/validation/graph.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/research_studio/validation/graph.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/validation/graph.py", line 9, in <module>
+E             from .comparison import ComparisonResult, FieldComparisonResult
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...import ComparisonResult, FieldComparisonResult\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+__ test_module_selftests[pymrst/research_studio/validation/matlab/adapter.py] __
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/validation/matlab/adapter.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/research_studio/validation/matlab/adapter.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/validation/matlab/adapter.py", line 8, in <module>
+E             from .fixtures import generate_fixture, validate_fixture
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...ures import generate_fixture, validate_fixture\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+_ test_module_selftests[pymrst/research_studio/validation/matlab/execution.py] _
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/validation/matlab/execution.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/research_studio/validation/matlab/execution.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/validation/matlab/execution.py", line 11, in <module>
+E             from .schemas import MatlabExecutionResult, MatlabFixtureSpec
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...mport MatlabExecutionResult, MatlabFixtureSpec\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+_ test_module_selftests[pymrst/research_studio/validation/matlab/fixtures.py] __
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/validation/matlab/fixtures.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/research_studio/validation/matlab/fixtures.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/validation/matlab/fixtures.py", line 9, in <module>
+E             from .execution import discover_matlab, generation_command, run_generator
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...over_matlab, generation_command, run_generator\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+_ test_module_selftests[pymrst/research_studio/validation/matlab/mappings.py] __
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/validation/matlab/mappings.py')
+
+    @pytest.mark.parametrize("script", _module_scripts(),
+                             ids=lambda p: str(p.relative_to(ROOT)))
+    def test_module_selftests(script):
+        """Every module's own unit tests must pass.
+    
+        A few modules are command-line tools rather than test suites - their
+        `__main__` builds an ArgumentParser and requires an argument. Running one
+        bare makes argparse print usage and exit 2, which is the tool working
+        correctly, not a failing test. That exact signal is skipped rather than
+        skipping every module that mentions argparse: two of the three that do have
+        defaults and run their tests fine, so a blanket exclusion would lose real
+        coverage.
+        """
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=900)
+        if r.returncode == 2 and "the following arguments are required" in r.stderr:
+            pytest.skip(f"{script.name} is a command-line tool, not a self-test")
+        missing = _missing_optional_import(r.stderr)
+        if missing is not None:
+            pytest.skip(f"{script.name} needs the optional dependency {missing!r}")
+>       assert r.returncode == 0, (
+            f"{script.relative_to(ROOT)} failed:\n{r.stdout[-3000:]}\n"
+            f"{r.stderr[-3000:]}"
+        )
+E       AssertionError: pymrst/research_studio/validation/matlab/mappings.py failed:
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/research_studio/validation/matlab/mappings.py", line 8, in <module>
+E             from ..mappings import EntityMapping, identity_mapping
+E         ImportError: attempted relative import with no known parent package
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...appings import EntityMapping, identity_mapping\nImportError: attempted relative import with no known parent package\n').returncode
+
+tests/test_all.py:98: AssertionError
+_______________________ test_matlab_validation[phase320] _______________________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/examples/validation/validate_phase320.py')
+
+    @pytest.mark.validation
+    @pytest.mark.parametrize("script", _validators(),
+                             ids=lambda p: p.stem.replace("validate_", ""))
+    def test_matlab_validation(script):
+        """Every phase must still match its saved MATLAB reference."""
+        ref_missing = not any(VALID.glob("ref_*.mat"))
+        if ref_missing:
+            pytest.skip("no MATLAB reference data present")
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=1800)
+        if "missing (run" in r.stdout:
+            pytest.skip(f"reference data for {script.stem} not generated")
+>       assert r.returncode == 0, (
+            f"{script.name} failed:\n{r.stdout[-3000:]}\n{r.stderr[-3000:]}"
+        )
+E       AssertionError: validate_phase320.py failed:
+E         
+E         Phase 320: base ReservoirModel MRST naming helper parity
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/examples/validation/validate_phase320.py", line 88, in <module>
+E             raise SystemExit(main())
+E                              ~~~~^^
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/examples/validation/validate_phase320.py", line 79, in main
+E             failures = validate_reservoir_model_helpers()
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/examples/validation/validate_phase320.py", line 41, in validate_reservoir_model_helpers
+E             model = ReservoirModel(
+E                 grid,
+E             ...<4 lines>...
+E                 gdz=np.zeros(1),
+E             )
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/ad_core/models/reservoir_model.py", line 61, in __init__
+E             self.FlowDiscretization = FlowDiscretization(self)
+E                                       ~~~~~~~~~~~~~~~~~~^^^^^^
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/ad_core/statefunctions/flow_discretization.py", line 181, in __init__
+E             PermeabilityPotentialGradient(model))
+E             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/ad_core/statefunctions/flux/permeability_potential_gradient.py", line 35, in __init__
+E             self.kgrad = kgrad if kgrad is not None else TwoPointFluxApproximation(model)
+E                                                          ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/ad_core/statefunctions/flux/permeability_gradient_discretization.py", line 49, in __init__
+E             assert ops is not None and getattr(ops, "T", None) is not None, (
+E                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E         AssertionError: Transmissibility must be present in model.operators for the TPFA discretization
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...^^^^^^^^^^^^^^^^^^\nAssertionError: Transmissibility must be present in model.operators for the TPFA discretization\n').returncode
+
+tests/test_all.py:142: AssertionError
+_______________________ test_matlab_validation[phase339] _______________________
+
+script = PosixPath('/Users/Shared/PyMRST_workspace/PyMRST/examples/validation/validate_phase339.py')
+
+    @pytest.mark.validation
+    @pytest.mark.parametrize("script", _validators(),
+                             ids=lambda p: p.stem.replace("validate_", ""))
+    def test_matlab_validation(script):
+        """Every phase must still match its saved MATLAB reference."""
+        ref_missing = not any(VALID.glob("ref_*.mat"))
+        if ref_missing:
+            pytest.skip("no MATLAB reference data present")
+        r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=1800)
+        if "missing (run" in r.stdout:
+            pytest.skip(f"reference data for {script.stem} not generated")
+>       assert r.returncode == 0, (
+            f"{script.name} failed:\n{r.stdout[-3000:]}\n{r.stderr[-3000:]}"
+        )
+E       AssertionError: validate_phase339.py failed:
+E         Phase 339 (AC3): flow-state builders
+E           implicit builder vs fully-implicit PhaseFlux: 0.00e+00
+E           explicit builder vs IMPES split: val 1.73e-18, jac 1.65e-24
+E         
+E         Traceback (most recent call last):
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/examples/validation/validate_phase339.py", line 124, in <module>
+E             main()
+E             ~~~~^^
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/examples/validation/validate_phase339.py", line 117, in main
+E             check_explicit_is_impes(model, st, st0)
+E             ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+E           File "/Users/Shared/PyMRST_workspace/PyMRST/examples/validation/validate_phase339.py", line 87, in check_explicit_is_impes
+E             assert worst_v == 0.0 and worst_j == 0.0
+E                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E         AssertionError
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.14/bin/python3', '/Users/Shared/PyMRST_workspace/...s_impes\n    assert worst_v == 0.0 and worst_j == 0.0\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n').returncode
+
+tests/test_all.py:142: AssertionError
+=============================== warnings summary ===============================
+tests/ad_mechanics/test_poro_params_matlab_reference.py::test_every_elastic_input_basis_matches_mrst_branch_selection
+tests/ad_mechanics/test_poro_params_matlab_reference.py::test_every_elastic_input_basis_matches_mrst_branch_selection
+tests/ad_mechanics/test_poro_params_matlab_reference.py::test_every_elastic_input_basis_matches_mrst_branch_selection
+tests/ad_mechanics/test_poro_params_matlab_reference.py::test_every_elastic_input_basis_matches_mrst_branch_selection
+  /Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/ad_mechanics/utils/poro_params.py:347: RuntimeWarning: Some poroelastic relation residuals did not vanish; input parameters may be inconsistent
+    details = solve_poro_params(phi, uniform, kwargs)
+
+tests/vemmech/test_vemmech_ad_and_flow.py::test_optimize_sr1_finds_the_minimum_of_a_quadratic
+  /Users/Shared/PyMRST_workspace/PyMRST/pymrst/modules/vemmech/ad_version/optimize_mech.py:1805: RuntimeWarning: invalid value encountered in divide
+    B = B + np.outer(tmp, tmp) / denom
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/ad_core/statefunctions/flux/flow_state/explicit_flow_state_builder.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/ad_core/statefunctions/utils/dependency_graph.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/backbone.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/boundary.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/cbackbone.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/cdata.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/center.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/cext.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/cgraph.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/contour.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/convert.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/core3d_naturalfracs.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/cpipe.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/demo.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/dfn.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/dfn_bin.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/dfn_orig.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/distance.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/geometry.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/getshapepoly.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/graph.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/grid.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/info.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/inpoly.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/intersect.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/isolated.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/kriging.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/length.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/naturalfrac2d_direction.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/naturalfrac2d_random.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/omo_cases.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/option.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/orientation.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/pipe.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/plane.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/rand.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/ray.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/solve.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/split.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/ticot.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/variocloud.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/modules/adfne15/variogram.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/research_studio/components/guarded.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/research_studio/experiments/branching.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/research_studio/experiments/comparison.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/research_studio/experiments/ensemble.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/research_studio/experiments/execution.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/research_studio/experiments/publishing.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/research_studio/experiments/registry.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/research_studio/experiments/runners.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/research_studio/validation/benchmarks/foundation.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/research_studio/validation/comparison.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/research_studio/validation/graph.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/research_studio/validation/matlab/adapter.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/research_studio/validation/matlab/execution.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/research_studio/validation/matlab/fixtures.py]
+FAILED tests/test_all.py::test_module_selftests[pymrst/research_studio/validation/matlab/mappings.py]
+FAILED tests/test_all.py::test_matlab_validation[phase320] - AssertionError: ...
+FAILED tests/test_all.py::test_matlab_validation[phase339] - AssertionError: ...
+59 failed, 3669 passed, 4 skipped, 5 warnings in 6072.43s (1:41:12)

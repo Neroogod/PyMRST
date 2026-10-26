@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from pymrst.modules.ad_core.models.facilities.well_bore_friction import (
-    well_bore_friction,
+    well_bore_friction_ad,
 )
 from pymrst.modules.ad_core.models.wells.update_switched_controls import (
     update_switched_controls,
@@ -43,20 +43,20 @@ def test_well_bore_friction_sign_flow_types_and_ad_derivative():
         roughness=np.full(3, 1e-5),
     )
     mass_rate = np.array([0.0, 2.0, -2.0])
-    pressure_drop = well_bore_friction(mass_rate, **common)
+    pressure_drop = well_bore_friction_ad(mass_rate, **common)
     assert pressure_drop[0] == 0.0
     assert pressure_drop[1] < 0.0 < pressure_drop[2]
     assert np.isclose(pressure_drop[1], -pressure_drop[2])
 
     area = np.pi * (0.2 / 2.0) ** 2
     velocity = mass_rate / (common["rho"] * area)
-    from_velocity = well_bore_friction(
+    from_velocity = well_bore_friction_ad(
         velocity, **common, flowtype="velocity"
     )
     assert np.allclose(from_velocity, pressure_drop)
 
     (rate_ad,) = init_variables_adi(np.array([2.0]))
-    ad_drop = well_bore_friction(
+    ad_drop = well_bore_friction_ad(
         rate_ad,
         rho=np.array([1000.0]),
         mu=np.array([1e-3]),
@@ -71,7 +71,7 @@ def test_well_bore_friction_sign_flow_types_and_ad_derivative():
 
 def test_well_bore_friction_rejects_unknown_flow_type():
     with pytest.raises(ValueError, match="unknown flow type"):
-        well_bore_friction(
+        well_bore_friction_ad(
             np.array([1.0]), np.array([1000.0]), np.array([1e-3]),
             np.array([0.2]), np.array([10.0]), np.array([1e-5]),
             flowtype="unknown",

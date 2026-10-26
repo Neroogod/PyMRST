@@ -131,9 +131,15 @@ def setup_mechanism_comparison(mechanism: str, *, full_size: bool = False):
         cell_volumes=volumes,
     )
     model_wells = copy.deepcopy(wells) if full_size else []
+    # The class default tol_cnv=1e-3 (MRST's ReservoirModel default) is coarse
+    # relative to the driving forces in a shale nanoDarcy step: it reads the
+    # initial guess as already converged and returns it unchanged (0 Newton
+    # iterations), which defeats this example's point of comparing enabled vs.
+    # disabled mechanism physics over a real step. Ask for a tight solve.
     kwargs = dict(
         temperature=info.T, wells=model_wells, water=use_water,
         n_kr=((1, 1, 1) if use_water else (1, 1)), max_iterations=35, gravity=0,
+        tol_cnv=1e-9,
     )
     extra = {}
     if key == "diffusion":

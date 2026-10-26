@@ -12,7 +12,7 @@ builds the region structs (with MRST's defaults) and assembles a full-field
 initial state from a list of them - each region equilibrated on its cell subset,
 scattered back into the field arrays.
 
-`get_min_max_phase_saturations` returns the per-phase saturation endpoints
+`get_min_max_phase_saturations_ad` returns the per-phase saturation endpoints
 (connate water; the mobile range), used to clamp the equilibrium saturations.
 """
 
@@ -30,7 +30,7 @@ from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.utils.units import ATM
 
 
-def get_min_max_phase_saturations(model: Any) -> Tuple[np.ndarray, np.ndarray]:
+def get_min_max_phase_saturations_ad(model: Any) -> Tuple[np.ndarray, np.ndarray]:
     """Per-phase ``(s_min, s_max)`` endpoints (MRST `getMinMaxPhaseSaturations`).
 
     Water carries its connate saturation as a floor; the other phases run from
@@ -47,7 +47,7 @@ def get_min_max_phase_saturations(model: Any) -> Tuple[np.ndarray, np.ndarray]:
     return s_min, s_max
 
 
-def get_initialization_regions_base(
+def get_initialization_regions_base_ad(
     model: Any,
     rho: Sequence[Any],
     contacts: Sequence[float],
@@ -66,7 +66,7 @@ def get_initialization_regions_base(
 
     ``contacts`` are the ``n_phases - 1`` phase-contact depths. ``rho`` is the
     per-phase density (a value or callable per phase, as
-    `initialize_equilibrium_pressures` expects).
+    `initialize_equilibrium_pressures_ad` expects).
     """
     nph = (int(model.n_phases) if hasattr(model, "n_phases")
            else int(model.getNumberOfPhases()))
@@ -74,7 +74,7 @@ def get_initialization_regions_base(
     assert contacts.size == nph - 1, \
         f"need {nph - 1} contacts for {nph} phases, got {contacts.size}"
     if s_min is None or s_max is None:
-        default_min, default_max = get_min_max_phase_saturations(model)
+        default_min, default_max = get_min_max_phase_saturations_ad(model)
         s_min = default_min if s_min is None else s_min
         s_max = default_max if s_max is None else s_max
     reg = EquilibriumRegion(
@@ -113,6 +113,14 @@ def init_state_equil_regions(model: Any,
     if model.fluid.disgas:
         out["rs"] = np.zeros(nc)
         out["status"] = np.ones(nc, dtype=np.int64)
+    if model.fluid.vapoil:
+        # `init_state_equil` computes `rv` for a wet-gas model; without a slot
+        # here it was computed per region and then dropped on the way out, so
+        # a `vapoil` model came back with no vaporised oil at all. Norne is
+        # one, and the omission surfaced only in CPR's weighting, which reads
+        # `state["rv"]` directly.
+        out["rv"] = np.zeros(nc)
+        out.setdefault("status", np.ones(nc, dtype=np.int64))
 
     for reg in regions:
         cells = (np.arange(nc) if reg.cells is None
@@ -126,15 +134,23 @@ def init_state_equil_regions(model: Any,
         if model.fluid.disgas:
             out["rs"][cells] = sub["rs"]
             out["status"][cells] = sub["status"]
+        if model.fluid.vapoil:
+            out["rv"][cells] = sub["rv"]
+            if "status" in sub:
+                out["status"][cells] = sub["status"]
         covered[cells] = True
 
     assert covered.all(), "the regions must cover every cell of the grid"
     return out
 
 
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+
 __all__ = [
-    "get_initialization_regions_base",
-    "get_min_max_phase_saturations",
+    "get_initialization_regions_base_ad",
+    "get_min_max_phase_saturations_ad",
     "init_state_equil_regions",
 ]
 
@@ -142,7 +158,7 @@ __all__ = [
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry, tensor_grid
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-        GenericBlackOilModel,
+        GenericBlackOilModelAD,
     )
     from pymrst.modules.ad_props import init_simple_adi_fluid
     from pymrst.params import make_rock
@@ -158,7 +174,7 @@ if __name__ == "__main__":
         fluid = init_simple_adi_fluid(
             mu=np.array([1.0, 5.0]) * CENTI * POISE, rho=[1000.0, 800.0],
             n=[2, 2], c=[0.0, 0.0], p_ref=200 * BARSA)
-        return g, GenericBlackOilModel(g, rock, fluid, [], gravity=G_ACC)
+        return g, GenericBlackOilModelAD(g, rock, fluid, [], gravity=G_ACC)
 
     MILLI_DARCY = 1e-3 * DARCY
 
@@ -169,7 +185,7 @@ if __name__ == "__main__":
         """The factory region equilibrates identically to a hand-built one."""
         g, model = _model()
         woc = 1050.0
-        reg = get_initialization_regions_base(model, _rho(model), [woc],
+        reg = get_initialization_regions_base_ad(model, _rho(model), [woc],
                                               datum_depth=1000.0,
                                               datum_pressure=200 * BARSA)
         hand = EquilibriumRegion(datum_depth=1000.0, datum_pressure=200 * BARSA,
@@ -187,16 +203,16 @@ if __name__ == "__main__":
         g, model = _model()
         nc = g.cells.num
         woc = 1050.0
-        whole = get_initialization_regions_base(model, _rho(model), [woc],
+        whole = get_initialization_regions_base_ad(model, _rho(model), [woc],
                                                 datum_depth=1000.0,
                                                 datum_pressure=200 * BARSA)
         full = init_state_equil(model, whole, G_ACC)
 
         half = nc // 2
-        r1 = get_initialization_regions_base(
+        r1 = get_initialization_regions_base_ad(
             model, _rho(model), [woc], datum_depth=1000.0,
             datum_pressure=200 * BARSA, cells=np.arange(half))
-        r2 = get_initialization_regions_base(
+        r2 = get_initialization_regions_base_ad(
             model, _rho(model), [woc], datum_depth=1000.0,
             datum_pressure=200 * BARSA, cells=np.arange(half, nc))
         multi = init_state_equil_regions(model, [r1, r2], G_ACC)
@@ -211,10 +227,10 @@ if __name__ == "__main__":
         g, model = _model()
         nc = g.cells.num
         half = nc // 2
-        r1 = get_initialization_regions_base(
+        r1 = get_initialization_regions_base_ad(
             model, _rho(model), [1200.0], datum_depth=1000.0,   # WOC below -> oil
             datum_pressure=200 * BARSA, cells=np.arange(half))
-        r2 = get_initialization_regions_base(
+        r2 = get_initialization_regions_base_ad(
             model, _rho(model), [900.0], datum_depth=1000.0,     # WOC above -> water
             datum_pressure=200 * BARSA, cells=np.arange(half, nc))
         st = init_state_equil_regions(model, [r1, r2], G_ACC)
@@ -226,7 +242,7 @@ if __name__ == "__main__":
     def test_min_max_saturations():
         g, model = _model()
         model.raw_fluid.swcon = 0.15
-        s_min, s_max = get_min_max_phase_saturations(model)
+        s_min, s_max = get_min_max_phase_saturations_ad(model)
         assert s_min[0] == 0.15 and np.all(s_min <= s_max)
         print("ok test_min_max_saturations")
 

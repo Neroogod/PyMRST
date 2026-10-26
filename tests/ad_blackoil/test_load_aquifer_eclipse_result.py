@@ -3,7 +3,7 @@ import struct
 import numpy as np
 
 from pymrst.modules.ad_blackoil.examples.utils.load_aquifer_eclipse_result import (
-    load_aquifer_eclipse_result,
+    load_aquifer_eclipse_result_ad,
 )
 from pymrst.modules.ad_core import State
 from pymrst.utils.units import BARSA
@@ -62,7 +62,7 @@ def _fixture(tmp_path):
 
 
 def test_loadAquiferEclipseResult_reads_grid_restart_and_summary(tmp_path):
-    result = load_aquifer_eclipse_result(_fixture(tmp_path))
+    result = load_aquifer_eclipse_result_ad(_fixture(tmp_path))
     assert result.grid.cart_dims == (2, 2, 1)
     assert np.array_equal(result.grid.active, [0, 1, 3])
     assert len(result.states) == 2
@@ -75,7 +75,7 @@ def test_loadAquiferEclipseResult_reads_grid_restart_and_summary(tmp_path):
 
 
 def test_loadAquiferEclipseResult_compares_pymrst_states_and_aquifer(tmp_path):
-    result = load_aquifer_eclipse_result(_fixture(tmp_path))
+    result = load_aquifer_eclipse_result_ad(_fixture(tmp_path))
     states = [
         State(pressure=state.pressure.copy(), sW=state.s[:, 0].copy())
         for state in result.states
@@ -103,6 +103,6 @@ def test_loadAquiferEclipseResult_reads_unified_restart(tmp_path):
            ("SEQNUM", "INTE", [9]),
            ("PRESSURE", "REAL", [198, 200, 202]),
            ("SWAT", "REAL", [.25, .35, .45]))
-    result = load_aquifer_eclipse_result(prefix)
+    result = load_aquifer_eclipse_result_ad(prefix)
     assert [state.report_step for state in result.states] == [7, 9]
     assert np.allclose(result.states[1].saturation[:, 0], [.25, .35, .45])

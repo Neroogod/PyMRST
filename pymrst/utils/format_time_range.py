@@ -8,6 +8,8 @@ has depth zero, so a limit of two can display three units; the unit at the
 requested depth carries the remainder as a decimal.
 """
 
+import math
+
 from pymrst.utils.units.units import DAY, HOUR, MINUTE, YEAR
 
 # Ordered coarse to fine, as MRST has them. Minutes are absent from MRST's
@@ -23,16 +25,21 @@ def format_time_range(time: float, limit: int = None) -> str:
     depth = 0
     added = False
     for index, (name, size) in enumerate(UNITS):
-        count = int(remaining // size)
-        if count <= 0:
+        # MRST's `floor(time/unit)`; `remaining // size` rounds differently
+        # (1.0 // 0.1 is 9). An infinite time reads 'Inf Years', and the
+        # NaN remainder it leaves adds nothing more.
+        ratio = remaining/size
+        if not ratio >= 1:
             continue
+        count = math.floor(ratio) if math.isfinite(ratio) else ratio
         depth += int(added)
         last = limit is not None and depth == limit
         if last:
             value = remaining / size
             parts.append(f"{value:1.2f} {name}" + ("s" if value != 1 else ""))
             break
-        parts.append(f"{count} {name}" + ("s" if count != 1 else ""))
+        shown = "Inf" if math.isinf(count) else str(count)
+        parts.append(f"{shown} {name}" + ("s" if count != 1 else ""))
         remaining -= count * size
         added = True
     return ", ".join(parts)
@@ -42,6 +49,15 @@ formatTimeRange = format_time_range
 
 
 if __name__ == "__main__":
+
+    def test_infinity_is_inf_years_as_in_matlab() -> None:
+        assert format_time_range(float("inf")) == "Inf Years"
+        print("ok test_infinity_is_inf_years_as_in_matlab")
+
+    def test_units_are_counted_by_floor_of_the_ratio() -> None:
+        """MATLAB prints '300 Milliseconds' for 0.3 s; `0.3 // 1e-3` is 299."""
+        assert format_time_range(0.3) == "300 Milliseconds", format_time_range(0.3)
+        print("ok test_units_are_counted_by_floor_of_the_ratio")
 
     def test_a_single_unit_is_singular() -> None:
         assert format_time_range(HOUR) == "1 Hour", format_time_range(HOUR)
@@ -82,6 +98,8 @@ if __name__ == "__main__":
         assert "Millisecond" in out, out
         print(f"ok test_a_sub_second_time_reaches_milliseconds ({out})")
 
+    test_infinity_is_inf_years_as_in_matlab()
+    test_units_are_counted_by_floor_of_the_ratio()
     test_a_single_unit_is_singular()
     test_several_units_are_listed_coarse_to_fine()
     test_units_that_do_not_appear_are_omitted()

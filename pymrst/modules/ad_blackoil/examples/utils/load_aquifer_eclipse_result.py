@@ -1,4 +1,13 @@
-"""Load ECLIPSE grid, restart states, and aquifer summary histories.
+"""MRST ``ad-blackoil/examples/utils/loadAquiferEclipseResult.m``: the
+ECLIPSE reference of the aquifertest cases - the grid from its INIT/EGRID,
+and the 21 restart steps `X0001`..`X0021`, each with its pressure (in bar,
+as ECLIPSE writes it) and `s = [sW, 1 - sW]`.
+
+`load_aquifer_eclipse_result_ad` is PyMRST's earlier, extended reader
+(unified restart files, aquifer summary vectors, pressures in Pa), kept for
+its callers. Its notes follow.
+
+Load ECLIPSE grid, restart states, and aquifer summary histories.
 
 Ports MRST ``loadAquiferEclipseResult.m`` and extends it to unified restart
 files and SMSPEC/UNSMRY aquifer vectors. ECLIPSE restart pressure is stored in
@@ -52,6 +61,16 @@ class EclipseAquiferState:
     saturation: np.ndarray
     report_step: int
     raw: dict[str, np.ndarray] = field(default_factory=dict)
+    #: Simulation time of this restart, in seconds. Read from `DOUBHEAD[0]`,
+    #: which ECLIPSE writes in days.
+    #:
+    #: Without it a caller can only match restarts to its own report steps by
+    #: *index*, and the two agree only when both ran the same schedule and
+    #: wrote a record for every step. ECLIPSE writes a restart when `RPTRST`
+    #: says to, which is not the same rule - so index matching silently
+    #: compares two different instants and reports the difference as model
+    #: error.
+    time: float = float("nan")
 
     @property
     def s(self) -> np.ndarray:
@@ -175,7 +194,19 @@ def _state(fields, report_step: int, pressure_scale: float) -> EclipseAquiferSta
     raw = {name: np.asarray(values[-1]).copy() for name, values in fields.items()}
     return EclipseAquiferState(
         pressure, np.column_stack([sw, 1.0 - sw]), report_step, raw,
+        time=_restart_time(raw),
     )
+
+
+def _restart_time(raw: dict) -> float:
+    """The restart's simulation time in seconds, from `DOUBHEAD[0]` (days)."""
+    from pymrst.utils.units import DAY
+
+    head = raw.get("DOUBHEAD")
+    if head is None:
+        return float("nan")
+    values = np.ravel(np.asarray(head, dtype=float))
+    return float(values[0])*DAY if values.size else float("nan")
 
 
 def _restart_states(prefix: Path, pressure_scale: float):
@@ -215,7 +246,29 @@ def _summary(prefix: Path) -> EclipseAquiferSummary | None:
     return EclipseAquiferSummary(time, vectors)
 
 
-def load_aquifer_eclipse_result(
+def load_aquifer_eclipse_result(dir: str | Path, fnroot: str):
+    """MRST `[statesEcl, G] = loadAquiferEclipseResult(dir, fnroot)`."""
+    from pymrst.modules.deckformat.resultinput.init_grid_from_eclipse_output import (
+        init_grid_from_eclipse_output,
+    )
+    from pymrst.modules.deckformat.resultinput.read_eclipse_output_file_un_fmt import (
+        read_eclipse_output_file_un_fmt,
+    )
+    dir = Path(dir)
+    init = read_eclipse_output_file_un_fmt(dir/f"{fnroot}.INIT")
+    grid = read_eclipse_output_file_un_fmt(dir/f"{fnroot}.EGRID")
+    eclG, _, _, _ = init_grid_from_eclipse_output(init, grid, output_sim_grid=True)
+    G = eclG[0]
+    statesEcl = []
+    for i in range(1, 22):
+        stateEclFmt = read_eclipse_output_file_un_fmt(dir/f"{fnroot}.X{i:04d}")
+        sw = np.asarray(stateEclFmt["SWAT"].values, dtype=float).ravel()
+        statesEcl.append({"pressure": np.asarray(stateEclFmt["PRESSURE"].values, dtype=float).ravel(),
+                          "s": np.column_stack([sw, 1 - sw])})
+    return statesEcl, G
+
+
+def load_aquifer_eclipse_result_ad(
     directory_or_prefix: str | Path,
     fnroot: str | None = None,
     *, pressure_scale: float = BARSA,
@@ -248,6 +301,22 @@ loadAquiferEclipseResult = load_aquifer_eclipse_result
 
 __all__ = [
     "AquiferEclipseResult", "EclipseAquiferState", "EclipseAquiferSummary",
-    "EclipseResultGrid", "load_aquifer_eclipse_result",
+    "EclipseResultGrid", "load_aquifer_eclipse_result", "load_aquifer_eclipse_result_ad",
     "loadAquiferEclipseResult",
 ]
+
+
+if __name__ == "__main__":
+    from pymrst.modules.ad_blackoil.examples.utils.setup_aquifertest import (
+        CASES, aquifertest_data_directory,
+    )
+
+    def test_twenty_one_restart_states_in_bar():
+        states, G = load_aquifer_eclipse_result(aquifertest_data_directory(), CASES[0])
+        assert len(states) == 21 and G.cells.num == 96
+        assert 200 < states[-1]["pressure"].mean() < 400        # bar, not Pa
+        np.testing.assert_allclose(states[0]["s"].sum(axis=1), 1.0)
+        print("ok test_twenty_one_restart_states_in_bar")
+
+    test_twenty_one_restart_states_in_bar()
+    print("\nAll tests passed!")

@@ -2,11 +2,13 @@
 
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
     GenericBlackOilModel,
+    GenericBlackOilModelAD,
     blackoil_status,
     initial_state_from_deck,
 )
 from pymrst.modules.ad_blackoil.models.three_phase_black_oil_model import (
     BOState,
+    ThreePhaseBlackOilModel,
     ThreePhaseBlackOilModelAD,
     initial_state_spe1,
 )
@@ -15,18 +17,23 @@ from pymrst.modules.ad_blackoil.models.tracer_black_oil_model import (
 )
 from pymrst.modules.ad_blackoil.models.two_phase_oil_water_model import (
     OWState,
+    TwoPhaseOilWaterModel,
     TwoPhaseOilWaterModelAD,
 )
-from pymrst.modules.ad_blackoil.models.water_model import WaterModel
+from pymrst.modules.ad_blackoil.models.water_model import WaterModel, WaterModelAD
 
 __all__ = [
     "BOState",
     "GenericBlackOilModel",
+    "GenericBlackOilModelAD",
     "OWState",
+    "ThreePhaseBlackOilModel",
     "ThreePhaseBlackOilModelAD",
     "TracerBlackOilModel",
+    "TwoPhaseOilWaterModel",
     "TwoPhaseOilWaterModelAD",
     "WaterModel",
+    "WaterModelAD",
     "WaterThermalModel",
     "blackoil_status",
     "initial_state_from_deck",

@@ -1,0 +1,150 @@
+{
+  "completed_utc": "2026-08-03T21:00:42.578653+00:00",
+  "coordinate": {
+    "comparison_group": "spe1-branch",
+    "components": {
+      "time_integration": "adaptive-implicit"
+    },
+    "experiment_id": "experiment_06a02706a0f9858ca33c4ba05fe3ce2d513427564cc68ef376e388b6e3f1e643",
+    "member_id": "member_4ee6577e5959e0918ed1bcabe35dbdd29381857427dbca7f1124115e0ab515c6",
+    "ordinal": 0,
+    "parameters": {},
+    "variant_name": "aim-branch"
+  },
+  "elapsed_seconds": 0.6029220830005215,
+  "layout": {
+    "conservation": {
+      "finite_state": {
+        "dtype": "<f8",
+        "key": "conservation__finite_state",
+        "shape": [
+          1,
+          1
+        ]
+      }
+    },
+    "convergence": {
+      "cuts": {
+        "dtype": "<i8",
+        "key": "convergence__cuts",
+        "shape": [
+          1,
+          1
+        ]
+      },
+      "iterations": {
+        "dtype": "<i8",
+        "key": "convergence__iterations",
+        "shape": [
+          1,
+          1
+        ]
+      }
+    },
+    "fields": {
+      "pressure": {
+        "dtype": "<f8",
+        "key": "fields__pressure",
+        "shape": [
+          1,
+          300
+        ]
+      },
+      "rs": {
+        "dtype": "<f8",
+        "key": "fields__rs",
+        "shape": [
+          1,
+          300
+        ]
+      },
+      "sG": {
+        "dtype": "<f8",
+        "key": "fields__sG",
+        "shape": [
+          1,
+          300
+        ]
+      },
+      "sW": {
+        "dtype": "<f8",
+        "key": "fields__sW",
+        "shape": [
+          1,
+          300
+        ]
+      }
+    },
+    "regions": {
+      "field_average_pressure": {
+        "dtype": "<f8",
+        "key": "regions__field_average_pressure",
+        "shape": [
+          1,
+          1
+        ]
+      }
+    },
+    "wells": {
+      "bhp": {
+        "dtype": "<f8",
+        "key": "wells__bhp",
+        "shape": [
+          1,
+          2
+        ]
+      },
+      "qGs": {
+        "dtype": "<f8",
+        "key": "wells__qGs",
+        "shape": [
+          1,
+          2
+        ]
+      },
+      "qOs": {
+        "dtype": "<f8",
+        "key": "wells__qOs",
+        "shape": [
+          1,
+          2
+        ]
+      },
+      "qWs": {
+        "dtype": "<f8",
+        "key": "wells__qWs",
+        "shape": [
+          1,
+          2
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "branch_lineage": {
+      "branch_id": "branch_126e3638cd8df3bc7e7346131f8c1944600fc1431658fd2d30493a915b46be68",
+      "changes": {
+        "components": {
+          "time_integration": "adaptive-implicit"
+        },
+        "controls": {},
+        "parameters": {},
+        "properties": {}
+      },
+      "parent_member_id": "member_cca69992684cb62a8527aedafb86f8e33ca39d4f944ab10f74dbbf0459c25f9a",
+      "parent_time": 259200.0,
+      "parent_time_index": 1
+    },
+    "case": "spe1",
+    "continued_from_time": 259200.0,
+    "time_integration": "adaptive-implicit"
+  },
+  "performance": {
+    "simulation_seconds": 0.599914667000121,
+    "total_iterations": 7.0
+  },
+  "runner": "pymrst.research_studio.experiments.runners:spe1_branch_member",
+  "schema_version": 1,
+  "seed": 20240803,
+  "status": "completed"
+}

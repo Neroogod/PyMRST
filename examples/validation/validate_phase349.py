@@ -32,7 +32,7 @@ import scipy.sparse.linalg as spla
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
 )
 from pymrst.modules.ad_core.models.composite import CompositeModel
 from pymrst.modules.ad_core.statefunctions.composite.coupling_term import (
@@ -57,7 +57,7 @@ def _reservoir(seed):
                  compi=np.array([1.0, 0.0]), sign=1)
     w = add_well(w, g, rock, np.array([g.cells.num - 1]), well_type="bhp",
                  val=150 * BARSA, compi=np.array([0.0, 1.0]), sign=-1)
-    model = GenericBlackOilModel(g, rock, fluid, w)
+    model = GenericBlackOilModelAD(g, rock, fluid, w)
     st = State(pressure=np.full(g.cells.num, seed * BARSA),
                sW=np.full(g.cells.num, 0.4),
                qWs=np.array([2e-3, 0.0]), qOs=np.array([0.0, -2e-3]),

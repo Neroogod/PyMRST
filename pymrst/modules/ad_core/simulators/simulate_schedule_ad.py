@@ -19,7 +19,7 @@ def simulate_schedule_ad(
     model: TwoPhaseOilWaterModelAD,
     timesteps: Sequence[float],
     max_cuts: int = 6,
-    verbose: bool = False,
+    verbose: bool = True,
     *,
     observer=None,
 ) -> Tuple[List[OWState], np.ndarray]:
@@ -79,6 +79,11 @@ def simulate_schedule_ad(
             print(f"step {i + 1}/{len(timesteps)}: {its} iterations")
     return states, its_per_step
 
+
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+simulateScheduleAD = simulate_schedule_ad
 
 __all__ = ["simulate_schedule_ad"]
 

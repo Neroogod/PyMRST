@@ -67,19 +67,81 @@ def water_phase_fluid(b, mu: float, rho: float) -> PhaseFluid:
 
 
 def simple_phase_fluid(fluid) -> PhaseFluid:
-    """Adapt the two-phase `ADFluid` of `ad_props.init_simple_adi_fluid`."""
+    """Adapt a two-phase water-oil fluid.
+
+    Two shapes reach here and the difference is real rather than cosmetic:
+
+    * `ad_props.init_simple_adi_fluid`'s `ADFluid`, whose viscosities are two
+      **constants** in `fluid.mu` and whose `kr_o` takes the oil saturation;
+    * a **deck** fluid (`BlackOilFluid`), whose viscosities are *functions of
+      pressure* - a deck states a viscosibility, and PVCDO/PVTW with a nonzero
+      one give a viscosity that thins with drawdown - and whose two-phase oil
+      relperm is `kr_ow`, the oil-water curve. Its `kr_o` is the three-phase
+      blend and needs a gas saturation this model does not have.
+    """
     pc_ow = getattr(fluid, "pc_ow", None)
     pc = None if pc_ow is None else (lambda s: [-pc_ow(s[0]), 0.0])
+
+    constants = getattr(fluid, "mu", None)
+    if constants is not None and not callable(constants):
+        def mu(p, rs=None, sat=None, rv=None, sat_g=None):
+            return [constants[0], constants[1]]
+    else:
+        mu_w, mu_o = fluid.mu_w, fluid.mu_o
+
+        def mu(p, rs=None, sat=None, rv=None, sat_g=None):
+            return [mu_w(p), mu_o(p)]
+
+    kr_o = getattr(fluid, "kr_ow", None) or fluid.kr_o
+
     return PhaseFluid(
         phases=["water", "oil"],
         b=lambda p, rs=None, sat=None, rv=None, sat_g=None: [
             fluid.b_w(p), fluid.b_o(p)
         ],
-        mu=lambda p, rs=None, sat=None, rv=None, sat_g=None: [
-            fluid.mu[0], fluid.mu[1]
+        mu=mu,
+        kr=lambda s, **kw: [fluid.kr_w(s[0]), kr_o(s[1])],
+        rho_s=np.asarray(fluid.rhoS, dtype=float).ravel()[:2],
+        pv_mult=getattr(fluid, "pv_mult", None),
+        pc=pc,
+    )
+
+
+def simple_three_phase_fluid(fluid) -> PhaseFluid:
+    """A three-phase `ADFluid` (MRST `initSimpleADIFluid('phases','wog')`).
+
+    `simple_phase_fluid` above is the water-oil case; `blackoil_phase_fluid`
+    below is the *deck* case, whose fluid carries `mu_o(p, rs, sat)` and a
+    three-argument `kr_o`. This is the third shape: three phases with
+    power-law relperms, constant viscosities and no dissolution at all -
+    dead oil and dry gas, which is what `blackoilTutorialMexAcceleration`
+    builds.
+
+    Routing it to `simple_phase_fluid` instead silently drops the gas, and
+    the model then reports two phases for a three-phase case: the equilibrium
+    refuses its second contact, and had it not, the gas would simply be absent.
+    """
+    pc_ow = getattr(fluid, "pc_ow", None)
+    pc_og = getattr(fluid, "pc_og", None)
+    pc = None
+    if pc_ow is not None or pc_og is not None:
+        def pc(s):
+            pcow = 0.0 if pc_ow is None else pc_ow(s[0])
+            pcog = 0.0 if pc_og is None else pc_og(s[2])
+            return [-pcow, 0.0, pcog]
+
+    mu = np.asarray(fluid.mu, dtype=float).ravel()
+    return PhaseFluid(
+        phases=["water", "oil", "gas"],
+        b=lambda p, rs=None, sat=None, rv=None, sat_g=None: [
+            fluid.b_w(p), fluid.b_o(p), fluid.b_g(p)
         ],
-        kr=lambda s, **kw: [fluid.kr_w(s[0]), fluid.kr_o(s[1])],
-        rho_s=fluid.rhoS,
+        mu=lambda p, rs=None, sat=None, rv=None, sat_g=None: [
+            mu[0], mu[1], mu[2]
+        ],
+        kr=lambda s, **kw: [fluid.kr_w(s[0]), fluid.kr_o(s[1]),
+                            fluid.kr_g(s[2])],
+        rho_s=np.asarray(fluid.rhoS, dtype=float).ravel()[:3],
         pv_mult=getattr(fluid, "pv_mult", None),
         pc=pc,
     )
@@ -237,6 +299,21 @@ class PVTPropertyFunctions(StateFunctionGrouping):
         self.set_state_function("Viscosity", Viscosity(model))
         self.set_state_function("Density", Density(model))
         self.set_state_function("PhasePressures", PhasePressures(model))
+
+    def get_region_pvt(self, model):
+        """PVT-region index per cell; region 1 everywhere by default.
+
+        A deck with several PVT regions has a different set of tables per
+        region, and reading the wrong one gives a plausible density from the
+        wrong rock. MRST returns ones when the rock declares no regions, so a
+        caller can always index the result.
+        """
+        from pymrst.modules.ad_core.statefunctions.flow_property_functions import (
+            _region_or_ones,
+        )
+        return _region_or_ones(model, "pvt")
+
+    getRegionPVT = get_region_pvt
 
 
 __all__ = [

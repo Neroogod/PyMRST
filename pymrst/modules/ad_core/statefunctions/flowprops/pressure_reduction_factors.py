@@ -2,6 +2,9 @@
 
 Ports MRST's `PressureReductionFactors.m` (immiscible base) and
 `BlackOilPressureReductionFactors.m` (the live-oil / wet-gas weights).
+`NumericalPressureReductionFactorsAD` is PyMRST's earlier version of MRST
+`NumericalPressureReductionFactors`, kept for its callers; the port is in
+`ad_oo/statefunctions/flowprops/numerical_pressure_reduction_factors.py`.
 
 These are the per-component weights ``w_i`` that collapse the component
 conservation system to a single pressure equation: the weighted sum
@@ -112,7 +115,7 @@ def _factor_get(factor: Any, name: str, default: Any = None) -> Any:
     return getattr(factor, name, default)
 
 
-class NumericalPressureReductionFactors(StateFunction):
+class NumericalPressureReductionFactorsAD(StateFunction):
     """Pressure weights obtained from the component-mass Jacobian.
 
     For each cell, solve ``w A = [1/barsa, 0, ...]``, where ``A`` is the
@@ -198,7 +201,7 @@ class NumericalPressureReductionFactors(StateFunction):
         )
         if factor is None:
             raise KeyError(
-                "NumericalPressureReductionFactors requires "
+                "NumericalPressureReductionFactorsAD requires "
                 "state.reductionFactorProps"
             )
         mass = model.get_props(state, "ComponentTotalMass")
@@ -242,7 +245,7 @@ class NumericalPressureReductionFactors(StateFunction):
 
 __all__ = [
     "BlackOilPressureReductionFactors",
-    "NumericalPressureReductionFactors",
+    "NumericalPressureReductionFactorsAD",
     "PressureReductionFactors",
 ]
 
@@ -250,7 +253,7 @@ __all__ = [
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-        GenericBlackOilModel,
+        GenericBlackOilModelAD,
     )
     from pymrst.modules.ad_core.statefunctions.state_function import State
     from pymrst.modules.ad_props import init_simple_adi_fluid
@@ -268,7 +271,7 @@ if __name__ == "__main__":
                      compi=np.array([1.0, 0.0]), sign=1)
         w = add_well(w, g, rock, np.array([g.cells.num - 1]), well_type="bhp",
                      val=150 * BARSA, compi=np.array([0.0, 1.0]), sign=-1)
-        model = GenericBlackOilModel(g, rock, fluid, w)
+        model = GenericBlackOilModelAD(g, rock, fluid, w)
         st = model.init_state_ad(State(
             pressure=np.linspace(210, 190, g.cells.num) * BARSA,
             sW=np.full(g.cells.num, 0.45), qWs=np.array([2e-3]),

@@ -83,9 +83,39 @@ class ExplicitFlowStateBuilder(FlowStateBuilder):
             for grp, p in present:
                 yield grp, p
 
+    def get_explicit_groups(self, model: Any):
+        """MRST's `(groups, names)`: one grouping per declared explicit set.
+
+        `explicit_groups` above yields one pair *per property*, after checking
+        that the model actually defines it. This returns MRST's shape - the
+        grouping alongside the whole list of names it owns - which is what a
+        caller that wants to hand a group and its names to `evaluate` needs.
+
+        The declared names are returned without the existence filter, on
+        purpose: MRST reports what was *asked for*, and silently dropping a
+        property the model does not define would make a misspelled name look
+        like a supported configuration.
+        """
+        groups, names = [], []
+        for attribute, declared in (("PVTPropertyFunctions", self.explicit_pvt),
+                                    ("FlowPropertyFunctions", self.explicit_flow),
+                                    ("FlowDiscretization", self.explicit_flux)):
+            if not declared:
+                continue
+            groups.append(getattr(model, attribute, None))
+            names.append(list(declared))
+        return groups, names
+
+    getExplicitGroups = get_explicit_groups
+
     def is_first_timestep(self, state: State) -> bool:
         f = state.get("flux") if hasattr(state, "get") else None
         return f is None or not np.any(np.abs(np.asarray(value(f))) > 0)
+
+    #: MRST's spelling. The existing name is one word ("timestep"), so the
+    #: automatic snake_case of `isFirstTimeStep` does not reach it.
+    is_first_time_step = is_first_timestep
+    isFirstTimeStep = is_first_timestep
 
     def get_maximum_timestep(self, model: Any, state: State, state0: State,
                              dt: float, forces: Any = None) -> float:
@@ -128,7 +158,7 @@ __all__ = ["ExplicitFlowStateBuilder"]
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-        GenericBlackOilModel,
+        GenericBlackOilModelAD,
     )
     from pymrst.modules.ad_props import init_simple_adi_fluid
     from pymrst.params import add_well, make_rock
@@ -144,7 +174,7 @@ if __name__ == "__main__":
                      compi=np.array([1.0, 0.0]), sign=1)
         w = add_well(w, g, rock, np.array([g.cells.num - 1]), well_type="bhp",
                      val=150 * BARSA, compi=np.array([0.0, 1.0]), sign=-1)
-        model = GenericBlackOilModel(g, rock, fluid, w, gravity=9.80665)
+        model = GenericBlackOilModelAD(g, rock, fluid, w, gravity=9.80665)
         st0 = State(pressure=np.linspace(230, 180, g.cells.num) * BARSA,
                     sW=np.full(g.cells.num, 0.4),
                     qWs=np.array([2e-3]), qOs=np.array([-2e-3]),
@@ -210,6 +240,23 @@ if __name__ == "__main__":
                     assert np.allclose(value(frozen[c][ph]), value(old[c][ph]))
         print("ok test_default_freezes_face_component_mobility")
 
+    def test_the_explicit_groups_report_what_was_declared():
+        """MRST reports what was *asked for*, not what the model happens to
+        define. Filtering here would make a misspelled property name look like
+        a supported configuration instead of an error."""
+        model, _st, _st0 = _model_and_states()
+        b = ExplicitFlowStateBuilder(explicit_flow=["Mobility", "NoSuchThing"])
+        groups, names = b.get_explicit_groups(model)
+        # The flow group as declared, then the flux group's own defaults - the
+        # builder freezes face mobilities whether or not a caller asks.
+        assert names[0] == ["Mobility", "NoSuchThing"], names
+        assert names[1] == list(b.explicit_flux), names
+        assert groups[0] is model.FlowPropertyFunctions
+        assert groups[1] is model.FlowDiscretization
+        # Bound methods compare by identity of the underlying function.
+        assert b.getExplicitGroups.__func__ is b.get_explicit_groups.__func__
+        print("ok test_the_explicit_groups_report_what_was_declared")
+
     def test_first_step_uses_initial_step():
         """With no flux on the state, the max step is the configured initial."""
         model, st, st0 = _model_and_states()
@@ -220,6 +267,7 @@ if __name__ == "__main__":
     test_frozen_face_mobility_is_explicit()
     test_pressure_stays_implicit()
     test_impes_flux_matches_manual_split()
-    test_missing_terms_are_skipped()
+    test_default_freezes_face_component_mobility()
+    test_the_explicit_groups_report_what_was_declared()
     test_first_step_uses_initial_step()
     print("\nAll tests passed!")

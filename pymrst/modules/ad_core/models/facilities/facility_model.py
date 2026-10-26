@@ -97,6 +97,20 @@ class FacilityModel:
         self.wells = well_list
         self.disgas = disgas
         self.vapoil = vapoil
+        #: Facility-level mirror of `WellPhaseFlux.allowCrossFlow`, seeded
+        #: from that class so there is one declared default rather than two.
+        #:
+        #: MRST declares the flag on the state function and reaches it as
+        #: `FacilityModel.FacilityFlowDiscretization.PhaseFlux.allowCrossFlow`.
+        #: `_cross_flow_allowed` below prefers exactly that path when it
+        #: resolves, so a case written against MRST's spelling controls this
+        #: port's behaviour. The mirror exists because this port assembles
+        #: wells through `_single_well` rather than the state-function graph,
+        #: and that code needs somewhere to read the switch from when the
+        #: graph is the placeholder it is by default.
+        from pymrst.modules.ad_core.statefunctions.facility.well_phase_flux \
+            import WellPhaseFlux
+        self.allow_cross_flow = bool(WellPhaseFlux.allow_cross_flow)
         self.verbose = verbose
         self.vfp_tables_injector = list(vfp_tables_injector)
         self.vfp_tables_producer = list(vfp_tables_producer)
@@ -301,6 +315,20 @@ class FacilityModel:
         return self
 
     setupWells = setup_wells
+
+    def prepare_report_step(self, state: Any, state0: Any, dt: float,
+                            forces: Any = None):
+        """MRST ``prepareReportstep``, run once per report step.
+
+        MRST's `FacilityModel` inherits this from `PhysicalModel`, where it is
+        exactly `validateModel(drivingForces)`; `GenericFacilityModel` extends
+        it to convert reservoir-volume controls. Returns `(self, state)`, the
+        `[model, state]` pair MRST returns, so a subclass can rebuild itself.
+        """
+        self.validate_model(forces)
+        return self, state
+
+    prepareReportstep = prepare_report_step
 
     def validate_model(self, driving_forces: Any = None, *_, **__):
         """MRST ``validateModel`` compatibility surface for facility wells."""
@@ -2209,6 +2237,30 @@ class FacilityModel:
         # weighed with once the well has actually flowed.
         flux_prev = cdp_state.get("well_flux")
 
+        # MRST's `rhoScale = rhoS ./ mean(rhoR, 1)` (GenericFacilityModel.m:120)
+        # scales each well equation so a surface-volume balance is commensurate
+        # with the reservoir equations beside it. Three properties are
+        # load-bearing and all three were got wrong on a first attempt:
+        #
+        #   * it is ONE scalar per phase, shared by every well - not per well;
+        #   * `rhoR` is the density over the WHOLE grid, not at perforations;
+        #   * it is taken at `state0`, so it is frozen for the timestep rather
+        #     than re-evaluated every Newton iteration.
+        #
+        # `cdp_rho` above is already `get_props(state0, "Density")`, which is
+        # exactly MRST's `rhoR`. Deriving the scale instead from `1/mean(b)`
+        # is wrong once gas dissolves: oil's true density is
+        # `b_O*(rhoOS + rs*rhoGS)`, and the shortcut is 12% off on Norne.
+        rho_scale = np.ones(nph)
+        surface = np.asarray(getattr(model.fluid, "rho_s",
+                                     getattr(model.fluid, "rhoS", np.ones(nph))),
+                             dtype=float).ravel()
+        for i in range(min(nph, surface.size, len(cdp_rho or []))):
+            mean_rho = float(np.mean(np.asarray(value(cdp_rho[i]),
+                                                dtype=float)))
+            if np.isfinite(mean_rho) and mean_rho > 0.0:
+                rho_scale[i] = surface[i]/mean_rho
+
         cq_s_all, cq_vol_all = [], []
         well_eqs, ctrls = [[] for _ in range(nph)], []
         for k, w in enumerate(self.wells):
@@ -2219,6 +2271,7 @@ class FacilityModel:
             cq_s, weqs, ctrl, cq_vol = self._single_well(
                 w, p, mob, b, rs, nph,
                 [q[k:k + 1] for q in q_s], bhp[k:k + 1], cdp, rv=rv,
+                rho_scale=rho_scale,
             )
             cq_s_all.append(cq_s)
             cq_vol_all.append(cq_vol)
@@ -2379,8 +2432,15 @@ class FacilityModel:
         return total
 
     def _single_well(self, w: Well, p, mob, b, rs, nph: int, q_s, bhp_k,
-                     cdp: np.ndarray, rv=None):
-        """MRST's computeWellContributionsSingleWell."""
+                     cdp: np.ndarray, rv=None, rho_scale=None):
+        """MRST's computeWellContributionsSingleWell.
+
+        `rho_scale` is MRST's per-phase `rhoScale`, computed once per timestep
+        by the caller. Defaults to ones so a direct caller - the self-tests
+        build wells by hand - gets the unscaled equations it expects.
+        """
+        if rho_scale is None:
+            rho_scale = np.ones(nph)
         wc, tw = w.cells, w.WI
         compi = w.compi[:nph]
 
@@ -2419,7 +2479,21 @@ class FacilityModel:
             wbqt = wbq[0]
             for i in range(1, nph):
                 wbqt = wbqt + wbq[i]
-            if value(wbqt)[0] == 0.0:            # dead well: fall back to compi
+            # MRST's `WellPhaseFlux.allowCrossFlow` (default true, and
+            # `calculatePhaseRate` gates the mixture on it). A back-flowing
+            # perforation of a producer injects *something*; with crossflow
+            # allowed that something is the wellbore mixture computed here,
+            # and with it disallowed it is the well's own `compi`.
+            #
+            # It is not cosmetic for a well held at zero total rate. Allowing
+            # the mixture to float lets the well satisfy `q_t = 0` by
+            # circulating - some perforations taking fluid in while others put
+            # it out - which is a near-indeterminate family of solutions and
+            # shows up as the ill-conditioned well block it is. MRST's own
+            # Norne script turns it off for exactly this case.
+            if not self._cross_flow_allowed():
+                mix = list(compi)
+            elif value(wbqt)[0] == 0.0:          # dead well: fall back to compi
                 mix = list(compi)
             else:
                 mix = [q / wbqt for q in wbq]
@@ -2456,9 +2530,40 @@ class FacilityModel:
                 term = pterm if term is None else term + pterm
             cq_vol.append(term)
 
-        well_eqs = [q_s[i] - ad_sum(cq_s[i]) for i in range(nph)]
+        # MRST scales each well equation by `rhoScale = rhoS ./ mean(rhoR)`
+        # (GenericFacilityModel.m:120) and this port does not. That is a real
+        # divergence and it is *not* cosmetic: Norne's well block spans
+        # singular values from 1.0 down to 2e-8 with the exact null direction
+        # already removed, and the control residual swings over orders of
+        # magnitude between Newton iterations rather than descending.
+        #
+        # Implementing it as `1/mean(b_c)` - the identity rho_a = b_a * rhoS_a
+        # suggests - was tried on 2026-08-08 and is WRONG: it broke 7 of the 8
+        # frozen cases, with `states.final.qOs` off by 4.7e+283. Either the
+        # identity does not hold in the form used here, or a phase whose `b`
+        # approaches zero turns the scale into an astronomical multiplier.
+        # Left unscaled deliberately until the correct scale is derived, so
+        # the divergence is recorded rather than silently wrong.
+        well_eqs = [(q_s[i] - ad_sum(cq_s[i]))*rho_scale[i] for i in range(nph)]
         ctrl = self._control_equation(w, q_s, bhp_k, nph, cq_vol=cq_vol)
         return cq_s, well_eqs, ctrl, cq_vol
+
+    def _cross_flow_allowed(self) -> bool:
+        """MRST's `PhaseFlux.allowCrossFlow`, preferring MRST's own path.
+
+        A script written against MRST sets
+        `FacilityFlowDiscretization.PhaseFlux.allowCrossFlow`; that is the
+        authority whenever the state-function graph is real. The facility
+        attribute is the fallback, for the placeholder graph this port uses by
+        default.
+        """
+        flux = getattr(getattr(self, "FacilityFlowDiscretization", None),
+                       "PhaseFlux", None)
+        for name in ("allow_cross_flow", "allowCrossFlow"):
+            declared = getattr(flux, name, None)
+            if declared is not None:
+                return bool(declared)
+        return bool(getattr(self, "allow_cross_flow", True))
 
     @staticmethod
     def _control_density(w: Well, nph: int) -> np.ndarray:
@@ -2508,6 +2613,21 @@ class FacilityModel:
                     and np.any(flowing & (np.sign(qt_val) != w.sign))):
                 return qt
             return bhp_k - w.val
+
+        # MRST's `zeroTarget`: a *zero* target on any surface-rate or reservoir
+        # control closes the well with the TOTAL rate, not with the one phase
+        # the mode names (GenericFacilityModel.m, `ctrl_eq(zeroRates) = q_t`).
+        #
+        # The single-phase form is not merely less general, it is singular. A
+        # well switched onto `wrat = 0` that produces no water gives
+        # `q_Ws = 0`, which is the identical equation to its own water mass
+        # balance - a duplicate row, an unconstrained bottom-hole pressure, and
+        # an exactly singular Jacobian that no timestep cut can rescue. That is
+        # Norne's D-1H. Summing every phase keeps the row independent of any
+        # one mass balance.
+        if w.type != "bhp" and float(np.ravel(value(w.val))[0]) == 0.0:
+            return qt
+
         if w.type in ("rate", "vrat", "resv_history"):
             return qt - w.val
         if w.type == "resv":

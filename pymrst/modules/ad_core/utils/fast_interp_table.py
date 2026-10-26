@@ -26,6 +26,11 @@ def fast_interp_table(x: np.ndarray, y: np.ndarray, xi: np.ndarray) -> np.ndarra
     return f(xi)
 
 
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+fastInterpTable = fast_interp_table
+
 if __name__ == "__main__":
     def test_interior_matches_linear_interpolation():
         x = np.array([0.0, 1.0, 2.0, 3.0])

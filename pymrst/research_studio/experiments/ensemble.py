@@ -81,10 +81,11 @@ class LocalEnsembleExecutor:
         return MemberResultStore(self.root / matrix_id / str(coordinate.member_id))
 
     def run(self, materialized: MaterializedVariantMatrix, *, runner: str,
-            retry_failed: bool = True) -> EnsembleReport:
+            retry_failed: bool = True, progress_callback=None) -> EnsembleReport:
         self.root.mkdir(parents=True, exist_ok=True)
         outcomes: dict[int, MemberOutcome] = {}
         pending = []
+        total = len(materialized.coordinates)
         for coordinate in materialized.coordinates:
             seed = deterministic_member_seed(materialized.definition.random_seed, coordinate)
             store = self._member_store(materialized.matrix_id, coordinate)
@@ -93,6 +94,8 @@ class LocalEnsembleExecutor:
                 outcomes[coordinate.ordinal] = MemberOutcome(
                     coordinate, seed, "completed", str(store.path),
                     float(record["elapsed_seconds"]), resumed=True)
+                if progress_callback is not None:
+                    progress_callback(len(outcomes), total, outcomes[coordinate.ordinal])
                 continue
             if store.record_path.exists() and not retry_failed:
                 record = store.record()
@@ -101,6 +104,8 @@ class LocalEnsembleExecutor:
                     float(record.get("elapsed_seconds", 0.0)), resumed=True,
                     error_type=record.get("error_type", "PreviousFailure"),
                     error_message=record.get("error_message", ""))
+                if progress_callback is not None:
+                    progress_callback(len(outcomes), total, outcomes[coordinate.ordinal])
                 continue
             pending.append((coordinate, seed, store))
 
@@ -121,11 +126,15 @@ class LocalEnsembleExecutor:
                         except BaseException as error:
                             self._record_executor_failure(
                                 outcomes, materialized, coordinate, runner, error)
+                        if progress_callback is not None:
+                            progress_callback(len(outcomes), total, outcomes[coordinate.ordinal])
             except (NotImplementedError, PermissionError):
                 backend = "sequential_fallback"
                 for coordinate, seed, store in pending:
                     outcomes[coordinate.ordinal] = execute_member(
                         coordinate.to_dict(), seed, str(store.path), runner)
+                    if progress_callback is not None:
+                        progress_callback(len(outcomes), total, outcomes[coordinate.ordinal])
         report = EnsembleReport(
             materialized.matrix_id, runner,
             tuple(outcomes[index] for index in sorted(outcomes)),

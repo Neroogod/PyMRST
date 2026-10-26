@@ -48,6 +48,11 @@ def split_face_cell_value(operators, flag: np.ndarray, x, sz):
     return fx, cx
 
 
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+splitFaceCellValue = split_face_cell_value
+
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa

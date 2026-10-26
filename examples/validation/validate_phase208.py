@@ -13,8 +13,8 @@ if str(ROOT) not in sys.path:
 
 from pymrst.modules.compositional.examples._shared import (  # noqa: E402
     SimulationResult,
-    get_multiple_packed_simulator_outputs,
-    pack_simulation_problem,
+    get_multiple_packed_simulator_outputs_ad,
+    pack_simulation_problem_ad,
     simple_schedule,
 )
 
@@ -54,7 +54,7 @@ def _check(name: str, condition: bool) -> int:
 
 def validate_legacy_packed_fallback_schema() -> int:
     schedule = simple_schedule([])
-    problem = pack_simulation_problem(
+    problem = pack_simulation_problem_ad(
         0.0,
         object(),
         schedule,
@@ -66,7 +66,7 @@ def validate_legacy_packed_fallback_schema() -> int:
         iterations=np.asarray([4, 5, 6], dtype=int),
         reports=None,
     )
-    _, states, reports, names = get_multiple_packed_simulator_outputs([problem])
+    _, states, reports, names = get_multiple_packed_simulator_outputs_ad([problem])
     fallback = reports[0]
 
     failures = 0

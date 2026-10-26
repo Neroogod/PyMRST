@@ -1,0 +1,35 @@
+{
+  "code_fingerprint": "matrix_3c7c7aec00ea0b7dc26b5cbfb3b7e6f49d8c5b61e2d92feac3f79d5474f5574d",
+  "command": [
+    "python3",
+    "scripts/run_research_studio_m3_branch_package.py"
+  ],
+  "configuration": {
+    "matrix_id": "matrix_3c7c7aec00ea0b7dc26b5cbfb3b7e6f49d8c5b61e2d92feac3f79d5474f5574d",
+    "parent_member_id": "member_cca69992684cb62a8527aedafb86f8e33ca39d4f944ab10f74dbbf0459c25f9a"
+  },
+  "created_utc": "2026-08-03T21:00:42.587071+00:00",
+  "inputs": [
+    {
+      "path": "/Users/Shared/PyMRST_workspace/PyMRST/docs/research_studio/experiments/variant_matrices.json",
+      "sha256": "896ea577aab82869c9c61be20b4e7fdf0e91904163b048dc18af3bb41939a5b8",
+      "size_bytes": 26566
+    },
+    {
+      "path": "/Users/Shared/PyMRST_workspace/PyMRST/results/research_studio/m3_branch_package_final/spe1.case.json",
+      "sha256": "140a1aa0e11d2881331179f81ac4a9722dfdc9e91387470ffa6ef5c6a3031fe5",
+      "size_bytes": 945
+    }
+  ],
+  "package_versions": {
+    "h5py": "3.16.0",
+    "numpy": "2.4.6",
+    "pymrst": "0.1.0",
+    "scipy": "1.17.1"
+  },
+  "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+  "python_version": "3.14.5",
+  "run_id": "run_m3_6_3_9",
+  "schema_version": 1,
+  "working_directory": "/Users/Shared/PyMRST_workspace/PyMRST"
+}

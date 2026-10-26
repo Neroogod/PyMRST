@@ -9,7 +9,7 @@ import numpy as np
 import scipy.sparse as sp
 
 from pymrst.modules.ad_core.models.facilities.well_bore_friction import (
-    well_bore_friction,
+    well_bore_friction_ad,
 )
 from pymrst.modules.ad_core.models.facilities.nozzle_valve import nozzle_valve
 from pymrst.utils.adi import ad_abs, ad_matmul, ad_sum, value, vertcat_adi
@@ -158,7 +158,7 @@ def assemble_multisegment_equations(
     grad_z = depth[topo[:, 1]] - depth[topo[:, 0]]
     rho_seg = _segment_average(rhom, topo)
     mu_seg = _segment_upstream(up, mum, topo)
-    tubing_drop = well_bore_friction(
+    tubing_drop = well_bore_friction_ad(
         segment_flux, rho_seg, mu_seg, np.maximum(diam, 1e-9),
         np.maximum(length, 0.0), rough, flowtype="massRate",
     )
@@ -202,8 +202,8 @@ def _node_mix(model, pressure, alpha, q_abs, rho_s):
         root = q_abs[ph] / q_total
         mix_s.append(vertcat_adi(root, nonroot[1:]))
 
-    # `raw_fluid` is optional throughout this codebase - flux_and_props_bo,
-    # get_b_o_bo and get_polymer_shear_multiplier all reach for it and fall
+    # `raw_fluid` is optional throughout this codebase - the getFluxAndProps*_BO
+    # ports, get_b_o_bo and get_polymer_shear_multiplier all reach for it and fall
     # back to `fluid`. Requiring it outright here made this function unusable
     # with any model that defines only `fluid`, including its own self-test.
     fluid = getattr(model, "raw_fluid", None) or getattr(model, "fluid", None)
@@ -251,6 +251,11 @@ def _full_node_vector(bhp, node_pressure, n_nodes):
     root = bhp[0:1] if hasattr(bhp, "__len__") else np.atleast_1d(bhp)
     return vertcat_adi(root, node_pressure)
 
+
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+setupMSWellEquationSingleWell = assemble_multisegment_equations
 
 __all__ = ["MultisegmentEquationResult", "assemble_multisegment_equations"]
 

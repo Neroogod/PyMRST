@@ -1,7 +1,7 @@
 """GenericReservoirModel (MRST ad-core/models).
 
 Ports MRST's `GenericReservoirModel.m`. In MRST this is a *marker* class - it
-carries no code of its own; a concrete model (`GenericBlackOilModel`,
+carries no code of its own; a concrete model (`GenericBlackOilModelAD`,
 `GenericOverallCompositionModel`, ...) mixes it in to declare "my equations are
 assembled generically from the state-function graph and my components, not from
 a hand-written residual." The generic assembly itself is the reservoir model's
@@ -12,7 +12,7 @@ PyMRST's `ReservoirModel` already assembles this way (its
 `conservation_equations` is component-generic). This class makes that explicit:
 it is the base a graph-assembled model inherits, adds the marker
 `is_generic_reservoir_model`, and exposes `get_model_equations` as the named
-generic-assembly entry point MRST models call. `GenericBlackOilModel` is made
+generic-assembly entry point MRST models call. `GenericBlackOilModelAD` is made
 an instance of it, so the black-oil model *is* a generic reservoir model - the
 same is-a relationship MRST declares.
 """
@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-        GenericBlackOilModel,
+        GenericBlackOilModelAD,
     )
     # import via the package path so the class identity matches the base the
     # black-oil model inherits (running this file as __main__ makes a second,
@@ -69,7 +69,7 @@ if __name__ == "__main__":
                      compi=np.array([1.0, 0.0]), sign=1)
         w = add_well(w, g, rock, np.array([g.cells.num - 1]), well_type="bhp",
                      val=150 * BARSA, compi=np.array([0.0, 1.0]), sign=-1)
-        model = GenericBlackOilModel(g, rock, fluid, w)
+        model = GenericBlackOilModelAD(g, rock, fluid, w)
         st0 = State(pressure=np.full(g.cells.num, 200 * BARSA),
                     sW=np.full(g.cells.num, 0.4),
                     qWs=np.array([2e-3]), qOs=np.array([-2e-3]),
@@ -78,7 +78,7 @@ if __name__ == "__main__":
         return model, st, model.init_state_ad(st0)
 
     def test_black_oil_is_a_generic_reservoir_model():
-        """GenericBlackOilModel is-a GenericReservoirModel (the MRST marker)."""
+        """GenericBlackOilModelAD is-a GenericReservoirModel (the MRST marker)."""
         model, _, _ = _model_and_states()
         assert isinstance(model, GenericReservoirModel)
         assert model.is_generic_reservoir_model is True

@@ -32,7 +32,7 @@ def __getattr__(name):
         return run_multisegment_well_example
     if name == "run_simulator_workflow_example":
         from pymrst.modules.ad_blackoil.examples.simulator_workflow_example import (
-            run_simulator_workflow_example,
+            run_simulator_workflow_example_ad as run_simulator_workflow_example,
         )
         return run_simulator_workflow_example
     raise AttributeError(name)

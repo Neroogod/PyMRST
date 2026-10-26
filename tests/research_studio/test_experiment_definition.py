@@ -25,7 +25,7 @@ def _definition(dataset, *, name="SPE1 solver study", hypothesis="AIM preserves 
             "case_spe1",
             OwnerReference("pymrst.modules.ad_blackoil.examples:setup_spe1",
                            {"report_steps": 2}), CASE_HASH),
-        model=OwnerReference("pymrst.modules.ad_blackoil:GenericBlackOilModel",
+        model=OwnerReference("pymrst.modules.ad_blackoil:GenericBlackOilModelAD",
                              {"disgas": True, "vapoil": False}),
         schedule=OwnerReference("pymrst.modules.ad_core:Schedule",
                                 {"control_policy": "deck"}),

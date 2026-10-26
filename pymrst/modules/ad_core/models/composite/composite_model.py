@@ -79,6 +79,76 @@ class CompositeModel(PhysicalModel):
             eqs = ct.insert_coupling(self, eqs, names, sources[cname])
         return eqs, names
 
+    # -- MRST CompositeModel.m, ported ------------------------------------
+
+    def set_primary_variables(self, state: Any, names) -> Any:
+        """Record each submodel's primary-variable names on its own state.
+
+        Recurses into nested composites, because a submodel may itself be one -
+        writing the names at the top level only would leave the inner model
+        unable to split its own increments.
+        """
+        active = self.get_active_models(state)
+        if len(names) != len(active):
+            raise ValueError(
+                f"{len(names)} name lists for {len(active)} active submodels "
+                f"{active}")
+        for mname, sub_names in zip(active, names):
+            submodel = self.submodels[mname]
+            if isinstance(submodel, CompositeModel):
+                state[mname] = submodel.set_primary_variables(state[mname],
+                                                              sub_names)
+            else:
+                state[mname]["primaryVariables"] = list(sub_names)
+        return state
+
+    setPrimaryVariables = set_primary_variables
+
+    def split_problem(self, problem, remove_couplings: bool = False):
+        """Split a coupled problem into one problem per submodel.
+
+        Equations are assigned by the `"<submodel>."` prefix on their names,
+        and the prefix is stripped on the way out so each subproblem reads as
+        though it had been assembled alone.
+
+        `remove_couplings` additionally drops the off-diagonal Jacobian blocks,
+        which turns the split into a set of *independent* problems. That is a
+        different thing from splitting - the coupled system's answer is not the
+        concatenation of the decoupled ones - so it is off by default.
+        """
+        from pymrst.modules.ad_core.solvers.linear_solver_ad import (
+            LinearizedProblem,
+        )
+
+        names = self.get_active_models(problem.state)
+        problems, mapping = [], [None]*problem.num_eq()
+
+        for index, mname in enumerate(names):
+            prefix = f"{mname}."
+            selected = [i for i, n in enumerate(problem.equation_names)
+                        if str(n).startswith(prefix)]
+            stripped = [str(problem.equation_names[i])[len(prefix):]
+                        for i in selected]
+            sub = LinearizedProblem.from_equations(
+                [problem.equations[i] for i in selected],
+                [problem.types[i] for i in selected],
+                stripped,
+                [problem.primary_variables[i] for i in selected
+                 if i < len(problem.primary_variables)],
+                problem.state[mname] if mname in problem.state else None,
+                problem.dt)
+            for i in selected:
+                mapping[i] = index
+            if remove_couplings:
+                for equation in sub.equations:
+                    if hasattr(equation, "jac"):
+                        equation.jac = [equation.jac[i] for i in selected
+                                        if i < len(equation.jac)]
+            problems.append(sub)
+        return problems, mapping
+
+    splitProblem = split_problem
+
     def flatten_equations(self, eqs: Dict[str, List[Any]]) -> List[Any]:
         """The submodel equation lists concatenated, in submodel order."""
         out: List[Any] = []
@@ -150,7 +220,7 @@ if __name__ == "__main__":
 
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-        GenericBlackOilModel,
+        GenericBlackOilModelAD,
     )
     from pymrst.modules.ad_core.statefunctions.composite.coupling_term import (
         SourceCouplingTerm,
@@ -171,7 +241,7 @@ if __name__ == "__main__":
                      compi=np.array([1.0, 0.0]), sign=1)
         w = add_well(w, g, rock, np.array([g.cells.num - 1]), well_type="bhp",
                      val=150 * BARSA, compi=np.array([0.0, 1.0]), sign=-1)
-        model = GenericBlackOilModel(g, rock, fluid, w)
+        model = GenericBlackOilModelAD(g, rock, fluid, w)
         st0 = State(pressure=np.full(g.cells.num, 200 * BARSA),
                     sW=np.full(g.cells.num, 0.4),
                     qWs=np.array([2e-3]), qOs=np.array([-2e-3]),
@@ -233,3 +303,102 @@ if __name__ == "__main__":
     test_two_submodels_concatenate()
     test_coupling_conserves_total_mass()
     print("\nAll tests passed!")
+
+
+# -- MRST's module-local variable tree helpers ------------------------------
+#
+# A composite model's variables arrive as a *nested* structure - a list per
+# submodel, and a submodel that is itself composite contributes another list.
+# The AD layer wants one flat list, and afterwards the results have to go back
+# into the same shape. These two do that, and the property that matters is that
+# they are inverses: `pack(unpack(x)) == x` for any nesting.
+
+
+def unpack_vars(variables, level: int = 1, num: int = 1,
+                levels=None, nodes=None):
+    """Flatten a nested variable tree, recording where each leaf came from.
+
+    Returns `(flat, levels, nodes)`. The two index lists are what make the
+    flattening reversible - without them a flat list cannot say which submodel,
+    at which depth, each entry belonged to.
+    """
+    levels = [] if levels is None else levels
+    nodes = [] if nodes is None else nodes
+    flat = []
+    for index, item in enumerate(variables, start=1):
+        if isinstance(item, (list, tuple)):
+            inner, levels, nodes = unpack_vars(item, level + 1, index,
+                                               levels, nodes)
+            flat += inner
+        else:
+            flat.append(item)
+            levels.append(level)
+            nodes.append(num)
+    return flat, levels, nodes
+
+
+unpackVars = unpack_vars
+
+
+def pack_vars(flat, levels, nodes, level: int | None = None):
+    """Rebuild the nested tree that `unpack_vars` flattened.
+
+    `level` defaults to the shallowest level present. MRST hard-codes 2 at its
+    one call site, which works because a composite model's variables are
+    uniformly nested one level deep; deriving it here means the round trip
+    holds without the caller having to know the depth.
+
+    A tree of *mixed* depth is refused rather than silently truncated. MRST
+    takes the node count from the current level only - `max(mapn(subsetl))` -
+    so a leaf sitting beside a nested list is dropped without a word. Checking
+    that every leaf was consumed turns that into an error.
+    """
+    import numpy as _np
+
+    levels = _np.asarray(levels)
+    nodes = _np.asarray(nodes)
+    if level is None:
+        if levels.size == 0:
+            return []
+        level = int(levels.min())
+        packed = _pack_at(flat, levels, nodes, level)
+        if _leaf_count(packed) != len(flat):
+            raise ValueError(
+                f"variable tree mixes nesting depths ({sorted(set(levels.tolist()))}); "
+                f"packing kept {_leaf_count(packed)} of {len(flat)} entries. "
+                f"MRST drops the remainder silently; this refuses instead")
+        return packed
+    return _pack_at(flat, levels, nodes, level)
+
+
+def _leaf_count(tree) -> int:
+    if isinstance(tree, (list, tuple)):
+        return sum(_leaf_count(t) for t in tree)
+    return 1
+
+
+def _pack_at(flat, levels, nodes, level: int):
+    import numpy as _np
+
+    levels = _np.asarray(levels)
+    nodes = _np.asarray(nodes)
+    here = levels == level
+    if not here.any():
+        return list(flat)
+
+    count = int(nodes[here].max())
+    at_level = [v for v, keep in zip(flat, here) if keep]
+    deeper = [v for v, keep in zip(flat, here) if not keep]
+
+    out = []
+    for node in range(1, count + 1):
+        mask = nodes[here] == node
+        if mask.any():
+            out.append([v for v, keep in zip(at_level, mask) if keep])
+        else:
+            out.append(_pack_at(deeper, levels[~here], nodes[~here],
+                                level + 1))
+    return out
+
+
+packVars = pack_vars

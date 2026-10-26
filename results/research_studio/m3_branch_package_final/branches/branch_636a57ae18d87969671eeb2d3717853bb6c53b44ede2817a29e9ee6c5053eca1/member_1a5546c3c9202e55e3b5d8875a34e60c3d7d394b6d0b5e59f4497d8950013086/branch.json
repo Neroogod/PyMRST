@@ -1,0 +1,20 @@
+{
+  "branch_id": "branch_636a57ae18d87969671eeb2d3717853bb6c53b44ede2817a29e9ee6c5053eca1",
+  "comparison_group": "spe1-branch",
+  "components": {
+    "time_integration": "fully-implicit"
+  },
+  "controls": {},
+  "name": "fim-continuation",
+  "parameters": {},
+  "parent_member_id": "member_cca69992684cb62a8527aedafb86f8e33ca39d4f944ab10f74dbbf0459c25f9a",
+  "parent_time_index": -1,
+  "properties": {},
+  "required_fields": [
+    "pressure",
+    "sW",
+    "sG",
+    "rs"
+  ],
+  "schema_version": 1
+}

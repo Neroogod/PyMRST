@@ -14,6 +14,12 @@ MRST = ROOT.parent / "mrst-2024a-Geomech" / "modules" / "ad-core"
 VALID_PORT_STATUSES = {
     "ported",
     "ported-consolidated",
+    # Added with the depth pass: a filename match no longer earns `ported` on
+    # its own. `ported-shallow` is a counterpart most of whose MATLAB class is
+    # absent from the whole package; `wrapper` is one that declares the class
+    # and no behaviour at all. See tests/ad_core/test_parity_ledger_depth.py.
+    "ported-shallow",
+    "wrapper",
     "excluded-catalog",
     "excluded-platform",
     "excluded-external",

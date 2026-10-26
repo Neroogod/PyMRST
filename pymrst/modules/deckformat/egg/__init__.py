@@ -1,5 +1,12 @@
-"""Official EGG benchmark dataset access and parsing."""
+"""Locating and installing the official EGG benchmark dataset.
 
-from pymrst.modules.deckformat.egg.read_egg_deck import egg_data_directory, fetch_egg_dataset, read_egg_deck
+The deck itself is read by
+`pymrst.modules.test_suite.dataset_functions.egg.get_deck_egg`, which is
+`readEclipseDeck` + `convertDeckUnits` as `getDeckEGG.m` calls them.
+"""
 
-__all__ = ["egg_data_directory", "fetch_egg_dataset", "read_egg_deck"]
+from pymrst.modules.deckformat.egg.egg_dataset import (
+    egg_data_directory, fetch_egg_dataset,
+)
+
+__all__ = ["egg_data_directory", "fetch_egg_dataset"]

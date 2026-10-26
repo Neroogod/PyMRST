@@ -17,7 +17,7 @@ from pymrst.modules.ad_props.utils.preprocess_table_pvt import (
     PackedPVT,
     preprocess_table_pvt,
 )
-from pymrst.utils.adi import ADI, _diag_mul, value
+from pymrst.utils.adi import ADI, _diag_mul, ad_from_blocks, is_ad, value
 from pymrst.utils.interp_table import _interp1
 
 
@@ -77,16 +77,16 @@ def interp_2d_pvt(tables: Sequence[PackedPVT], x, v, reg_inx: Sequence,
         values[subs], dx[subs], dv[subs] = _kernel(table, xi[subs], vi[subs],
                                                    column)
 
-    if not isinstance(x, ADI) and not isinstance(v, ADI):
+    if not is_ad(x) and not is_ad(v):
         return values
     jacobians = None
-    if isinstance(x, ADI):
+    if is_ad(x):
         jacobians = [_diag_mul(dx, j) for j in x.jac]
-    if isinstance(v, ADI):
+    if is_ad(v):
         other = [_diag_mul(dv, j) for j in v.jac]
         jacobians = other if jacobians is None else [
             a + b for a, b in zip(jacobians, other)]
-    return ADI(values, jacobians)
+    return ad_from_blocks(values, jacobians)
 
 
 interp2DPVT = interp_2d_pvt

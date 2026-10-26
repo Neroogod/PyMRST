@@ -16,7 +16,7 @@ def test_time_integration_matrix_regenerates_and_quantifies_method_error():
     assert summary["passed"]
     assert len(graph.nodes) == 6
     assert len(graph.edges) == 36
-    assert summary["diagnostics"]["fim"]["iterations"] == [3, 5]
+    assert summary["diagnostics"]["fim"]["iterations"] == [4, 4]
     assert summary["diagnostics"]["aim"]["implicit_fraction"] == [1.0, 2/300]
     assert summary["mrst_comparisons"]["fim"]["pressure"]["maximum_absolute_error"] < 40.0
     assert summary["mrst_comparisons"]["explicit"]["pressure"]["maximum_absolute_error"] < 0.1

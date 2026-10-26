@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from pymrst.modules.ad_core.initialization import init_eclipse_problem_ad
+from pymrst.modules.ad_core.initialization import init_eclipse_problem_ad_ad
 from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
 from pymrst.modules.ad_core.utils.schedule import Schedule
 
@@ -16,7 +16,7 @@ SPE1 = (
 
 @pytest.mark.skipif(not SPE1.exists(), reason="local MRST SPE1 deck is unavailable")
 def test_spe1_path_builds_complete_problem():
-    state, model, schedule, nonlinear = init_eclipse_problem_ad(SPE1)
+    state, model, schedule, nonlinear = init_eclipse_problem_ad_ad(SPE1)
     assert state["pressure"].shape == (model.G.cells.num,)
     assert np.all(state["pressure"] > 0)
     assert isinstance(schedule, Schedule)
@@ -30,8 +30,8 @@ def test_spe1_path_builds_complete_problem():
 
 @pytest.mark.skipif(not SPE1.exists(), reason="local MRST SPE1 deck is unavailable")
 def test_model_override_and_output_switches():
-    state, model, _, _ = init_eclipse_problem_ad(SPE1, get_schedule=False)
-    state2, model2, schedule2, nonlinear2 = init_eclipse_problem_ad(
+    state, model, _, _ = init_eclipse_problem_ad_ad(SPE1, get_schedule=False)
+    state2, model2, schedule2, nonlinear2 = init_eclipse_problem_ad_ad(
         {"pressure": state["pressure"], "swat": state["sW"],
          "sgas": state["sG"], "rs": state["rs"]},
         model=model, get_initial_state=False, get_schedule=False,
@@ -43,7 +43,7 @@ def test_model_override_and_output_switches():
 
 @pytest.mark.skipif(not SPE1.exists(), reason="local MRST SPE1 deck is unavailable")
 def test_model_override_converts_processed_deck_schedule():
-    _, model, _, _ = init_eclipse_problem_ad(SPE1, get_schedule=False)
+    _, model, _, _ = init_eclipse_problem_ad_ad(SPE1, get_schedule=False)
     deck = {
         "pressure": np.full(model.G.cells.num, 2.0e7),
         "swat": np.full(model.G.cells.num, 0.2),
@@ -54,7 +54,7 @@ def test_model_override_converts_processed_deck_schedule():
             "control": [{"W": []}],
         },
     }
-    _, _, schedule, _ = init_eclipse_problem_ad(
+    _, _, schedule, _ = init_eclipse_problem_ad_ad(
         deck, model=model, get_initial_state=False
     )
     assert schedule.n_steps == 2

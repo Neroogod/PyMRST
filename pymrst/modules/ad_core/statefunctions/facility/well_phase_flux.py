@@ -73,6 +73,13 @@ def calculate_phase_rate(tdp: Any, mobw: Sequence[Any], mapping: Any,
 class WellPhaseFlux(StateFunction):
     """Reservoir volumetric phase flux between wellbore and reservoir."""
 
+    #: MRST declares `allowCrossFlow = true` as a property of *this* state
+    #: function, not of the facility model, and a case turns it off through
+    #: it: `FacilityModel.FacilityFlowDiscretization.PhaseFlux
+    #: .allowCrossFlow = false`. Kept here so that access path means the same
+    #: thing in this port as it does in the reference script.
+    allow_cross_flow = True
+
     def __init__(self, facility: Any = None):
         super().__init__(facility, label="q_\\alpha")
         self.depends_on(["FacilityWellMapping", "PressureGradient",
@@ -84,8 +91,14 @@ class WellPhaseFlux(StateFunction):
         wi = self.get_evaluated(state, "WellIndex")
         mobw = self.get_evaluated(state, "Mobility")
         tdp = -wi * dp
-        return calculate_phase_rate(tdp, mobw, m, m.wells)
+        return calculate_phase_rate(tdp, mobw, m, m.wells,
+                                    self.allow_cross_flow)
 
+
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+calculatePhaseRate = calculate_phase_rate
 
 __all__ = ["WellPhaseFlux", "calculate_phase_rate"]
 

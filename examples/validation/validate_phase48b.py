@@ -36,8 +36,8 @@ import numpy as np
 import scipy.io
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
-from pymrst.modules.ad_blackoil import GenericBlackOilModel
-from pymrst.modules.ad_core.models.aquifers.aquifer import AquiferConnections, AquiferModel
+from pymrst.modules.ad_blackoil import GenericBlackOilModelAD
+from pymrst.modules.ad_core.models.aquifers.aquifer import AquiferConnections, AquiferModelAD
 from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
 from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.modules.ad_props import init_simple_adi_fluid
@@ -78,7 +78,7 @@ def build(ref):
         depth_aq=np.full(nconn, float(ref["depthaq"])),
         c_aq=np.array([float(ref["Caq"])]),
     )
-    aquifer = AquiferModel(connections,
+    aquifer = AquiferModelAD(connections,
                            pressures=np.array([250.0 * BARSA]),
                            volumes=np.array([5.0e7]))
 
@@ -93,7 +93,7 @@ def build(ref):
                  compi=np.array([0.0, 1.0]), sign=-1, radius=0.1, name="PROD",
                  gravity=np.array([0.0, 0.0, NORM_GRAVITY]))
 
-    model = GenericBlackOilModel(g, rock, fluid, w, gravity=NORM_GRAVITY,
+    model = GenericBlackOilModelAD(g, rock, fluid, w, gravity=NORM_GRAVITY,
                                  aquifer=aquifer)
 
     nc = g.cells.num

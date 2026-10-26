@@ -1,8 +1,8 @@
 """Phase 353 (AC16): equilibration regions.
 
 Adds the region layer over PyMRST's single-region equilibration (Phase 42):
-`get_initialization_regions_base` (build a region with MRST's defaults),
-`get_min_max_phase_saturations`, and `init_state_equil_regions` (equilibrate a
+`get_initialization_regions_base_ad` (build a region with MRST's defaults),
+`get_min_max_phase_saturations_ad`, and `init_state_equil_regions` (equilibrate a
 multi-region field). Proved against the validated single-region path:
 
 1. **Factory == hand-built.** A region from the factory equilibrates to exactly
@@ -23,12 +23,12 @@ import numpy as np
 
 from pymrst.gridprocessing import compute_geometry, tensor_grid
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
 )
 from pymrst.modules.ad_core.initialization import (
     EquilibriumRegion,
-    get_initialization_regions_base,
-    get_min_max_phase_saturations,
+    get_initialization_regions_base_ad,
+    get_min_max_phase_saturations_ad,
     init_state_equil,
     init_state_equil_regions,
 )
@@ -47,7 +47,7 @@ def _model(nz=24, top=1000.0, thick=120.0):
     fluid = init_simple_adi_fluid(
         mu=np.array([1.0, 5.0]) * CENTI * POISE, rho=[1000.0, 800.0],
         n=[2, 2], c=[0.0, 0.0], p_ref=200 * BARSA)
-    return g, GenericBlackOilModel(g, rock, fluid, [], gravity=G_ACC)
+    return g, GenericBlackOilModelAD(g, rock, fluid, [], gravity=G_ACC)
 
 
 RHO = [1000.0, 800.0]
@@ -60,7 +60,7 @@ def main():
     woc, datum, dp = 1055.0, 1000.0, 200 * BARSA
 
     # (1) factory vs hand-built
-    reg = get_initialization_regions_base(model, RHO, [woc], datum_depth=datum,
+    reg = get_initialization_regions_base_ad(model, RHO, [woc], datum_depth=datum,
                                           datum_pressure=dp)
     hand = EquilibriumRegion(datum_depth=datum, datum_pressure=dp, contacts=[woc])
     hand.rho = RHO
@@ -74,9 +74,9 @@ def main():
     # (2) partition invariance
     full = init_state_equil(model, reg, G_ACC)
     half = nc // 2
-    r1 = get_initialization_regions_base(model, RHO, [woc], datum_depth=datum,
+    r1 = get_initialization_regions_base_ad(model, RHO, [woc], datum_depth=datum,
                                          datum_pressure=dp, cells=np.arange(half))
-    r2 = get_initialization_regions_base(model, RHO, [woc], datum_depth=datum,
+    r2 = get_initialization_regions_base_ad(model, RHO, [woc], datum_depth=datum,
                                          datum_pressure=dp,
                                          cells=np.arange(half, nc))
     multi = init_state_equil_regions(model, [r1, r2], G_ACC)
@@ -87,9 +87,9 @@ def main():
     assert dp_max < 1e-9 and ds_max < 1e-12
 
     # (3) independent regions
-    ro = get_initialization_regions_base(model, RHO, [1200.0], datum_depth=datum,
+    ro = get_initialization_regions_base_ad(model, RHO, [1200.0], datum_depth=datum,
                                          datum_pressure=dp, cells=np.arange(half))
-    rw = get_initialization_regions_base(model, RHO, [900.0], datum_depth=datum,
+    rw = get_initialization_regions_base_ad(model, RHO, [900.0], datum_depth=datum,
                                          datum_pressure=dp,
                                          cells=np.arange(half, nc))
     st = init_state_equil_regions(model, [ro, rw], G_ACC)
@@ -97,7 +97,7 @@ def main():
           f"water-region sW={st['sW'][half:].mean():.2f}")
     assert st["sW"][:half].mean() < 0.05 and st["sW"][half:].mean() > 0.95
 
-    s_min, s_max = get_min_max_phase_saturations(model)
+    s_min, s_max = get_min_max_phase_saturations_ad(model)
     assert np.all(s_min <= s_max)
     print("Phase 353 passed - the region layer reproduces the validated "
           "single-region equilibrium and partitions the field faithfully.")

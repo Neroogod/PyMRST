@@ -3,11 +3,11 @@
 The one AC-phase piece that could not be validated by internal equivalence -
 WENO is genuinely new physics, not a re-homing of an existing PyMRST path - so
 it needs a MATLAB reference. `dump_phase348_weno.m` runs MRST's actual
-`WENOUpwindDiscretization` on a 1D grid and saves the face reconstruction of
+`WENOUpwindDiscretizationAD` on a 1D grid and saves the face reconstruction of
 two fields (a smooth ramp and a shock front) in both upwind directions;
 `ref_p348_weno.mat` is that dump.
 
-PyMRST's `WENOUpwindDiscretization` must reproduce it face for face. The shock
+PyMRST's `WENOUpwindDiscretizationAD` must reproduce it face for face. The shock
 case pins the smoothness weighting (the oscillatory stencil is down-weighted at
 the front); the ramp case pins the second-order interior reconstruction and the
 one-sided boundary stencils. Tolerance is machine precision - the two codes run
@@ -21,7 +21,7 @@ import scipy.io
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_core.statefunctions.flux.upwind.weno import (
-    WENOUpwindDiscretization,
+    WENOUpwindDiscretizationAD,
 )
 from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa
 from pymrst.params.rock import make_rock
@@ -47,7 +47,7 @@ def main():
     # centroid ordering must match, or the fields would not line up
     assert np.allclose(g.cells.centroids[:, 0], ref["cell_centroids"].ravel())
 
-    weno = WENOUpwindDiscretization(model, 1)
+    weno = WENOUpwindDiscretizationAD(model, 1)
     ramp = ref["ramp"].ravel()
     front = ref["front"].ravel()
     n_if = ops.T.size

@@ -45,6 +45,50 @@ class HystereticRelativePermeability(BaseRelativePermeability):
         return self.hysteresis(sg, sg_max)
 
 
+    def evaluate_phase_relative_permeability_with_hysteresis(
+            self, model: Any, phase: str, sg: Any, state: Any) -> Any:
+        """kr of one phase, taking the imbibition branch where it applies.
+
+        Hysteresis is a gas-phase effect in this model: gas trapped behind an
+        advancing water front does not become mobile again when the front
+        retreats, so the imbibition curve lies below the drainage one and the
+        difference is the trapped saturation. Water and oil take the ordinary
+        drainage curve, and asking for them here is not an error - it is the
+        common case in a three-phase model where only gas is hysteretic.
+        """
+        if str(phase).upper() != "G":
+            return self.evaluate_phase_relative_permeability(model, phase, sg)
+        return self.evaluate_gas_rel_perm(model, sg, state)
+
+    evaluatePhaseRelativePermeabilityWithHysteresis = \
+        evaluate_phase_relative_permeability_with_hysteresis
+
+    def scan_rel_perm(self, sg: Any, sg_max: Any, state: Any = None):
+        """The scanning-curve kr and the reversal saturation it came from.
+
+        Returns `(kr, sg_trapped)`. A *scanning curve* is the path taken when
+        the saturation reverses partway - neither the bounding drainage curve
+        nor the bounding imbibition one, but a curve anchored at the turning
+        point `sg_max`. That anchor is the state: two cells at the same gas
+        saturation have different relative permeabilities if they arrived from
+        different maxima, which is precisely what makes hysteresis history
+        dependent and why `sGMax` has to be carried on the state.
+
+        Refused when no hysteresis model is attached: without one there is no
+        scanning curve to be on, and returning the drainage value would report
+        a hysteretic result from a non-hysteretic model.
+        """
+        if self.hysteresis is None:
+            raise ValueError(
+                "scan_rel_perm needs a hysteresis model; without one there is "
+                "no scanning curve and the drainage curve is the only answer")
+        kr = self.hysteresis(sg, sg_max)
+        trapped = getattr(self.hysteresis, "trapped_saturation", None)
+        return kr, (trapped(sg_max) if callable(trapped) else None)
+
+    scanRelPerm = scan_rel_perm
+
+
 __all__ = ["HystereticRelativePermeability"]
 
 
@@ -53,7 +97,7 @@ if __name__ == "__main__":
 
     from pymrst.gridprocessing import compute_geometry, tensor_grid
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-        GenericBlackOilModel, initial_state_from_deck,
+        GenericBlackOilModelAD, initial_state_from_deck,
     )
     from pymrst.modules.ad_core.statefunctions.hysteresis import (
         KilloughGasHysteresis,
@@ -79,7 +123,7 @@ if __name__ == "__main__":
                              compi=wd["compi"], sign=wd["sign"], name=name,
                              ref_depth=wd["ref_depth"],
                              gravity=np.array([0.0, 0.0, NORM_GRAVITY]))
-        model = GenericBlackOilModel(g, rock, fluid, wells, disgas=True,
+        model = GenericBlackOilModelAD(g, rock, fluid, wells, disgas=True,
                                      gravity=NORM_GRAVITY)
         return model, deck, g
 

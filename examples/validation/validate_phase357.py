@@ -23,11 +23,11 @@ from scipy.io import loadmat
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
 )
 from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.modules.ad_core.utils.cfl import (
-    estimate_saturation_cfl,
+    estimate_saturation_cfl_ad,
     fractional_flow_derivative,
 )
 from pymrst.modules.ad_props import init_simple_adi_fluid
@@ -62,7 +62,7 @@ def main() -> int:
     fluid = init_simple_adi_fluid(
         mu=np.array([1.0, 1.0]) * CENTI * POISE, rho=[1000.0, 1000.0],
         n=[2, 2], c=[0.0, 0.0], p_ref=200 * BARSA)
-    model = GenericBlackOilModel(g, rock, fluid, [])
+    model = GenericBlackOilModelAD(g, rock, fluid, [])
 
     failed = 0
     print("Discretisation matches MRST:")
@@ -80,7 +80,7 @@ def main() -> int:
     print("\nSaturation CFL vs MRST (same sw, same interior flux):")
     st = State(pressure=np.full(nx, 200.0 * BARSA), sW=sw,
                qWs=np.zeros(0), qOs=np.zeros(0), bhp=np.zeros(0))
-    cfl = estimate_saturation_cfl(model, st, dt, flux=v_int)
+    cfl = estimate_saturation_cfl_ad(model, st, dt, flux=v_int)
     err_cfl = np.max(np.abs(cfl - cfl_ref))
     failed += _check("CFL matches number for number", err_cfl < 1e-12,
                      f"max|dCFL| = {err_cfl:.3e}")

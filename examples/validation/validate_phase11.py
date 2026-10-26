@@ -17,7 +17,7 @@ from pymrst.modules.diagnostics import (
     compute_sweep,
     lorenz_coefficient,
 )
-from pymrst.modules.incomp import incomp_tpfa, init_single_fluid
+from pymrst.modules.incomp import incomp_tpfa_ad as incomp_tpfa, init_single_fluid
 from pymrst.params import add_well, make_rock, pore_volume
 from pymrst.solvers import compute_trans, init_state
 from pymrst.utils.units import BARSA, CENTI, DARCY, MILLI, POISE

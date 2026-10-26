@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import numpy as np
 
+from pymrst.utils.subset_arithmetic import subset_minus
+
+from pymrst.utils.adi import value
+
 from pymrst.gridprocessing.grid import Grid
 from pymrst.modules.geothermal.geothermal_model import (
     GeothermalModel,
@@ -66,6 +70,35 @@ class WaterThermalModel(GeothermalModel):
 
     def get_surface_densities(self):
         return np.array([self.fluid.rho(np.array([0.0]), np.array([293.15]))[0]])
+
+    # MRST's `WaterThermalModel.insertWellEquations` is not ported, and the
+    # reason is structural rather than a gap in the physics.
+    #
+    # MRST's version delegates its *mass* half to `ReservoirModel` and then
+    # adds the enthalpy source. This class is not a `ReservoirModel` - it
+    # descends from `GeothermalModel`, which stands outside the AD-OO
+    # hierarchy - so there is no base implementation for it to delegate to.
+    #
+    # An earlier revision of this file did define the method and called
+    # `super().insert_well_equations(...)`. That raised `AttributeError` on
+    # every call, and nothing caught it because nothing called it: a method
+    # that exists and cannot run is worse than one that is absent, because the
+    # parity ledger counts it.
+    #
+    # The capability it wanted is present by another route: the geothermal
+    # kernel adds well rates and their advected enthalpy inside `assemble`
+    # (`GeothermalModel._add_wells`), which is where this model's equations
+    # are built. Migrating `GeothermalModel` onto `ReservoirModel` would add
+    # 163 names, 22 of them probed by `hasattr` elsewhere, and is a change
+    # worth making deliberately rather than as a side effect of this one.
+
+
+def _field(obj, name, default=None):
+    if obj is None:
+        return default
+    if isinstance(obj, dict):
+        return obj.get(name, default)
+    return getattr(obj, name, default)
 
 
 __all__ = ["WaterThermalModel", "GeothermalState", "ThermalFluid", "ThermalRock"]

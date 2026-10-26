@@ -89,6 +89,16 @@ class GenericComponent(Component):
         return [None] * len(b)
 
 
+def _phase_composition(model, index: int) -> List[Optional[Any]]:
+    """`1` at `index`, `None` elsewhere, sized by the model's phase count."""
+    n = (int(model.get_number_of_phases()) if hasattr(model, "get_number_of_phases")
+         else int(getattr(model, "n_phases", index + 1)))
+    out: List[Optional[Any]] = [None]*n
+    if 0 <= index < n:
+        out[index] = 1
+    return out
+
+
 class ImmiscibleComponent(Component):
     """A component confined to one phase - the ordinary case.
 
@@ -103,6 +113,23 @@ class ImmiscibleComponent(Component):
         out: List[Optional[Any]] = [None] * len(b)
         out[self.phase_index] = b[self.phase_index]
         return out
+
+    def get_phase_composition(self, model, state=None, *args):
+        """The fraction of each phase made up of this component.
+
+        `1` in the component's own phase, `None` elsewhere - an immiscible
+        component *is* its phase, so the phase is entirely it.
+
+        `None` rather than `0` is the distinction that matters, and it is
+        MRST's: the conservation equation skips a `None` slot, while a `0`
+        contributes a term that is identically zero but still carries an AD
+        derivative and a sparsity entry. On a black-oil model that is the
+        difference between a Jacobian with two blocks per component and one
+        with `n_phases` blocks, most of them structurally empty.
+        """
+        return _phase_composition(model, self.phase_index)
+
+    getPhaseComposition = get_phase_composition
 
 
 class GasComponent(Component):
@@ -125,6 +152,20 @@ class GasComponent(Component):
         if rs is not None:
             out[self.oil_index] = rs * b[self.oil_index]
         return out
+
+    def get_phase_composition(self, model, state=None, *args):
+        """`1` in the gas phase.
+
+        Not the oil phase, even under `disgas` - and that is not an oversight
+        in MRST, it is the distinction between *composition* and *density*.
+        The oil phase does carry gas, and `component_density` above reports it
+        as `rs * b_o`. But the oil phase is not made *of* gas: its composition
+        is oil. MRST's `GasComponent.getPhaseComposition` delegates straight to
+        the immiscible base for exactly this reason.
+        """
+        return _phase_composition(model, self.gas_index)
+
+    getPhaseComposition = get_phase_composition
 
 
 class OilComponent(Component):
@@ -150,6 +191,12 @@ class OilComponent(Component):
             out[self.gas_index] = rv * b[self.gas_index]
         return out
 
+    def get_phase_composition(self, model, state=None, *args):
+        """`1` in the oil phase - the mirror of `GasComponent`'s."""
+        return _phase_composition(model, self.oil_index)
+
+    getPhaseComposition = get_phase_composition
+
 
 class ConcentrationComponent(Component):
     """A species dissolved in a phase at a concentration carried on the state.
@@ -159,6 +206,21 @@ class ConcentrationComponent(Component):
     the class `ad-eor` is written against, and adding one requires no change to
     the flow model - only to what the model lists as its components.
     """
+
+    def get_injection_mass_fraction(self, model, force):
+        """The component's mass fraction in an injected stream.
+
+        Refused on the base class, as in MRST. A concentration component has
+        no universal answer here - the fraction depends on what the concrete
+        component is dissolved in - and returning zero would silently inject
+        pure carrier fluid while reporting a component injector.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not define an injection mass "
+            f"fraction; a concrete concentration component must implement "
+            f"get_injection_mass_fraction")
+
+    getInjectionMassFraction = get_injection_mass_fraction
 
     def __init__(self, name: str, phase_index: int, state_key: str):
         super().__init__(name)
@@ -177,8 +239,8 @@ def blackoil_components(n_phases: int, disgas: bool,
     """The components of a black-oil model: one per phase, plus the two
     dissolutions - gas into oil (`rs`) and oil into gas (`rv`)."""
     from pymrst.modules.ad_blackoil.components import (
-        GasComponent as BlackOilGasComponent,
-        OilComponent as BlackOilOilComponent,
+        GasComponentAD as BlackOilGasComponent,
+        OilComponentAD as BlackOilOilComponent,
     )
 
     names = ["water", "oil", "gas"][:n_phases]
@@ -241,13 +303,13 @@ if __name__ == "__main__":
         assert [type(c).__name__ for c in blackoil_components(2, False)] == \
             ["ImmiscibleComponent"] * 2
         three = blackoil_components(3, True)
-        assert type(three[2]).__name__ == "GasComponent"
+        assert type(three[2]).__name__ == "GasComponentAD"
         assert type(three[1]).__name__ == "ImmiscibleComponent"
         dry = blackoil_components(3, False)
         assert type(dry[2]).__name__ == "ImmiscibleComponent"
         wet = blackoil_components(3, True, vapoil=True)
-        assert type(wet[1]).__name__ == "OilComponent"
-        assert type(wet[2]).__name__ == "GasComponent"
+        assert type(wet[1]).__name__ == "OilComponentAD"
+        assert type(wet[2]).__name__ == "GasComponentAD"
         print("ok test_blackoil_component_sets")
 
     def test_oil_component_mirrors_the_gas_one():

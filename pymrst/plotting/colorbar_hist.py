@@ -61,12 +61,20 @@ def colorbar_hist(
     limits,
     location: str = "south",
     bins=50,
-    logarithmic: bool = False,
+    logarithmic=None,
     *,
     axes=None,
     cmap: str = "viridis",
 ) -> HistogramColorbarResult:
-    """Render an MRST-style colorbar/histogram pair."""
+    """Render an MRST-style colorbar/histogram pair.
+
+    As in MRST, `bins` is used only when `logarithmic` is not given (MRST's
+    `nbins = varargin{2}+1` applies only for `nargin == 4`): passing the
+    log flag, true or false, gives MRST's default 51 bin centres.
+    """
+    if logarithmic is not None:
+        bins = 50
+    logarithmic = bool(logarithmic)
     loc = location.lower().replace("outside", "")
     if loc not in {"south", "north", "east", "west"}:
         raise ValueError("location must be North, South, East, or West")
@@ -163,3 +171,39 @@ __all__ = [
     "colorbar_hist",
     "colorbarHist",
 ]
+
+
+if __name__ == "__main__":
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    VALUES = np.geomspace(0.1, 1000.0, 40)
+
+    def test_the_bin_count_is_used_without_the_log_flag():
+        """MRST's `nbins = varargin{2}+1` for `nargin == 4`."""
+        result = colorbar_hist(VALUES, [0.1, 1000.0], "South", 31)
+        assert result.counts.size == 32 and result.counts.sum() == VALUES.size
+        plt.close("all")
+        print("ok test_the_bin_count_is_used_without_the_log_flag")
+
+    def test_with_the_log_flag_mrst_uses_51_centres():
+        """`colorbarHist(K, lim, 'South', 51, true)` histograms on 51 centres
+        of log10(lim), whatever the count passed."""
+        for flag in (True, False):
+            result = colorbar_hist(VALUES, [0.1, 1000.0], "South", 7, flag)
+            assert result.counts.size == 51, result.counts.size
+        np.testing.assert_allclose(result.limits, [0.1, 1000.0])
+        result = colorbar_hist(VALUES, [0.1, 1000.0], "South", 7, True)
+        np.testing.assert_allclose(result.limits, [-1.0, 3.0])
+        plt.close("all")
+        print("ok test_with_the_log_flag_mrst_uses_51_centres")
+
+    def test_hist_counts_by_nearest_centre():
+        np.testing.assert_array_equal(hist_at_centers([0.1, 0.9, 1.6, 2.0], [0, 1, 2]), [1, 1, 2])
+        print("ok test_hist_counts_by_nearest_centre")
+
+    test_the_bin_count_is_used_without_the_log_flag()
+    test_with_the_log_flag_mrst_uses_51_centres()
+    test_hist_counts_by_nearest_centre()
+    print("\nAll tests passed!")

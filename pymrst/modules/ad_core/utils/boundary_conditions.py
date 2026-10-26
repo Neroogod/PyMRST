@@ -1,4 +1,10 @@
-"""Boundary conditions and sources for the AD models (MRST ad-core/utils).
+"""MRST's `computeSourcesAndBoundaryConditionsAD`, `getBoundaryConditionFluxesAD`,
+`getSourceFluxesAD` and `addFluxesFromSourcesAndBC` are ported in full, one
+file each, and re-exported here. What follows is PyMRST's earlier boundary
+machinery (`*_ad_ad`, `add_bc_and_sources`, `boundary_reservoir_fluxes`,
+`source_reservoir_fluxes`), kept for the legacy models. Its notes follow.
+
+Boundary conditions and sources for the AD models (MRST ad-core/utils).
 
 The AD models could only be driven by **wells**. A pressure boundary, a flux
 boundary, an aquifer standing in for the rest of the field, a source term -
@@ -92,7 +98,8 @@ def _contributions(force, q_s, q_r, b, rho_s, cells, dissolved, nc):
         return _empty_contributions(nph, nc)
     q_s = list(q_s)
     q0 = list(q_s)
-    if dissolved is not None:
+    # MRST's `~isempty(dissolved)`: `[]` and `None` both mean no dissolution.
+    if dissolved:
         total = np.zeros(cells.size)
         for q in q0:
             total += np.asarray(value(q), dtype=float)
@@ -108,13 +115,15 @@ def _contributions(force, q_s, q_r, b, rho_s, cells, dissolved, nc):
                 else:
                     ds = np.asarray(override)
                     r_inj = ds[:, i, j] if ds.ndim == 3 else ds[i, j]
-                r = np.where(inj, r_inj, np.asarray(value(r_cell))[cells])
+                # MRST's `isInj.*r_inj + ~isInj.*r_cell(cells)`: the cell
+                # ratio keeps its derivatives where the boundary produces.
+                r = inj*r_inj + (~inj)*r_cell[cells]
                 q_s[i] = q_s[i] + r * q0[j]
     mass = [q_s[i] * rho_s[i] for i in range(nph)]
     return ForceContributions(mass, list(q_r), [], _force_map(cells, nc), cells)
 
 
-def compute_sources_and_boundary_conditions_ad(
+def compute_sources_and_boundary_conditions_ad_ad(
     model,
     pressure: Sequence[Any],
     saturation: Sequence[Any],
@@ -138,7 +147,7 @@ def compute_sources_and_boundary_conditions_ad(
     if bc_force is None or np.asarray(_field(bc_force, "face", [])).size == 0:
         bc_out = _empty_contributions(nph, nc)
     else:
-        q_s, q_r, bc_cells = _boundary_fluxes_ad(
+        q_s, _, bc_cells, q_r = get_boundary_condition_fluxes_ad_ad(
             model, pressure, saturation, mobility, density, b, bc_force
         )
         bc_out = _contributions(
@@ -156,7 +165,6 @@ def compute_sources_and_boundary_conditions_ad(
     return src_out, bc_out
 
 
-computeSourcesAndBoundaryConditionsAD = compute_sources_and_boundary_conditions_ad
 
 
 def _source_surface_fluxes(mobility, src):
@@ -174,7 +182,14 @@ def _source_surface_fluxes(mobility, src):
     return q_s, cells
 
 
-def _boundary_fluxes_ad(model, pressure, saturation, mobility, density, b, bc):
+def get_boundary_condition_fluxes_ad_ad(model, pressure, saturation, mobility,
+                                     density, b, bc):
+    """MRST `getBoundaryConditionFluxesAD`: `(qSurf, BCTocellMap, BCcells, qRes)`.
+
+    Surface and reservoir phase fluxes through each boundary face, for
+    pressure, flux and reservoir-flux conditions, with `BCTocellMap` the
+    `nc x nbc` map from faces to the cells they bound.
+    """
     faces = np.asarray(_field(bc, "face"), dtype=np.int64).ravel()
     kinds = np.char.lower(np.asarray(_field(bc, "type"), dtype=str))
     values = np.asarray(_field(bc, "value"), dtype=float)
@@ -220,26 +235,27 @@ def _boundary_fluxes_ad(model, pressure, saturation, mobility, density, b, bc):
     is_sf = kinds == "flux"
     is_rf = ~(is_p | is_sf)
     q_s, q_r = [], []
-    # MRST reservoir-flux boundaries split the imposed total by potential
-    # upwinding. Iterate the small local fixed point used by that split.
+    # MRST: reservoir-flux boundaries split the imposed total flux by
+    # phase-potential upwinding (`computeSequentialFluxes`, 'potential'), the
+    # inside and outside mobilities stacked so the upwind picks between them;
+    # derivatives are kept.
     qph = [np.zeros(nbc) for _ in range(nph)]
     if np.any(is_rf):
-        vt = values.sum(axis=1) if values.shape[1] > 1 else values[:, 0]
-        use_out = np.tile((vt > 0)[:, None], (1, nph))
-        for _ in range(4):
-            mf = [np.where(use_out[:, i], value(mob_out[i]), value(mob_in[i]))
-                  for i in range(nph)]
-            mt = sum(mf)
-            trial = []
-            for i in range(nph):
-                grav = sum(
-                    mf[j] * gdz * (value(rho_out[i] + density[i][cells]) / 2
-                                    - value(rho_out[j] + density[j][cells]) / 2)
-                    for j in range(nph) if j != i
-                )
-                trial.append(mf[i] / mt * (vt + t * grav))
-            use_out = np.column_stack([value(q) > 0 for q in trial])
-            qph = trial
+        from pymrst.modules.sequential.utils.compute_sequential_fluxes import (
+            compute_sequential_fluxes,
+        )
+        from pymrst.utils.adi import vertcat_adi
+        rho_avg = [(rho_out[i] + density[i][cells])/2 for i in range(nph)]
+        Gpot = [gdz*rho_avg[i] for i in range(nph)]
+        mobC = [vertcat_adi(mob_in[i], mob_out[i]) for i in range(nph)]
+        vt = values.sum(axis=1)
+        nf = vt.size
+
+        def upstr(flag, v):
+            return flag*v[:nf] + (~flag)*v[nf:]
+
+        qph = compute_sequential_fluxes(None, Gpot, -vt, t, mobC, {}, [], upstr, "potential")
+        qph = [-q for q in qph]
 
     for i in range(nph):
         sample = pressure[i][cells]
@@ -274,7 +290,9 @@ def _boundary_fluxes_ad(model, pressure, saturation, mobility, density, b, bc):
         qr = qr + qph[i] * is_rf
         q_s.append(qs)
         q_r.append(qr)
-    return q_s, q_r, cells
+    cell_to_bc = sp.csr_array((np.ones(nbc), (np.arange(nbc), cells)),
+                              shape=(nbc, int(model.G.cells.num)))
+    return q_s, cell_to_bc.T.tocsr(), cells, q_r
 
 
 def _scatter(cells: np.ndarray, n_cells: int) -> sp.csr_array:
@@ -317,7 +335,7 @@ def boundary_reservoir_fluxes(model, state: State, bc: BoundaryCondition):
     t_bc = model.operators.t_all[faces]
 
     # Gravity head between the cell centre and the face centre.
-    dz = (g.cells.centroids[cells, 2] - g.faces.centroids[faces, 2])
+    dz = (g.cells.centroids[cells, -1] - g.faces.centroids[faces, -1])
     gdz = -model.gravity_magnitude * dz
 
     p = state["pressure"]
@@ -457,9 +475,28 @@ def add_bc_and_sources(model, eqs: List[Any], state: State,
     return eqs
 
 
+# MRST's functions, each ported in full in its own file; the `_ad_ad`
+# versions above are PyMRST's earlier ones, kept for the legacy models.
+from pymrst.modules.ad_core.utils.add_fluxes_from_sources_and_bc import (  # noqa: E402
+    add_fluxes_from_sources_and_bc,
+    addFluxesFromSourcesAndBC,
+)
+from pymrst.modules.ad_core.utils.compute_sources_and_boundary_conditions_ad import (  # noqa: E402
+    compute_sources_and_boundary_conditions_ad,
+    computeSourcesAndBoundaryConditionsAD,
+)
+from pymrst.modules.ad_core.utils.get_boundary_condition_fluxes_ad import (  # noqa: E402
+    get_boundary_condition_fluxes_ad,
+    getBoundaryConditionFluxesAD,
+)
+from pymrst.modules.ad_core.utils.get_source_fluxes_ad import (  # noqa: E402
+    get_source_fluxes_ad,
+    getSourceFluxesAD,
+)
+
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
-    from pymrst.modules.ad_blackoil.models.generic_black_oil_model import GenericBlackOilModel
+    from pymrst.modules.ad_blackoil.models.generic_black_oil_model import GenericBlackOilModelAD
     from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
     from pymrst.modules.ad_props.init_simple_adi_fluid import init_simple_adi_fluid
     from pymrst.params.rock import make_rock, pore_volume
@@ -474,7 +511,7 @@ if __name__ == "__main__":
             mu=np.array([1.0, 5.0]) * CENTI * POISE, rho=[1000.0, 800.0],
             n=[2, 2], c=[1e-6 / BARSA, 1e-4 / BARSA], p_ref=200 * BARSA,
         )
-        m = GenericBlackOilModel(g, rock, fluid, [], bc=bc, src=src)
+        m = GenericBlackOilModelAD(g, rock, fluid, [], bc=bc, src=src)
         st = State(pressure=np.full(g.cells.num, 200.0 * BARSA),
                    sW=np.full(g.cells.num, 0.2),
                    qWs=np.zeros(0), qOs=np.zeros(0), bhp=np.zeros(0))

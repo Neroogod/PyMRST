@@ -22,6 +22,32 @@ class WellSegment:
     valve_count: int = 1
 
 
+def segment_upstream_value(flag, val, topo):
+    """Pick each segment's upstream neighbour's value (MRST
+    `segmentUpstreamValue`).
+
+    `topo[:, 0]` is the inlet of each segment and `topo[:, 1]` the outlet, and
+    `flag` says which end the flow is coming from. The two fiddly parts are
+    MRST's and both are about the top segment:
+
+    * the top segment has no inlet, so its `topo[0, 0]` is 0 - "no segment".
+      MRST substitutes the outlet there, which makes the top segment take its
+      own downstream value rather than reading segment zero;
+    * the indices are 1-based segment *numbers* and `val` is 0-based, hence
+      the `-1`, floored at 0 so a 0 marker cannot wrap to the last segment.
+    """
+    import numpy as _np
+    flag = _np.asarray(flag, dtype=bool).ravel()
+    topo = _np.atleast_2d(_np.asarray(topo, dtype=int))
+    index = _np.where(flag, topo[:, 0], topo[:, 1]).astype(int)
+    if index.size and index[0] == 0:
+        index[0] = topo[0, 1]
+    return _np.asarray(val)[_np.maximum(index - 1, 0)]
+
+
+segmentUpstreamValue = segment_upstream_value
+
+
 @dataclass
 class MultisegmentWell:
     """Topology and geometry for MRST ``MultisegmentWell`` schedules."""

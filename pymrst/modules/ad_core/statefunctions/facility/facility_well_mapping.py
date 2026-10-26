@@ -34,7 +34,7 @@ if __name__ == "__main__":
 
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-        GenericBlackOilModel,
+        GenericBlackOilModelAD,
     )
     from pymrst.modules.ad_core.statefunctions.facility.facility_flow_discretization import (  # noqa: E501
         FacilityContext,
@@ -57,7 +57,7 @@ if __name__ == "__main__":
                      compi=np.array([1.0, 0.0]), sign=1)
         w = add_well(w, g, rock, prod_cells, well_type="bhp", val=150 * BARSA,
                      compi=np.array([0.0, 1.0]), sign=-1)
-        model = GenericBlackOilModel(g, rock, fluid, w)
+        model = GenericBlackOilModelAD(g, rock, fluid, w)
         return FacilityContext(model, w), inj_cells, prod_cells
 
     def test_mapping_lists_all_perforations():

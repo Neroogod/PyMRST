@@ -8,7 +8,7 @@ present?" flags that switch a cell between saturated and under-saturated. This
 module centralises that read so the three classes cannot drift apart.
 
 The flags come from the hydrocarbon `status` primary variable (the same one
-`GenericBlackOilModel.init_state_ad` resolves): ``status >= 2`` means free gas
+`GenericBlackOilModelAD.init_state_ad` resolves): ``status >= 2`` means free gas
 is present (oil is saturated), and ``status`` odd means oil is present (gas is
 saturated). This is exactly the split the pre-graph PVT statefunctions used;
 factoring it here keeps the new MRST-shaped hierarchy bit-for-bit with them.

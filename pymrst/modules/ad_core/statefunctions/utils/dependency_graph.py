@@ -1,4 +1,8 @@
-"""State-function graph introspection (MRST ad-core/statefunctions/utils).
+"""State-function graph introspection: PyMRST's earlier versions.
+
+`get_state_function_grouping_dependency_graph_ad` and
+`build_state_function_digraph_ad` are kept for their callers; the ports of
+MRST's functions are in the MRST-named files beside this one.
 
 Ports the reasoning behind MRST's `getStateFunctionGroupingDependencyGraph`,
 `buildStateFunctionDigraph`, `plotStateFunctionGroupings` and
@@ -30,7 +34,7 @@ def _node(struct: str, name: str) -> str:
     return f"{struct}.{name}"
 
 
-def get_state_function_grouping_dependency_graph(model: Any) -> Dict[str, Any]:
+def get_state_function_grouping_dependency_graph_ad(model: Any) -> Dict[str, Any]:
     """The full cross-grouping dependency graph of ``model``.
 
     Returns a dict with:
@@ -84,13 +88,13 @@ def get_state_function_grouping_dependency_graph(model: Any) -> Dict[str, Any]:
     }
 
 
-def build_state_function_digraph(model: Any) -> Dict[str, Any]:
+def build_state_function_digraph_ad(model: Any) -> Dict[str, Any]:
     """The dependency graph plus a topological order and cycle check.
 
     Adds ``order`` (a global evaluation order - every node after all it
     depends on) to the graph dict. Raises ``RuntimeError`` on a cycle.
     """
-    g = get_state_function_grouping_dependency_graph(model)
+    g = get_state_function_grouping_dependency_graph_ad(model)
     all_nodes = list(g["nodes"]) + list(g["inputs"])
     succ: Dict[str, List[str]] = {n: [] for n in all_nodes}
     indeg: Dict[str, int] = {n: 0 for n in all_nodes}
@@ -155,7 +159,7 @@ def to_dot(graph: Dict[str, Any]) -> str:
 
 def format_grouping_text(model: Any) -> str:
     """A compact text listing: each node and what it depends on."""
-    g = get_state_function_grouping_dependency_graph(model)
+    g = get_state_function_grouping_dependency_graph_ad(model)
     preds: Dict[str, List[str]] = {}
     for a, b in g["edges"]:
         preds.setdefault(b, []).append(a)
@@ -168,9 +172,9 @@ def format_grouping_text(model: Any) -> str:
 
 __all__ = [
     "ancestors_of",
-    "build_state_function_digraph",
+    "build_state_function_digraph_ad",
     "format_grouping_text",
-    "get_state_function_grouping_dependency_graph",
+    "get_state_function_grouping_dependency_graph_ad",
     "to_dot",
 ]
 
@@ -180,7 +184,7 @@ if __name__ == "__main__":
 
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-        GenericBlackOilModel,
+        GenericBlackOilModelAD,
     )
     from pymrst.modules.ad_props import init_simple_adi_fluid
     from pymrst.params import add_well, make_rock
@@ -194,12 +198,12 @@ if __name__ == "__main__":
             n=[2, 2], c=[1e-6 / BARSA, 1e-4 / BARSA], p_ref=200 * BARSA)
         w = add_well(None, g, rock, np.array([0]), well_type="rate", val=2e-3,
                      compi=np.array([1.0, 0.0]), sign=1)
-        return GenericBlackOilModel(g, rock, fluid, w)
+        return GenericBlackOilModelAD(g, rock, fluid, w)
 
     def test_graph_covers_all_groupings():
         """Every state function of every grouping is a node."""
         model = _model()
-        g = get_state_function_grouping_dependency_graph(model)
+        g = get_state_function_grouping_dependency_graph_ad(model)
         for gname in model.groupings:
             grp = getattr(model, gname)
             for fname in grp.get_names():
@@ -213,7 +217,7 @@ if __name__ == "__main__":
     def test_topological_order_respects_dependencies():
         """In the global order every node follows all it depends on."""
         model = _model()
-        g = build_state_function_digraph(model)
+        g = build_state_function_digraph_ad(model)
         pos = {n: i for i, n in enumerate(g["order"])}
         for a, b in g["edges"]:
             assert pos[a] < pos[b], f"{a} must precede {b}"
@@ -222,14 +226,26 @@ if __name__ == "__main__":
         print("ok test_topological_order_respects_dependencies")
 
     def test_ancestors_are_the_evaluation_subtree():
-        """ComponentTotalFlux depends (transitively) on pressure and mobility,
-        but not on, say, PoreVolume-only nodes it never reaches."""
+        """What `ComponentTotalFlux` actually reaches, measured rather than
+        assumed.
+
+        This test used to assert `FluxDisc.PhaseFlux` was an ancestor. It is
+        not, and the graph was right: `ComponentTotalFlux` sums
+        `ComponentPhaseFlux`, which is built from `FaceComponentMobility` and
+        the potential gradient. `PhaseFlux` is the *phase* flux - a sibling
+        built the same way from `FaceMobility`, and never an input to the
+        component sum. Asserting it would force a spurious edge into the graph
+        and make the evaluation subtree larger than the work it describes.
+        """
         model = _model()
-        g = get_state_function_grouping_dependency_graph(model)
+        g = get_state_function_grouping_dependency_graph_ad(model)
         anc = ancestors_of(g, "FluxDisc.ComponentTotalFlux")
-        assert "FluxDisc.PhaseFlux" in anc
+        assert "FluxDisc.ComponentPhaseFlux" in anc
+        assert "FluxDisc.FaceComponentMobility" in anc
         assert "FlowProps.Mobility" in anc
         assert "state.pressure" in anc
+        assert "FluxDisc.PhaseFlux" not in anc, (
+            "the component flux does not go through the phase flux")
         # every ancestor edge target is reachable; sanity on closure
         assert "FluxDisc.ComponentTotalFlux" not in anc   # not its own ancestor
         print("ok test_ancestors_are_the_evaluation_subtree")
@@ -237,7 +253,7 @@ if __name__ == "__main__":
     def test_dot_and_text_render():
         """The DOT and text exports are well formed and mention real nodes."""
         model = _model()
-        g = get_state_function_grouping_dependency_graph(model)
+        g = get_state_function_grouping_dependency_graph_ad(model)
         dot = to_dot(g)
         assert dot.startswith("digraph StateFunctions {") and dot.endswith("}")
         assert '"FluxDisc.PhaseFlux"' in dot

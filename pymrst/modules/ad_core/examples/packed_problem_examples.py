@@ -1,4 +1,8 @@
-"""Runnable packed-problem demonstrations without plotting dependencies."""
+"""PyMRST's earlier packed-problem demonstrations on a scalar surrogate model.
+
+Kept for their callers; the ports of MRST `demoPackedProblems` and
+`ensemblePackedProblemsExample` are in the MRST-named files.
+"""
 
 from __future__ import annotations
 
@@ -8,10 +12,10 @@ from pathlib import Path
 import numpy as np
 
 from pymrst.modules.ad_core.simulators.sim_runner import (
-    PackedProblemManager,
-    get_multiple_packed_simulator_outputs,
-    pack_simulation_problem,
-    simulate_packed_problem,
+    PackedProblemManagerAD,
+    get_multiple_packed_simulator_outputs_ad,
+    pack_simulation_problem_ad,
+    simulate_packed_problem_ad,
 )
 from pymrst.modules.ad_core.utils.schedule import simple_schedule
 
@@ -32,7 +36,7 @@ class PackedDemoResult:
     complete_steps: tuple[int, ...]
 
 
-def demo_packed_problems(
+def demo_packed_problems_ad(
     directory: str | Path,
     *,
     timesteps=(1.0, 2.0, 3.0),
@@ -41,7 +45,7 @@ def demo_packed_problems(
 
     schedule = simple_schedule(timesteps)
     problems = [
-        pack_simulation_problem(
+        pack_simulation_problem_ad(
             {"x": 0.0},
             _RateModel(rate),
             schedule,
@@ -53,10 +57,10 @@ def demo_packed_problems(
         for name, rate in (("linear", 1.0), ("quadratic", 2.0))
     ]
     for problem in problems:
-        ok, _ = simulate_packed_problem(problem)
+        ok, _ = simulate_packed_problem_ad(problem)
         if not ok:
             raise RuntimeError(f"packed simulation failed: {problem.Name}")
-    _, states, _, names, times, _, _ = get_multiple_packed_simulator_outputs(
+    _, states, _, names, times, _, _ = get_multiple_packed_simulator_outputs_ad(
         problems, min_steps=1
     )
     return PackedDemoResult(
@@ -67,7 +71,7 @@ def demo_packed_problems(
     )
 
 
-def ensemble_packed_problems_example(
+def ensemble_packed_problems_example_ad(
     directory: str | Path,
     *,
     realization_count: int = 5,
@@ -82,7 +86,7 @@ def ensemble_packed_problems_example(
     rates = rng.uniform(0.5, 1.5, realization_count)
     schedule = simple_schedule(timesteps)
     problems = [
-        pack_simulation_problem(
+        pack_simulation_problem_ad(
             {"x": 0.0},
             _RateModel(float(rate)),
             schedule,
@@ -93,12 +97,12 @@ def ensemble_packed_problems_example(
         )
         for index, rate in enumerate(rates)
     ]
-    manager = PackedProblemManager(problems)
+    manager = PackedProblemManagerAD(problems)
     ok, _ = manager.simulate_problem()
     if not np.all(ok):
         failed = [problem.Name for problem, success in zip(problems, ok) if not success]
         raise RuntimeError(f"packed ensemble failed: {failed}")
-    _, states, _, names, times, _, _ = get_multiple_packed_simulator_outputs(
+    _, states, _, names, times, _, _ = get_multiple_packed_simulator_outputs_ad(
         problems, min_steps=1
     )
     return PackedDemoResult(
@@ -109,13 +113,9 @@ def ensemble_packed_problems_example(
     )
 
 
-demoPackedProblems = demo_packed_problems
-ensemblePackedProblemsExample = ensemble_packed_problems_example
 
 __all__ = [
     "PackedDemoResult",
-    "demo_packed_problems",
-    "ensemble_packed_problems_example",
-    "demoPackedProblems",
-    "ensemblePackedProblemsExample",
+    "demo_packed_problems_ad",
+    "ensemble_packed_problems_example_ad",
 ]

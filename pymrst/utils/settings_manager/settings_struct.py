@@ -15,7 +15,7 @@ class SettingsStruct:
     promptMEX: bool = True
     useMEX: bool = False
     useOMP: bool = True
-    useHash: bool = True
+    useHash: bool = False                 # MRST's default (mrstSettings.m)
 
     def __post_init__(self):
         base = Path.home() / ".pymrst"

@@ -66,6 +66,45 @@ class VFPTable:
             ref_depth=float(deck_table.get("depth", deck_table.get("DEPTH", 0.0))),
         )
 
+    def update_table(self, flow, thp, pval, pname, T, flow_type="", **options):
+        """Replace the tabulated data in place (MRST `updateTable`).
+
+        Rebuilding the interpolant is not optional and is the whole reason
+        this is a method rather than five assignments: the interpolant caches
+        its axes, so a table swapped underneath it keeps answering from the
+        previous grid - same shape, plausible numbers, silently stale.
+        """
+        self.flow = np.asarray(flow, dtype=float)
+        self.thp = np.asarray(thp, dtype=float)
+        self.parameter_values = [np.asarray(v, dtype=float) for v in pval]
+        self.parameter_names = list(pname)
+        self.bhp_table = np.asarray(T, dtype=float)
+        self.flow_type = str(flow_type).lower()
+        for key in ("ref_depth", "gas_ratio_type", "water_ratio_type"):
+            if key in options:
+                setattr(self, key, options[key])
+        return self.update_interpolants()
+
+    updateTable = update_table
+
+    def set_table_from_deck(self, deck_table: Mapping) -> "VFPTable":
+        """Load a converted deck record into this table (MRST
+        `setTableFromDeck`).
+
+        Shares its parsing with `from_deck` rather than repeating it: two
+        readers of the same record that drift apart is how a deck starts
+        loading differently depending on which entry point was used.
+        """
+        other = type(self).from_deck(deck_table)
+        return self.update_table(
+            other.flow, other.thp, other.parameter_values,
+            other.parameter_names, other.bhp_table,
+            flow_type=other.flow_type, ref_depth=other.ref_depth,
+            gas_ratio_type=other.gas_ratio_type,
+            water_ratio_type=other.water_ratio_type)
+
+    setTableFromDeck = set_table_from_deck
+
     def update_interpolants(self):
         axes = [self.flow, self.thp, *self.parameter_values]
         self._interp = RegularGridInterpolator(

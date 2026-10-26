@@ -1,0 +1,59 @@
+  StateFunctionGrouping state function grouping instance.
+  Class has no intrinsic state functions.
+
+  Extra state functions (Added to class instance):
+      A: TutorialNumber
+      B: TutorialNumber
+      X: TutorialNumber
+      Y: TutorialNumber
+     AB: TutorialProduct
+     XY: TutorialProduct
+      G: TutorialAdd
+HandleStruct with fields:
+     A: []
+     B: []
+     X: []
+     Y: []
+    AB: []
+    XY: []
+     G: []
+
+First call:
+Retrieving a from state.
+Retrieving b from state.
+Multiplying A and B.
+Retrieving x from state.
+Retrieving y from state.
+Multiplying X and Y.
+Adding AB and XY.
+HandleStruct with fields:
+     A: 3
+     B: 5
+     X: 7
+     Y: 2
+    AB: 15
+    XY: 14
+     G: 29
+
+Second call:
+
+G =
+
+    29
+
+Retrieving x from state.
+Retrieving y from state.
+Multiplying X and Y.
+Retrieving a from state.
+Retrieving b from state.
+Multiplying A and B.
+Adding AB and XY.
+All internal dependencies are met for group of class StateFunctionGrouping.
+Unmet internal dependency for F in group StateFunctionGrouping: Did not find Z in own group.
+
+ok =
+
+  logical
+
+   0
+

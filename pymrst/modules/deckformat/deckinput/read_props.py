@@ -43,7 +43,7 @@ from pymrst.modules.deckformat.deckinput.read_rel_perm_table import (
 )
 
 SECTION_KEYWORDS = ("REGIONS", "SOLUTION", "SCHEDULE", "SUMMARY", "END", "EDIT")
-IGNORED = ("ECHO", "NOECHO", "SCALECRS", "RKTRMDIR", "PRCORR",
+IGNORED = ("ECHO", "NOECHO", "RKTRMDIR", "PRCORR",
            "STONE", "STONE1", "STONE2", "SIMPLE")
 
 
@@ -174,6 +174,10 @@ def read_props(cursor: DeckCursor, counts: Optional[TableCounts] = None,
             continue
         if keyword == "BOX":
             cursor.read_record_tokens()
+            continue
+        if keyword == "SCALECRS":
+            # MRST: `readDefaultedRecord(fid, {'NO'})`.
+            out[keyword] = read_defaulted_record(cursor, ["NO"])
             continue
 
         spec = SPECS.get(keyword)

@@ -171,7 +171,7 @@ def registered_reference_components():
     return CapabilityRegistry((
         ComponentCapability(
             "ad-blackoil-reference", "model",
-            "pymrst.modules.ad_blackoil.models:GenericBlackOilModel",
+            "pymrst.modules.ad_blackoil.models:GenericBlackOilModelAD",
             phases=("water", "oil", "gas"), physics=("black-oil",),
             derivatives=("none", "adi", "sparse", "diagonal"), restart=True,
             features=("wells", "fim", "aim", "explicit")),

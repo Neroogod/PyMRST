@@ -38,7 +38,7 @@ import scipy.sparse.linalg as spla
 
 from pymrst.gridprocessing.grid import Grid
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
     blackoil_status,
 )
 from pymrst.modules.ad_core.models.facilities.facility_model import FacilityModel
@@ -234,6 +234,13 @@ class MechWaterWellModel(ReservoirModel):
 
     def __init__(self, g: Grid, rock: Rock, mech: MechanicModel, wells,
                  b, mu: float, rho: float, pv_mult=None,
+                 # Deliberately *not* moved to MRST's 1e-3/1e-7 with the flow
+                 # models. `tol_well` here also gates the mechanics residual
+                 # through `max_extra_residual`, and that is a displacement
+                 # balance in different units - not the normalized mass error
+                 # CNV measures. Loosening it would trade an unmeasured amount
+                 # of mechanics accuracy for flow iterations, so it stays until
+                 # someone measures the coupled case.
                  tol_cnv: float = 1e-8, tol_mb: float = 1e-12,
                  tol_well: float = 1e-10, tol_mech: float = 1e-9):
         fluid = water_phase_fluid(b, mu, rho)
@@ -828,7 +835,7 @@ class FixedStressOilWaterWellModel(ReservoirModel):
         return st, False, self.max_splitting_iterations
 
 
-class FixedStressBlackOilWellModel(GenericBlackOilModel):
+class FixedStressBlackOilWellModel(GenericBlackOilModelAD):
     """Well-driven fixed-stress black-oil poromechanics.
 
     This mirrors MRST's ``BlackOilFixedStressFluidModel`` path: mechanics is

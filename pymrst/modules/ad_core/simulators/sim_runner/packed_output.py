@@ -1,4 +1,9 @@
-"""Read and clear disk-backed packed simulator output."""
+"""Read and clear disk-backed packed simulator output.
+
+`clear_packed_simulator_output_ad` is PyMRST's earlier version of MRST
+`clearPackedSimulatorOutput`, kept for its callers; the port is in
+`clear_packed_simulator_output.py`.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +14,7 @@ from pymrst.modules.ad_core.simulators.sim_runner.packed_problem import (
 )
 
 
-def get_packed_simulator_output(
+def get_packed_simulator_output_ad(
     problem: PackedSimulationProblem, *, read_from_disk: bool = True
 ):
     """Return ``(well_solutions, states, reports, model)`` for a problem."""
@@ -31,7 +36,7 @@ def get_packed_simulator_output(
     return well_solutions, states, reports, problem.SimulatorSetup.model
 
 
-def clear_packed_simulator_output(
+def clear_packed_simulator_output_ad(
     problems: PackedSimulationProblem | Iterable[PackedSimulationProblem],
     *,
     start: int = 0,
@@ -55,12 +60,7 @@ def clear_packed_simulator_output(
             handler.reset_data(selected)
 
 
-getPackedSimulatorOutput = get_packed_simulator_output
-clearPackedSimulatorOutput = clear_packed_simulator_output
-
 __all__ = [
-    "get_packed_simulator_output",
-    "getPackedSimulatorOutput",
-    "clear_packed_simulator_output",
-    "clearPackedSimulatorOutput",
+    "get_packed_simulator_output_ad",
+    "clear_packed_simulator_output_ad",
 ]

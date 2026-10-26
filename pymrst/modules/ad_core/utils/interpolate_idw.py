@@ -50,6 +50,11 @@ def interpolate_idw(x: np.ndarray, f: np.ndarray, xq: np.ndarray,
     return v
 
 
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+interpolateIDW = interpolate_idw
+
 if __name__ == "__main__":
     def test_query_on_a_sample_returns_that_sample():
         """A query point sitting on a sample gets ~that sample's value: its

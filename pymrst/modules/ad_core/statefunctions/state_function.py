@@ -31,6 +31,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
+from pymrst.utils.adi import value
+
 STATE: str = "state"       # dependency on a primary variable, not a function
 SELF: str = "self"         # dependency inside the same grouping
 
@@ -93,11 +95,35 @@ class State(dict):
 class StateFunction:
     """One property of the domain. Subclasses implement evaluate_on_domain."""
 
-    def __init__(self, model: Any = None, label: Optional[str] = None):
+    #: MRST's output contract for a property (Phase 2). A relative
+    #: permeability that returns 1.4, or a mobility that returns NaN, is wrong
+    #: at the moment it is produced - but nothing looks until the linear solve
+    #: fails several iterations later, by which point the offending property is
+    #: no longer on the state. Subclasses narrow these.
+    output_range = (float("-inf"), float("inf"))
+    allow_nan = False
+    allow_inf = False
+
+    def __init__(self, model: Any = None, label: Optional[str] = None,
+                 regions: Optional[Any] = None):
         self.dependencies: List[Dependency] = []
+        self.externals: List[Dependency] = []
         self.label = label or type(self).__name__
         self.struct_name: Optional[str] = None
         self.regions: Optional[Any] = None
+        if regions is not None and np.asarray(regions).size:
+            self.set_regions(regions)
+
+    @property
+    def is_single_region(self) -> bool:
+        """MRST `isSingleRegion`: no map, or every cell in the same region.
+
+        A property, not a stored flag, because callers across this port assign
+        `.regions` directly and a cached flag would go stale.
+        """
+        return self.regions is None or np.unique(np.asarray(self.regions)).size == 1
+
+    isSingleRegion = is_single_region
 
     def set_regions(self, regions: Any) -> "StateFunction":
         """Set the cell-wise region map used by regional property functions."""
@@ -122,6 +148,12 @@ class StateFunction:
             dep = Dependency(n, grouping)
             if dep not in self.dependencies:
                 self.dependencies.append(dep)
+            # MRST keeps cross-grouping dependencies in a second list as well,
+            # which is how `get_evaluated_externals` resolves a bare name to
+            # its owning grouping. `dependencies` still holds every edge, so
+            # the graph walk and `validate_model` are unaffected.
+            if grouping not in (SELF, STATE) and dep not in self.externals:
+                self.externals.append(dep)
         return self
 
     def evaluate_on_domain(self, model: Any, state: State) -> Any:
@@ -137,250 +169,252 @@ class StateFunction:
         struct = getattr(model, grouping).struct_name
         return state.containers[struct][name]
 
+    # -- MRST StateFunction.m, ported (Phase 2) -----------------------------
+
+    def reset_dependencies(self, internal: bool = True,
+                           external: bool = True) -> "StateFunction":
+        """Clear declared dependencies, so a subclass can redeclare them.
+
+        A model that swaps one property for another has to drop the old
+        property's dependencies too, or the graph keeps an edge to something
+        nothing computes any more.
+        """
+        if internal:
+            self.dependencies = []
+        if external:
+            self.externals = []
+        return self
+
+    resetDependencies = reset_dependencies
+
+    def subset(self, cell_subset) -> "StateFunction":
+        """Restrict this function's region map to a subset of cells.
+
+        Only the regions need restricting: everything else is evaluated from
+        the state it is handed, so it follows the subset automatically. A copy
+        is returned, as MATLAB's value semantics give: subsetting one cell
+        region must not restrict the function the next region subsets.
+        """
+        from copy import copy
+        out = copy(self)
+        if out.regions is not None:
+            import numpy as np
+            out.regions = np.asarray(out.regions)[cell_subset]
+        return out
+
+    def get_evaluated_dependencies(self, state: State, *names: str):
+        """Several already-evaluated dependencies from this grouping."""
+        out = [self.get_evaluated(state, n) for n in names]
+        return out[0] if len(out) == 1 else out
+
+    getEvaluatedDependencies = get_evaluated_dependencies
+
+    def get_evaluated_externals(self, model: Any, state: State, *names: str):
+        """Dependencies from other groupings, by `"Grouping.name"` or by name.
+
+        A bare name is resolved through the declared externals, which is why
+        `depends_on(..., grouping=...)` has to record them.
+        """
+        out = []
+        for entry in names:
+            if "." in entry:
+                grouping, name = entry.split(".", 1)
+            else:
+                name = entry
+                match = [d for d in self.externals if d.name == entry]
+                if not match:
+                    raise KeyError(
+                        f"{self.label} has no declared external dependency "
+                        f"{entry!r}; pass 'Grouping.{entry}' or declare it")
+                grouping = match[0].grouping
+            if grouping == "state":
+                out.append(model.get_prop(state, name))
+            else:
+                out.append(self.get_evaluated_external(model, state, grouping,
+                                                       name))
+        return out[0] if len(out) == 1 else out
+
+    getEvaluatedExternals = get_evaluated_externals
+
+    def evaluate_function_cell_subset(self, fn, subset, *args):
+        """Call `fn` per region when it is a list of per-region functions.
+
+        A single callable is applied whole. A list means the property is
+        tabulated per saturation or PVT region, and each cell must be
+        evaluated with *its own* table - applying region one everywhere is a
+        silent, plausible answer.
+        """
+        if not isinstance(fn, (list, tuple)):
+            return fn(*args)
+        if self.regions is None:
+            raise ValueError(
+                f"{self.label} was given a per-region function list but has no "
+                f".regions; a region map is required to choose between them")
+        if self.is_single_region:
+            return fn[int(np.asarray(self.regions).ravel()[0]) - 1](*args)
+
+        from pymrst.modules.ad_core.utils.double_to_adi import double_to_adi
+        from pymrst.modules.ad_core.utils.get_sample_ad import get_sample_ad
+
+        # MRST decides which arguments are cell-wise against the *full* region
+        # map, then subsets the map; the arguments arrive already subset.
+        n_cells = np.asarray(self.regions).size
+        regions = np.asarray(self.regions)
+        if subset is not None:
+            regions = regions[subset]
+        cellwise = [_is_cellwise(a, n_cells) or _is_cellwise(a, regions.size)
+                    for a in args]
+
+        # The output must be AD whenever an argument is, or every derivative
+        # through a regional table is lost - Newton then sees a constant
+        # property and converges slowly or not at all.
+        sample, is_ad = get_sample_ad(*args) if args else (None, False)
+        out = np.zeros(regions.size)
+        if is_ad:
+            out = double_to_adi(out, sample)
+        for index in range(len(fn)):
+            active = regions == index + 1          # MRST regions are one-based
+            if not np.any(active):
+                continue
+            local = [a[active] if is_cell else a
+                     for a, is_cell in zip(args, cellwise)]
+            out[active] = fn[index](*local)
+        return out
+
+    evaluateFunctionCellSubset = evaluate_function_cell_subset
+
+    def evaluate_function_on_domain_with_arguments(self, fn, *args):
+        """Evaluate over every cell, dispatching per region if `fn` is a list."""
+        return self.evaluate_function_cell_subset(fn, None, *args)
+
+    evaluateFunctionOnDomainWithArguments = evaluate_function_on_domain_with_arguments
+
+    def evaluate_function_single_region_with_arguments(self, fn, region_index,
+                                                       *args):
+        """Evaluate one region's function, by one-based region index."""
+        if isinstance(fn, (list, tuple)):
+            if not 1 <= region_index <= len(fn):
+                raise IndexError(
+                    f"region {region_index} is outside the {len(fn)} regions "
+                    f"of {self.label}")
+            return fn[region_index - 1](*args)
+        return fn(*args)
+
+    evaluateFunctionSingleRegionWithArguments = \
+        evaluate_function_single_region_with_arguments
+
+    def evaluate_fluid(self, model: Any, name: str, *args):
+        """Evaluate a named function off the model's fluid, region-aware.
+
+        The usual way a property reaches a PVT or relperm curve: the fluid
+        holds the table, this applies it with the right region per cell.
+        """
+        fluid = getattr(model, "raw_fluid", None) or model.fluid
+        fn = getattr(fluid, name, None)
+        if fn is None:
+            raise AttributeError(
+                f"fluid has no {name!r} for state function {self.label}")
+        return self.evaluate_function_on_domain_with_arguments(fn, *args)
+
+    evaluateFluid = evaluate_fluid
+
+    def validate_output(self, output: Any, level: int = 1) -> None:
+        """Warn when a computed property is outside its declared contract.
+
+        Levels follow MRST: 0 off, 1+ check values, 3+ also check the Jacobian
+        entries and list the first offenders. It warns rather than raises,
+        deliberately - a property can be transiently out of range mid-Newton
+        and still converge, so failing here would reject runs that are fine.
+        The point is that the message names the property, which is what turns
+        "the solve diverged" into "BlackOilCapillaryPressure produced NaN".
+        """
+        if level <= 0 or isinstance(output, dict):
+            return
+        items = output if isinstance(output, (list, tuple)) else [output]
+        check_jacobian = level > 2
+        low, high = self.output_range
+        for column, item in enumerate(items, 1):
+            if not self.allow_nan:
+                self._validate_output_internal(
+                    item, column, level, "NaN values", np.isnan, check_jacobian)
+            if not self.allow_inf:
+                self._validate_output_internal(
+                    item, column, level, "Inf values", np.isinf, check_jacobian)
+            if np.isfinite(low):
+                self._validate_output_internal(
+                    item, column, level, f"value less than {low:g}",
+                    lambda x, bound=low: x < bound, False)
+            if np.isfinite(high):
+                self._validate_output_internal(
+                    item, column, level, f"value larger than {high:g}",
+                    lambda x, bound=high: x > bound, False)
+
+    validateOutput = validate_output
+
+    def _validate_output_internal(self, item, column, level, description,
+                                  test, check_jacobian) -> None:
+        import warnings
+
+        values = np.asarray(value(item))
+        if values.dtype.kind not in "fiub":
+            return
+        bad = np.asarray(test(values))
+        count = int(bad.sum())
+        if count:
+            total = values.size
+            warnings.warn(
+                f"bad output: {description} in {count} of {total} "
+                f"({100.0*count/total:.2f}%) entries for state function "
+                f"'{type(self).__name__}' column {column}")
+            if level > 2:
+                offenders = np.flatnonzero(bad.ravel())[:level]
+                for index in offenders:
+                    print(f"{index}: {values.ravel()[index]}")
+        if check_jacobian and hasattr(item, "jac"):
+            for number, block in enumerate(item.jac, 1):
+                data = getattr(block, "data", None)
+                if data is None:
+                    continue
+                bad_jac = int(np.asarray(test(np.asarray(data))).sum())
+                if bad_jac:
+                    warnings.warn(
+                        f"bad Jacobian: {description} in {bad_jac} entries for "
+                        f"state function '{type(self).__name__}' column "
+                        f"{column} Jacobian {number}")
+
     def __repr__(self) -> str:
         return f"{type(self).__name__}(label={self.label!r})"
 
 
-class StateFunctionGrouping:
-    """A named set of state functions, cached on the state under struct_name."""
+StateFunction.validateOutputInternal = StateFunction._validate_output_internal
 
-    def __init__(self, struct_name: str):
-        self.struct_name = struct_name
-        self.functions: Dict[str, StateFunction] = {}
 
-    def set_state_function(self, name: str,
-                           fn: StateFunction) -> "StateFunctionGrouping":
-        """Register (or replace) a state function. Returns self."""
-        assert isinstance(fn, StateFunction), "not a StateFunction"
-        fn.struct_name = self.struct_name
-        self.functions[name] = fn
-        return self
+def _is_cellwise(arg: Any, n_cells: int) -> bool:
+    """Whether an argument varies per cell, and so must be subset per region."""
+    array = np.asarray(value(arg))
+    return array.ndim >= 1 and array.shape[0] == n_cells
 
-    def remove_state_function(self, name: str) -> "StateFunctionGrouping":
-        del self.functions[name]
-        return self
 
-    def has_state_function(self, name: str) -> bool:
-        return name in self.functions
-
-    def get_state_function(self, name: str) -> StateFunction:
-        if name not in self.functions:
-            raise KeyError(
-                f"'{name}' is not known to the {type(self).__name__} grouping; "
-                f"it has {sorted(self.functions)}"
-            )
-        return self.functions[name]
-
-    def get_names(self) -> List[str]:
-        return list(self.functions)
-
-    # -- evaluation ---------------------------------------------------------
-    def _container(self, state: State) -> Dict[str, Any]:
-        return state.containers.setdefault(self.struct_name, {})
-
-    def is_evaluated(self, state: State, name: str) -> bool:
-        return name in state.containers.get(self.struct_name, {})
-
-    def get(self, model: Any, state: State, name: str) -> Any:
-        """The value of property `name`, evaluating it and its dependencies
-        only if it is not already cached on this state."""
-        if not self.is_evaluated(state, name):
-            self.evaluate_with_dependencies(model, state, name)
-        return self._container(state)[name]
-
-    def evaluate_with_dependencies(self, model: Any, state: State, name: str,
-                                   _stack: Tuple[str, ...] = ()) -> None:
-        """Depth-first evaluation of `name` and everything beneath it."""
-        key = f"{self.struct_name}.{name}"
-        if key in _stack:
-            raise RuntimeError("cyclic state-function dependency: "
-                               + " -> ".join(_stack + (key,)))
-
-        fn = self.get_state_function(name)
-        for dep in fn.dependencies:
-            if dep.grouping == STATE:
-                continue                      # a primary variable; already there
-            group = self if dep.grouping == SELF else getattr(model,
-                                                              dep.grouping)
-            if not group.is_evaluated(state, dep.name):
-                group.evaluate_with_dependencies(model, state, dep.name,
-                                                 _stack + (key,))
-
-        self._container(state)[name] = fn.evaluate_on_domain(model, state)
-
-    # -- introspection ------------------------------------------------------
-    def dependency_graph(self) -> Dict[str, List[Dependency]]:
-        """Property name -> its declared dependencies. What MRST plots."""
-        return {n: list(f.dependencies) for n, f in self.functions.items()}
-
-    def evaluation_order(self) -> List[str]:
-        """This grouping's names in dependency order (a topological sort).
-
-        Externals are assumed available and are not ordered here. Raises
-        on a cycle.
-        """
-        order: List[str] = []
-        marks: Dict[str, int] = {}
-
-        def visit(n: str, stack: Tuple[str, ...]) -> None:
-            mark = marks.get(n, 0)
-            if mark == 2:
-                return
-            if mark == 1:
-                raise RuntimeError("cyclic state-function dependency: "
-                                   + " -> ".join(stack + (n,)))
-            marks[n] = 1
-            for dep in self.functions[n].dependencies:
-                if dep.grouping == SELF and dep.name in self.functions:
-                    visit(dep.name, stack + (n,))
-            marks[n] = 2
-            order.append(n)
-
-        for n in self.functions:
-            visit(n, ())
-        return order
-
-    def __repr__(self) -> str:
-        return (f"{type(self).__name__}({self.struct_name!r}, "
-                f"{len(self.functions)} functions)")
+def __getattr__(name: str) -> Any:
+    """`StateFunctionGrouping` is MRST's own file, `state_function_grouping.py`,
+    which builds on the classes above; it is loaded on first use so the two
+    modules do not import each other at import time."""
+    if name == "StateFunctionGrouping":
+        from pymrst.modules.ad_core.statefunctions.state_function_grouping import (
+            StateFunctionGrouping,
+        )
+        return StateFunctionGrouping
+    raise AttributeError(name)
 
 
 if __name__ == "__main__":
-    class _Const(StateFunction):
-        """A leaf: reads a primary variable off the state."""
+    def test_a_function_records_its_dependencies():
+        fn = StateFunction(None, label="x")
+        fn.depends_on(["pressure"], STATE)
+        fn.depends_on("Density")
+        names = [d.name for d in fn.dependencies]
+        assert "pressure" in names and "Density" in names
+        print("ok test_a_function_records_its_dependencies")
 
-        def __init__(self, model=None, key="pressure"):
-            super().__init__(model, label="Const")
-            self.key = key
-            self.depends_on(key, STATE)
-
-        def evaluate_on_domain(self, model, state):
-            model.n_eval["A"] = model.n_eval.get("A", 0) + 1
-            return np.asarray(state[self.key], dtype=float)
-
-    class _Double(StateFunction):
-        def __init__(self, model=None, src="A", tag="B"):
-            super().__init__(model, label=tag)
-            self.src, self.tag = src, tag
-            self.depends_on(src)
-
-        def evaluate_on_domain(self, model, state):
-            model.n_eval[self.tag] = model.n_eval.get(self.tag, 0) + 1
-            return 2.0 * self.get_evaluated(state, self.src)
-
-    class _Sum(StateFunction):
-        def __init__(self, model=None, srcs=("B", "C")):
-            super().__init__(model, label="D")
-            self.srcs = srcs
-            self.depends_on(list(srcs))
-
-        def evaluate_on_domain(self, model, state):
-            model.n_eval["D"] = model.n_eval.get("D", 0) + 1
-            return sum(self.get_evaluated(state, s) for s in self.srcs)
-
-    class _External(StateFunction):
-        """Depends on a function living in another grouping."""
-
-        def __init__(self, model=None):
-            super().__init__(model, label="E")
-            self.depends_on("D", "props")
-
-        def evaluate_on_domain(self, model, state):
-            return 10.0 * self.get_evaluated_external(model, state, "props", "D")
-
-    class _Model:
-        def __init__(self):
-            self.n_eval = {}
-            self.props = StateFunctionGrouping("Props")
-            self.props.set_state_function("A", _Const(self, "pressure"))
-            self.props.set_state_function("B", _Double(self, "A", "B"))
-            self.props.set_state_function("C", _Double(self, "A", "C"))
-            self.props.set_state_function("D", _Sum(self, ("B", "C")))
-            self.flux = StateFunctionGrouping("Flux")
-            self.flux.set_state_function("E", _External(self))
-
-    def test_diamond_evaluates_each_node_once():
-        """A dependency diamond (D <- B,C <- A) evaluates A exactly once.
-
-        This is the whole point of the graph: without caching, a deep
-        property tree re-evaluates its leaves combinatorially.
-        """
-        m = _Model()
-        st = State(pressure=np.array([1.0, 2.0]))
-        d = m.props.get(m, st, "D")
-        assert np.allclose(d, [4.0, 8.0])       # 2p + 2p
-        assert m.n_eval["A"] == 1, "A must be cached, not recomputed"
-        assert m.n_eval["B"] == 1 and m.n_eval["C"] == 1
-        print("ok test_diamond_evaluates_each_node_once")
-
-    def test_cache_is_reused_across_gets():
-        """A second get() of the same property does not re-evaluate."""
-        m = _Model()
-        st = State(pressure=np.array([1.0]))
-        m.props.get(m, st, "D")
-        before = dict(m.n_eval)
-        m.props.get(m, st, "D")
-        m.props.get(m, st, "B")
-        assert m.n_eval == before
-        print("ok test_cache_is_reused_across_gets")
-
-    def test_external_dependency_crosses_groupings():
-        """A function in one grouping pulls a value from another."""
-        m = _Model()
-        st = State(pressure=np.array([3.0]))
-        e = m.flux.get(m, st, "E")
-        assert np.allclose(e, [120.0])          # 10 * (2*3 + 2*3)
-        assert "Props" in st.containers and "Flux" in st.containers
-        print("ok test_external_dependency_crosses_groupings")
-
-    def test_clearing_cache_forces_reevaluation():
-        """A changed state invalidates everything computed from it."""
-        m = _Model()
-        st = State(pressure=np.array([1.0]))
-        m.props.get(m, st, "D")
-        st.pressure = np.array([5.0])
-        st.clear_cache()
-        assert np.allclose(m.props.get(m, st, "D"), [20.0])
-        assert m.n_eval["A"] == 2
-        print("ok test_clearing_cache_forces_reevaluation")
-
-    def test_evaluation_order_is_topological():
-        """evaluation_order lists a property after everything it needs."""
-        order = _Model().props.evaluation_order()
-        assert order.index("A") < order.index("B") < order.index("D")
-        assert order.index("C") < order.index("D")
-        print("ok test_evaluation_order_is_topological")
-
-    def test_cycle_is_detected():
-        """A dependency cycle raises rather than recursing forever."""
-        m = _Model()
-        m.props.get_state_function("A").depends_on("D")
-        try:
-            m.props.get(m, State(pressure=np.array([1.0])), "D")
-            raise SystemExit("cycle should have raised")
-        except RuntimeError as exc:
-            assert "cyclic" in str(exc)
-        try:
-            m.props.evaluation_order()
-            raise SystemExit("cycle should have raised")
-        except RuntimeError:
-            pass
-        print("ok test_cycle_is_detected")
-
-    def test_unknown_function_raises():
-        """Asking for a property nobody registered is an error, not a None."""
-        try:
-            _Model().props.get(_Model(), State(), "NoSuchThing")
-            raise SystemExit("should have raised")
-        except KeyError:
-            pass
-        print("ok test_unknown_function_raises")
-
-    test_diamond_evaluates_each_node_once()
-    test_cache_is_reused_across_gets()
-    test_external_dependency_crosses_groupings()
-    test_clearing_cache_forces_reevaluation()
-    test_evaluation_order_is_topological()
-    test_cycle_is_detected()
-    test_unknown_function_raises()
+    test_a_function_records_its_dependencies()
     print("\nAll tests passed!")

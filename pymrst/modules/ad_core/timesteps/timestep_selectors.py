@@ -1,4 +1,11 @@
-"""Adaptive timestep selection (MRST ad-core/timesteps).
+"""PyMRST's earlier time-step selectors, kept for the legacy nonlinear solver
+(`simulators/nonlinear_solver.py`), whose step reports carry `iterations`,
+`converged` and `dt`. MRST's selectors are ported in full, one per file:
+`simple_time_step_selector.py`, `factor_time_step_selector.py`,
+`iteration_count_time_step_selector.py`, `state_change_time_step_selector.py`
+and `rampup_timesteps.py`. The earlier notes follow.
+
+Adaptive timestep selection (MRST ad-core/timesteps).
 
 Until now this port has taken whatever timestep you handed it, and cut it in
 half when Newton failed. That is enough to be *correct* and it is a bad way to
@@ -45,17 +52,52 @@ from typing import Any, Dict, List, Optional, Sequence
 import numpy as np
 
 from pymrst.modules.ad_core.statefunctions.state_function import State
+from pymrst.modules.ad_core.timesteps.rampup_timesteps import rampup_timesteps
+from pymrst.utils.adi import value
 
 
 def _get_prop(model: Any, state: State, name: str) -> np.ndarray:
-    """A property of a state, by name - `model.get_prop` if the model offers
-    one, otherwise the state's own field (PyMRST's `State` is a dict)."""
-    if hasattr(model, "get_prop"):
-        return np.asarray(model.get_prop(state, name), dtype=float)
-    return np.asarray(state[name], dtype=float)
+    """A property of a state, by name: the state's own field, then the model's.
+
+    The order is deliberate and was arrived at the hard way. This used to probe
+    `hasattr(model, "get_prop")` first, which worked only because no reservoir
+    model *had* a `get_prop` - so every call fell through to the state field.
+    Porting MRST's `getProp` onto `PhysicalModel` gave every model one, and the
+    probe silently started selecting the other branch: for a name that is both
+    a stored variable and a state function, the selector would have begun
+    differencing a recomputed property instead of the stored one, changing
+    timestep decisions with nothing to show why.
+
+    Asking the state first keeps what this always did, and drops the
+    "whichever method happens to exist" coupling that made adding a method a
+    behavioural change.
+    """
+    if name in state:
+        return np.asarray(value(state[name]), dtype=float)
+    if model is not None and hasattr(model, "get_prop"):
+        return np.asarray(value(model.get_prop(state, name)), dtype=float)
+    raise KeyError(
+        f"{name!r} is neither a field of the state nor a property of "
+        f"{type(model).__name__}")
 
 
-class SimpleTimeStepSelector:
+def _control_changed(previous: Any, control: Any) -> bool:
+    """MRST compares `controlId`; PyMRST's own drivers pass no id.
+
+    When both controls carry a `controlId` (the AD-OO solver sets it, as
+    `simulateScheduleAD` does in MRST) they are compared by id, so a new
+    forces object for the same control is not mistaken for a change. Without
+    ids, identity is the test the legacy drivers rely on.
+    """
+    def control_id(c):
+        return c.get("controlId") if isinstance(c, dict) else getattr(c, "controlId", None)
+    a, b = control_id(previous), control_id(control)
+    if a is not None and b is not None:
+        return a != b
+    return previous is not control
+
+
+class SimpleTimeStepSelectorAD:
     """The base selector: hard limits, and a leash on how fast dt may change.
 
     It does no adapting of its own - `compute_timestep` hands `dt` straight
@@ -96,7 +138,7 @@ class SimpleTimeStepSelector:
         self.controls_changed = True
         # Whether the *previous* dt was set by a hard limit rather than by the
         # adaptive rule. It matters: a controller must not learn from a step it
-        # did not choose - see `IterationCountTimeStepSelector`.
+        # did not choose - see `IterationCountTimeStepSelectorAD`.
         self.step_limited_by_hard_limits = True
 
     def store_timestep(self, report: Any) -> None:
@@ -109,7 +151,7 @@ class SimpleTimeStepSelector:
         that the wells have changed under it."""
         self.is_start_of_ctrl_step = True
         prev = self.previous_control
-        if prev is None or prev is not control:
+        if prev is None or _control_changed(prev, control):
             if self.reset_on_controls_changed:
                 self.reset()
                 self.is_start_of_ctrl_step = True
@@ -147,7 +189,11 @@ class SimpleTimeStepSelector:
         dt = max(self.min_timestep, dt)
 
         if self.verbose and dt != dt0:
-            print(f"  timestep x{dt / dt0:.2f}: {dt0:.4g} s -> {dt:.4g} s")
+            from pymrst.utils.format_time_range import format_time_range
+            if self.history:
+                print(f"Prev # its: {self.history[-1].iterations} -> ", end="")
+            print(f"Suggested timestep modification of a factor {dt / dt0:1.2f}. "
+                  f"dT: {format_time_range(dt0, 2)} -> {format_time_range(dt, 2)}")
 
         self.step_limited_by_hard_limits = dt != dt_new
         self.is_start_of_ctrl_step = False
@@ -168,7 +214,7 @@ class SimpleTimeStepSelector:
         return dt
 
 
-class FactorTimeStepSelector(SimpleTimeStepSelector):
+class FactorTimeStepSelectorAD(SimpleTimeStepSelectorAD):
     """Grow by a constant factor every step; shrink by one on failure.
 
     It knows nothing about the problem, so it can only find the limit by
@@ -184,7 +230,7 @@ class FactorTimeStepSelector(SimpleTimeStepSelector):
         return dt * self.max_relative_adjustment
 
 
-class IterationCountTimeStepSelector(SimpleTimeStepSelector):
+class IterationCountTimeStepSelectorAD(SimpleTimeStepSelectorAD):
     """Drive the Newton iteration count to a target.
 
     How many iterations a step took is the cheapest honest measure of how hard
@@ -235,7 +281,7 @@ class IterationCountTimeStepSelector(SimpleTimeStepSelector):
         return (dt1 / dt0) * (target * le0 / le1 ** 2) * dt1
 
 
-class StateChangeTimeStepSelector(IterationCountTimeStepSelector):
+class StateChangeTimeStepSelectorAD(IterationCountTimeStepSelectorAD):
     """Bound how much the solution is allowed to move in one step (Cao, 2002).
 
     Iteration count says how hard a step was to *solve*. It says nothing about
@@ -339,37 +385,11 @@ class StateChangeTimeStepSelector(IterationCountTimeStepSelector):
         return dt
 
 
-def rampup_timesteps(time: float, dt: float, n: int = 8) -> np.ndarray:
-    """A schedule that starts gently: `n` geometrically growing steps, then `dt`.
 
-    The first step of a simulation is the hardest one in it. The initial state
-    is uniform - a fiction that no physics produced - and the first step has to
-    absorb every discontinuity at once: the wells switch on, the capillary
-    pressure asserts itself, the fluids start to move. A selector cannot help,
-    because a selector learns from history and there is none yet.
-
-    So do not ask it to. Start at `dt/2^n` and double until you reach `dt`, and
-    the schedule has walked itself in. The doubled-up first step (`dt/2^n`
-    appears twice) is MRST's, and it is deliberate: it buys one extra very
-    small step exactly where it is needed most.
-    """
-    if time == 0:
-        return np.zeros(0)
-
-    dt_init = dt / 2.0 ** np.array([n] + list(range(n, 0, -1)), dtype=float)
-    keep = np.cumsum(dt_init) < time
-    if not keep.all():
-        dt_init = dt_init[keep]
-
-    dt_left = time - dt_init.sum()
-    dt_rem = np.full(int(dt_left // dt), dt)
-    dt_final = time - dt_init.sum() - dt_rem.sum()
-
-    parts = [dt_init, dt_rem]
-    if dt_final > 0:
-        parts.append(np.array([dt_final]))
-    return np.concatenate(parts)
-
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+rampupTimesteps = rampup_timesteps
 
 if __name__ == "__main__":
     from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
@@ -388,14 +408,14 @@ if __name__ == "__main__":
 
     def test_the_base_selector_does_not_adapt():
         """It only enforces limits - that is its whole job."""
-        s = SimpleTimeStepSelector(max_timestep=10.0)
+        s = SimpleTimeStepSelectorAD(max_timestep=10.0)
         s.new_control_step()
         assert s.pick_timestep(None, 5.0, None, _Solver(), None, None) == 5.0
         assert s.pick_timestep(5.0, 50.0, None, _Solver(), None, None) == 10.0
         print("ok test_the_base_selector_does_not_adapt")
 
     def test_hard_limits_are_honoured():
-        s = SimpleTimeStepSelector(max_timestep=8.0, min_timestep=2.0)
+        s = SimpleTimeStepSelectorAD(max_timestep=8.0, min_timestep=2.0)
         s.new_control_step()
         s.pick_timestep(None, 5.0, None, _Solver(), None, None)
         assert s.pick_timestep(5.0, 100.0, None, _Solver(), None, None) == 8.0
@@ -404,7 +424,7 @@ if __name__ == "__main__":
 
     def test_the_change_leash_holds():
         """dt may not more than double or halve between ministeps."""
-        s = FactorTimeStepSelector(max_relative_adjustment=10.0)
+        s = FactorTimeStepSelectorAD(max_relative_adjustment=10.0)
         s.new_control_step()
         s.pick_timestep(None, 1.0, None, _Solver(), None, None)  # start of ctrl
         dt = s.pick_timestep(1.0, 1.0, None, _Solver(), None, None)
@@ -414,17 +434,17 @@ if __name__ == "__main__":
     def test_iteration_count_grows_an_easy_step_and_shrinks_a_hard_one():
         """THE test for the controller: it must push dt the right way."""
         target = 5
-        s = IterationCountTimeStepSelector(target_iteration_count=target)
+        s = IterationCountTimeStepSelectorAD(target_iteration_count=target)
         s.new_control_step()
         s.pick_timestep(None, 1.0, None, _Solver(), None, None)
 
-        easy = IterationCountTimeStepSelector(target_iteration_count=target)
+        easy = IterationCountTimeStepSelectorAD(target_iteration_count=target)
         easy.new_control_step()
         easy.pick_timestep(None, 1.0, None, _Solver(), None, None)
         easy.store_timestep(_Report(iterations=2, dt=1.0))
         dt_easy = easy.pick_timestep(1.0, 1.0, None, _Solver(), None, None)
 
-        hard = IterationCountTimeStepSelector(target_iteration_count=target)
+        hard = IterationCountTimeStepSelectorAD(target_iteration_count=target)
         hard.new_control_step()
         hard.pick_timestep(None, 1.0, None, _Solver(), None, None)
         hard.store_timestep(_Report(iterations=20, dt=1.0))
@@ -441,7 +461,7 @@ if __name__ == "__main__":
 
         Model the cost as proportional to dt, so the fixed point is known and
         the controller has somewhere to converge to."""
-        s = IterationCountTimeStepSelector(target_iteration_count=5)
+        s = IterationCountTimeStepSelectorAD(target_iteration_count=5)
         s.new_control_step()
         dt = 1.0
         for _ in range(40):
@@ -455,7 +475,7 @@ if __name__ == "__main__":
     def test_state_change_bounds_the_change_not_the_iterations():
         """A step that converges easily but moves the solution too far must
         still be cut - which is the entire reason this selector exists."""
-        s = StateChangeTimeStepSelector(target_props=["s"],
+        s = StateChangeTimeStepSelectorAD(target_props=["s"],
                                         target_change_abs=[0.1])
         s.new_control_step()
         s.pick_timestep(None, 1.0, None, _Solver(), None, None)
@@ -518,7 +538,7 @@ if __name__ == "__main__":
         import numpy as np
 
         from pymrst.gridprocessing import cart_grid, compute_geometry
-        from pymrst.modules.ad_blackoil.models.generic_black_oil_model import GenericBlackOilModel
+        from pymrst.modules.ad_blackoil.models.generic_black_oil_model import GenericBlackOilModelAD
         from pymrst.modules.ad_props import init_simple_adi_fluid
         from pymrst.params import add_well, make_rock
         from pymrst.utils.units import BARSA, CENTI, DARCY, MILLI, POISE
@@ -536,7 +556,17 @@ if __name__ == "__main__":
                          val=rate, compi=np.array([1.0, 0.0]), sign=1)
             w = add_well(w, g, rock, np.array([nc - 1]), well_type="bhp",
                          val=120 * BARSA, compi=np.array([0.0, 1.0]), sign=-1)
-            m = GenericBlackOilModel(g, rock, fluid, w)
+            # Tolerances stated rather than inherited. The selector's
+            # `target_iteration_count` is calibrated against how many Newtons
+            # a step of this size actually takes, so the comparison below is
+            # coupled to the convergence tolerance: at the MRST defaults the
+            # constructor now carries, a typical step converges in about three
+            # iterations, targeting five asks the selector to grow the step
+            # until it is hard, and blind halving wins (112 Newtons against
+            # 94). Pinning them keeps the case measuring the *selector*.
+            m = GenericBlackOilModelAD(g, rock, fluid, w,
+                                     tol_cnv=1e-8, tol_mb=1e-12,
+                                     tol_well=1e-10)
             st = State(pressure=np.full(nc, 200.0 * BARSA),
                        sW=np.full(nc, 0.2),
                        qWs=np.array([rate, 0.0]), qOs=np.array([0.0, -rate]),
@@ -552,7 +582,7 @@ if __name__ == "__main__":
         m, st = build()
         _, adaptive = NonLinearSolver(
             max_iterations=12,
-            timestep_selector=IterationCountTimeStepSelector(
+            timestep_selector=IterationCountTimeStepSelectorAD(
                 target_iteration_count=5, max_timestep=180 * DAY),
         ).simulate_schedule(m, st, sched)
 

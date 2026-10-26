@@ -3,7 +3,7 @@
 Model-layer machinery, proved against the validated black-oil model:
 
 1. **GenericReservoirModel** is the marker base that declares "assembled from
-   the state-function graph." The proof: the validated `GenericBlackOilModel`
+   the state-function graph." The proof: the validated `GenericBlackOilModelAD`
    *is* one (the MRST is-a relationship), and its `get_model_equations` is the
    generic graph assembly - identical to its `conservation_equations`,
    component for component, value and Jacobian.
@@ -20,7 +20,7 @@ import numpy as np
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
 )
 from pymrst.modules.ad_core.models import (
     GenericReservoirModel,
@@ -43,7 +43,7 @@ def build():
                  compi=np.array([1.0, 0.0]), sign=1)
     w = add_well(w, g, rock, np.array([g.cells.num - 1]), well_type="bhp",
                  val=150 * BARSA, compi=np.array([0.0, 1.0]), sign=-1)
-    model = GenericBlackOilModel(g, rock, fluid, w)
+    model = GenericBlackOilModelAD(g, rock, fluid, w)
     st0 = State(pressure=np.full(g.cells.num, 200 * BARSA),
                 sW=np.full(g.cells.num, 0.4),
                 qWs=np.array([2e-3]), qOs=np.array([-2e-3]),

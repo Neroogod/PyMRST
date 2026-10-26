@@ -35,7 +35,7 @@ from pymrst.modules.diagnostics.flow_diagnostics import (
     lorenz_coefficient,
 )
 from pymrst.modules.incomp.fluid import init_single_fluid
-from pymrst.modules.incomp.incomp_tpfa import incomp_tpfa
+from pymrst.modules.incomp.incomp_tpfa import incomp_tpfa_ad as incomp_tpfa
 from pymrst.modules.streamlines import pollock
 from pymrst.params.rock import make_rock, pore_volume
 from pymrst.params.wells_and_bc import add_well

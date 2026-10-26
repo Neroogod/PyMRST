@@ -1,24 +1,32 @@
-"""Open- versus closed-boundary black-oil sector model.
+"""MRST ``ad-blackoil/examples/blackoilSectorModelExample.m``.
 
-This is a runnable port of MRST ``blackoilSectorModelExample.m``.  It uses
-the SPE1 live-oil PVT tables on a homogeneous Cartesian sector, produces from
-the centre on oil-rate control with a BHP limit, and compares pressure support
-from constant-pressure lateral boundaries with a sealed reservoir.
+Boundary conditions for pressure support: SPE1's live-oil fluid (with
+`krW = s^2`) on a 50x50x1 sector of 1000x1000x100 m, at 300 bar with
+saturations [0.2 0.8 0] and `rs = 200`. A centre producer on oil-rate
+control (a quarter of the pore volume over ten years, BHP limit 100 bar)
+is run on a `ThreePhaseBlackOilModel` over ramped-up steps of at most 30
+days, twice: with all four sides held at 300 bar (`pside`, with a
+dissolution matrix putting 200 Sm^3 of gas in each Sm^3 of boundary oil)
+and with closed boundaries. `blackoil_sector_model_example` compares the
+well curves (`plotWellSols`) and the gas saturation in the well cell.
 
-The defaults reproduce the MRST example (50 x 50 x 1 cells and ten years).
-Pass smaller dimensions and a shorter duration for a quick validation run.
+`build_blackoil_sector_model_example`/`run_blackoil_sector_model_example`,
+below, are PyMRST's earlier version on the legacy models (the defaults
+reproduce the MRST sizes; smaller ones give a quick run), kept for their
+callers.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.examples.utils.schedule import ExampleResult, run_schedule
-from pymrst.modules.ad_blackoil.models import GenericBlackOilModel
+from pymrst.modules.ad_blackoil.models import GenericBlackOilModelAD
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import blackoil_status
 from pymrst.modules.ad_core import State, rampup_timesteps
 from pymrst.modules.ad_props import init_deck_blackoil_fluid
@@ -31,10 +39,72 @@ ROOT = Path(__file__).resolve().parents[5]
 DEFAULT_DECK = ROOT / "mrst-2024a-Geomech/examples/data/SPE1/BENCH_SPE1.DATA"
 
 
+
+def blackoil_sector_model_example(plot: bool = True) -> SimpleNamespace:
+    """MRST `blackoilSectorModelExample`."""
+    from pymrst.modules.ad_blackoil.models import ThreePhaseBlackOilModel
+    from pymrst.modules.ad_core.ad_oo.simulate_schedule_ad import simulate_schedule_ad
+    from pymrst.modules.ad_core.timesteps.timestep_selectors import rampup_timesteps
+    from pymrst.modules.ad_core.utils.schedule import simple_schedule
+    from pymrst.modules.test_suite.dataset_functions.spe1 import setup_spe1
+    from pymrst.solvers.init_res_sol import init_res_sol
+
+    _, _, fluid, deck, _ = setup_spe1()
+    fluid = dict(fluid)
+    fluid["krW"] = lambda s: s**2
+    # Set up a simple grid with an initial state
+    G = compute_geometry(cart_grid([50, 50, 1], [1000.0, 1000.0, 100.0]))
+    rock = make_rock(G, 0.3*DARCY, 0.3)
+    s0 = np.array([0.2, 0.8, 0.0])
+    p0 = 300*BARSA
+    state0 = init_res_sol(G, p0, s0)
+    state0.rs = np.full(G.cells.num, 200.0)
+    model = ThreePhaseBlackOilModel(G, rock, fluid, disgas=True)
+    # Set up driving forces: `ij = ceil(G.cartDims./2)`, 1-based
+    T = 10*YEAR
+    ij = np.ceil(np.asarray(G.cartDims)/2).astype(int) - 1
+    W = vertical_well(None, G, rock, ij[0], ij[1], None,
+                      val=-0.25*np.sum(model.operators.pv)/T, well_type="orat",
+                      compi=np.array([1, 1, 1])/3, sign=-1, name="Producer")
+    W[0].lims = {"bhp": 100*BARSA}
+    bc = None
+    for side in ("xmin", "xmax", "ymin", "ymax"):
+        bc = pside(bc, G, side, p0, sat=s0)
+    bc.dissolution = np.array([[1, 0, 0],      # Water fractions in phases
+                               [0, 1, 0],      # Oil fractions in phases
+                               [0, 200, 1]],   # Gas fractions in phases
+                              dtype=float)
+    dt = rampup_timesteps(T, 30*DAY)
+    schedule = simple_schedule(dt, W=W, bc=bc)
+    ws, states, report = simulate_schedule_ad(state0, model, schedule)
+    schedule2 = simple_schedule(dt, W=W, bc=None)
+    ws_c, states_c, report_c = simulate_schedule_ad(state0, model, schedule2)
+    # Compare the two results
+    cell = int(np.ravel(W[0].cells)[0])
+    gas_open = np.array([np.asarray(x["s"])[cell, 2] for x in states])
+    gas_closed = np.array([np.asarray(x["s"])[cell, 2] for x in states_c])
+    if plot:
+        import matplotlib.pyplot as plt
+        from pymrst.modules.ad_core.plotting.plot_well_sols import plot_well_sols
+        plot_well_sols([ws, ws_c], np.cumsum(schedule.step_val),
+                       datasetnames=["Constant pressure", "Closed boundaries"])
+        # Plot the gas in the well cells
+        plt.figure()
+        plt.plot(np.arange(1, len(states) + 1), np.column_stack([gas_open, gas_closed]),
+                 linewidth=2)
+        plt.ylabel("S_g")
+        plt.xlabel("Step #")
+        plt.legend(["Constant pressure", "Closed boundaries"])
+        plt.show()
+    return SimpleNamespace(G=G, model=model, W=W, bc=bc, schedule=schedule, state0=state0,
+                           ws=ws, states=states, report=report, ws_c=ws_c,
+                           states_c=states_c, report_c=report_c,
+                           gas_open=gas_open, gas_closed=gas_closed)
+
 @dataclass
 class SectorModelCase:
-    open_model: GenericBlackOilModel
-    closed_model: GenericBlackOilModel
+    open_model: GenericBlackOilModelAD
+    closed_model: GenericBlackOilModelAD
     state0: State
     timesteps: np.ndarray
     producer_cell: int
@@ -105,11 +175,11 @@ def build_blackoil_sector_model_example(
                                [0.0, 1.0, 0.0],
                                [0.0, 200.0, 1.0]])
 
-    open_model = GenericBlackOilModel(grid, rock, fluid, wells, disgas=True, bc=bc)
+    open_model = GenericBlackOilModelAD(grid, rock, fluid, wells, disgas=True, bc=bc)
     # Each facility owns mutable well controls, so the two runs need separate
     # Well instances even though their initial controls are identical.
     closed_wells = [replace(w, lims=None if w.lims is None else dict(w.lims)) for w in wells]
-    closed_model = GenericBlackOilModel(grid, rock, fluid, closed_wells, disgas=True)
+    closed_model = GenericBlackOilModelAD(grid, rock, fluid, closed_wells, disgas=True)
     timesteps = rampup_timesteps(float(total_time), float(max_timestep), rampup_steps)
     return SectorModelCase(open_model, closed_model, state0, timesteps, producer_cell)
 
@@ -125,14 +195,37 @@ def run_blackoil_sector_model_example(**kwargs) -> SectorModelResult:
     return SectorModelResult(open_result, closed_result, case.producer_cell)
 
 
+blackoilSectorModelExample = blackoil_sector_model_example
+
+__all__ = ["blackoilSectorModelExample", "blackoil_sector_model_example",
+           "build_blackoil_sector_model_example", "run_blackoil_sector_model_example"]
+
+
 if __name__ == "__main__":
-    # A laptop-friendly run; call without overrides to reproduce the full
-    # 50 x 50 x 1, ten-year MRST setup.
-    result = run_blackoil_sector_model_example(
-        dims=(10, 10, 1), physical_dims=(200.0, 200.0, 20.0),
-        total_time=90.0 * DAY, max_timestep=15.0 * DAY,
-    )
-    po = result.open_boundary.history["pressure"][-1].mean() / BARSA
-    pc = result.closed_boundary.history["pressure"][-1].mean() / BARSA
-    print(f"completed {len(result.open_boundary.states)} steps per case")
-    print(f"final mean pressure: open={po:.3f} bar, closed={pc:.3f} bar")
+    import matplotlib
+    matplotlib.use("Agg")
+
+    from pymrst.params.gravity.gravity import isolated_gravity
+
+    with isolated_gravity():
+        OUT = blackoil_sector_model_example(plot=True)
+
+    def test_the_boundaries_hold_the_pressure_up():
+        p_open = OUT.states[-1]["pressure"].mean()
+        p_closed = OUT.states_c[-1]["pressure"].mean()
+        assert p_open > p_closed, (p_open/BARSA, p_closed/BARSA)
+        print("ok test_the_boundaries_hold_the_pressure_up")
+
+    def test_the_closed_reservoir_frees_more_gas_at_the_well():
+        assert OUT.gas_closed[-1] > OUT.gas_open[-1], (OUT.gas_closed[-1], OUT.gas_open[-1])
+        print("ok test_the_closed_reservoir_frees_more_gas_at_the_well")
+
+    def test_the_well_is_in_the_centre_cell():
+        """MRST's `ceil(cartDims/2)` is cell (25, 25), 0-based 24 + 24*50."""
+        assert int(np.ravel(OUT.W[0].cells)[0]) == 24 + 24*50
+        print("ok test_the_well_is_in_the_centre_cell")
+
+    test_the_boundaries_hold_the_pressure_up()
+    test_the_closed_reservoir_frees_more_gas_at_the_well()
+    test_the_well_is_in_the_centre_cell()
+    print("\nAll tests passed!")

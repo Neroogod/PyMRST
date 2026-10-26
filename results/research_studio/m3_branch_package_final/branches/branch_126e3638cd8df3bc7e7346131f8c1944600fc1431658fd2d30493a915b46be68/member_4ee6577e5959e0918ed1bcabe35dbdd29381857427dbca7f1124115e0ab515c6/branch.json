@@ -1,0 +1,20 @@
+{
+  "branch_id": "branch_126e3638cd8df3bc7e7346131f8c1944600fc1431658fd2d30493a915b46be68",
+  "comparison_group": "spe1-branch",
+  "components": {
+    "time_integration": "adaptive-implicit"
+  },
+  "controls": {},
+  "name": "aim-branch",
+  "parameters": {},
+  "parent_member_id": "member_cca69992684cb62a8527aedafb86f8e33ca39d4f944ab10f74dbbf0459c25f9a",
+  "parent_time_index": -1,
+  "properties": {},
+  "required_fields": [
+    "pressure",
+    "sW",
+    "sG",
+    "rs"
+  ],
+  "schema_version": 1
+}

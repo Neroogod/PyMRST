@@ -62,10 +62,9 @@ def add_well(
         return wells
     if cells.min() < 0 or cells.max() >= g.cells.num:
         raise IndexError("well completion cell index out of range")
+    # MRST's addWell takes the control type as given: processWells passes
+    # 'default' for a well whose deck control it does not support (Norne).
     well_type = well_type.lower()
-    assert well_type in ("bhp", "rate", "vrat", "resv_history", "orat", "wrat", "grat", "lrat"), (
-        "well type must be one of bhp/rate/vrat/resv_history/orat/wrat/grat/lrat"
-    )
 
     inner_product = inner_product.lower()
     if inner_product not in (
@@ -257,7 +256,19 @@ def _reference_depth(
     if ref_depth is not None:
         return float(ref_depth)
     if gravity is not None and np.linalg.norm(np.ravel(gravity)[: g.griddim]) > 0:
-        return float((g.nodes.coords @ down).min())
+        nodes = getattr(getattr(g, "nodes", None), "coords", None)
+        if nodes is not None and np.size(nodes):
+            return float((np.asarray(nodes) @ down).min())
+        # A connection-list grid - MRST's `simGridTPFA`, which a field model
+        # built from ECLIPSE output runs on - has no nodes at all: its faces
+        # *are* the connections. The shallowest cell centre is the best datum
+        # available, and it is what the top of the model means there.
+        centroids = getattr(getattr(g, "cells", None), "centroids", None)
+        if centroids is not None and np.size(centroids):
+            return float((np.asarray(centroids) @ down).min())
+        raise ValueError(
+            "the grid carries neither node coordinates nor cell centroids, "
+            "so a well reference depth cannot be derived; pass ref_depth")
     return 0.0
 
 

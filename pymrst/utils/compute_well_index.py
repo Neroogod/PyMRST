@@ -20,6 +20,18 @@ Scalar = Union[float, np.ndarray]
 def cell_dims(g: Grid, cells: np.ndarray) -> np.ndarray:
     """Return bounding-box extents `(dx, dy, dz)` for cells."""
     cells = np.asarray(cells, dtype=np.int64).ravel()
+    # A connection-list grid - MRST's `simGridTPFA`, which a field model built
+    # from ECLIPSE output runs on - has no nodes, so there is no geometry to
+    # take a bounding box from. ECLIPSE records the cell dimensions in the
+    # INIT file and `initGridFromEclipseOutput` carries them here, which is
+    # what MRST reads too.
+    recorded = [getattr(g.cells, name, None) for name in ("DX", "DY", "DZ")]
+    if all(values is not None and np.size(values) for values in recorded):
+        return np.column_stack([np.asarray(v, dtype=float)[cells]
+                                for v in recorded])
+    nodes = getattr(getattr(g, "nodes", None), "coords", None)
+    if nodes is None or np.size(nodes) == 0:
+        return cell_dims_cg(g, cells)
     out = np.zeros((cells.size, 3))
     for index, cell in enumerate(cells):
         faces = g.cells.faces[g.cells.facePos[cell] : g.cells.facePos[cell + 1]]
@@ -30,6 +42,22 @@ def cell_dims(g: Grid, cells: np.ndarray) -> np.ndarray:
         dy = extents[1] if coords.shape[1] > 1 else 1.0
         dz = g.cells.volumes[cell] / (dx * dy) if coords.shape[1] > 2 else 1.0
         out[index] = [dx, dy, dz]
+    return out
+
+
+def cell_dims_cg(g: Grid, cells: np.ndarray) -> np.ndarray:
+    """MRST `cellDimsCG`: a grid without nodes - a coarse grid - measured by
+    the extent of each cell's face centroids."""
+    cells = np.asarray(cells, dtype=np.int64).ravel()
+    centroids = np.asarray(g.faces.centroids, dtype=float)
+    dim = centroids.shape[1]
+    faces_of = np.asarray(g.cells.faces)
+    faces_of = faces_of[:, 0] if faces_of.ndim == 2 else faces_of
+    out = np.zeros((cells.size, 3))
+    for index, cell in enumerate(cells):
+        fc = centroids[faces_of[g.cells.facePos[cell]:g.cells.facePos[cell + 1]]]
+        delta = fc.max(axis=0) - fc.min(axis=0)
+        out[index] = [delta[0], delta[1], delta[2] if dim > 2 else 1.0]
     return out
 
 

@@ -1,5 +1,9 @@
-"""Well and boundary-condition construction from ECLIPSE deck records."""
+"""MRST ``deckformat/params/wells_and_bc``."""
 
-from pymrst.modules.deckformat.params.wells_and_bc.process_wells import process_wells
+from pymrst.modules.deckformat.params.wells_and_bc.process_wells import (
+    processWells,
+    process_wells,
+    process_wells_ad,
+)
 
-__all__ = ["process_wells"]
+__all__ = ["processWells", "process_wells", "process_wells_ad"]

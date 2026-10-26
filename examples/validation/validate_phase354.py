@@ -28,7 +28,7 @@ import scipy.io
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
 )
 from pymrst.modules.ad_core.initialization.equilibrium import (
     EquilibriumRegion,
@@ -55,7 +55,7 @@ def build(ref):
 
     deck = read_spe1_deck(DECK)
     fluid = init_deck_blackoil_fluid(deck)
-    model = GenericBlackOilModel(g, rock, fluid, [], disgas=True,
+    model = GenericBlackOilModelAD(g, rock, fluid, [], disgas=True,
                                  gravity=NORM_GRAVITY)
 
     rs_const = float(ref["rs_const"])
@@ -66,6 +66,33 @@ def build(ref):
         rs=rs_const,                                       # constant composition
     )
     return model, region
+
+
+def faithful_state(ref):
+    """The dump's own calls: MRST's `getInitializationRegionsBlackOil` and
+    `initStateBlackOilAD` on a `GenericBlackOilModel` with the SPE1 deck fluid."""
+    from pymrst.modules.ad_blackoil.models import GenericBlackOilModel
+    from pymrst.modules.ad_core.initialization import (
+        get_initialization_regions_black_oil,
+        init_state_black_oil_ad,
+    )
+    from pymrst.modules.test_suite.dataset_functions.spe1 import setup_spe1
+
+    nz = int(ref["nz"])
+    g = cart_grid([1, 1, nz], [10.0, 10.0, float(ref["thick"])])
+    g.nodes.coords[:, 2] += float(ref["top"])
+    g = compute_geometry(g)
+    rock = make_rock(g, 100 * MILLI * DARCY, 0.25)
+    _, _, fluid, _, _ = setup_spe1()
+    model = GenericBlackOilModel(g, rock, fluid, water=True, oil=True, gas=True,
+                                 disgas=True).validate_model()
+    rs_const = float(ref["rs_const"])
+    region = get_initialization_regions_black_oil(
+        model, [float(ref["goc"]), float(ref["woc"])],
+        datum_depth=float(ref["datum_depth"]), datum_pressure=float(ref["datum_pressure"]),
+        rs=lambda p, z: rs_const + 0*np.asarray(p, dtype=float))
+    state, _ = init_state_black_oil_ad(model, region)
+    return state
 
 
 def compare(name, py, ml, rtol, atol=0.0) -> int:
@@ -102,6 +129,13 @@ def main() -> int:
     failed += compare("sO", st["sO"], ml_s[:, 1], 1e-6, atol=1e-9)
     failed += compare("sG", st["sG"], ml_s[:, 2], 1e-6, atol=1e-9)
     failed += compare("rs", st["rs"], ml_rs, 1e-8)
+
+    st = faithful_state(ref)
+    s = np.asarray(st["s"], float)
+    print("MRST's own chain (getInitializationRegionsBlackOil + initStateBlackOilAD):")
+    failed += compare("pressure", st["pressure"], ml_p, 1e-12)
+    failed += compare("s", s, ml_s, 1e-12, atol=1e-14)
+    failed += compare("rs", st["rs"], ml_rs, 1e-12)
 
     # The point of the whole phase: the stored rs is the *specified*, capped
     # composition - not the saturated value everywhere. Had the code reverted to

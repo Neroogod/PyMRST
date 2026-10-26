@@ -1,0 +1,50 @@
+{
+  "artifacts": [],
+  "builder": {
+    "configuration": {
+      "mode": "fully-implicit",
+      "nsteps": 3
+    },
+    "owner": "pymrst.modules.ad_blackoil.examples.blackoil_time_integration_example:_run_spe1_variant"
+  },
+  "content_hash": "b2500f176647709bea951667bc65bc4fff874234ba382b2434bbb70c456075ad",
+  "discretization": {
+    "flow": "tpfa",
+    "time": "fully-implicit"
+  },
+  "facilities": {
+    "wells": "deck"
+  },
+  "grid": {
+    "kind": "SPE1 deck"
+  },
+  "metadata": {
+    "work_packages": [
+      "M3.6",
+      "M3.7",
+      "M3.9"
+    ]
+  },
+  "name": "SPE1 three-step FIM",
+  "physics": {
+    "disgas": true,
+    "model": "black-oil",
+    "phases": [
+      "water",
+      "oil",
+      "gas"
+    ],
+    "vapoil": false
+  },
+  "properties": {
+    "source": "BENCH_SPE1.DATA"
+  },
+  "schedule": {
+    "report_steps": 3
+  },
+  "schema_version": 1,
+  "solver": {
+    "max_iterations": 30,
+    "nonlinear": "NonLinearSolver"
+  }
+}

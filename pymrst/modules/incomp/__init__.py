@@ -5,12 +5,12 @@ from pymrst.modules.incomp.backend_tpfa import (
     assemble_backend_tpfa_matrix,
     incomp_tpfa_backend_pressure,
 )
-from pymrst.modules.incomp.incomp_tpfa import incomp_tpfa
+from pymrst.modules.incomp.incomp_tpfa import incomp_tpfa, incomp_tpfa_ad
 from pymrst.modules.incomp.transport import explicit_transport, implicit_transport
 
 __all__ = [
     "Fluid", "init_single_fluid", "init_simple_fluid",
-    "incomp_tpfa", "incomp_tpfa_backend_pressure",
+    "incomp_tpfa", "incomp_tpfa_ad", "incomp_tpfa_backend_pressure",
     "assemble_backend_tpfa_matrix",
     "explicit_transport", "implicit_transport",
 ]

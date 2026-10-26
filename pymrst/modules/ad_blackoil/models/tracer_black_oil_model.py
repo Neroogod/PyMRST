@@ -1,7 +1,7 @@
 """A tracer, added to black-oil without touching the flow model.
 
 This module exists to prove one claim: that the component framework does what
-it is for. `TracerBlackOilModel` is `GenericBlackOilModel` plus
+it is for. `TracerBlackOilModel` is `GenericBlackOilModelAD` plus
 
   - one entry in `self.components` (a `ConcentrationComponent` carried by the
     water), and
@@ -25,7 +25,7 @@ import numpy as np
 
 from pymrst.gridprocessing.grid import Grid
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
 )
 from pymrst.modules.ad_core.statefunctions.components.components import (
     ConcentrationComponent,
@@ -37,7 +37,7 @@ from pymrst.params.wells_and_bc import Well
 from pymrst.utils.adi import init_variables_adi, value, vertcat_adi
 
 
-class TracerBlackOilModel(GenericBlackOilModel):
+class TracerBlackOilModel(GenericBlackOilModelAD):
     """Black-oil plus a passive tracer dissolved in the water."""
 
     def __init__(self, g: Grid, rock: Rock, fluid, wells: Sequence[Well],
@@ -175,7 +175,7 @@ if __name__ == "__main__":
                                     inj_concentration=[c_inj, 0.0])
             st = State(cT=np.zeros(g.cells.num), **base)
         else:
-            m = GenericBlackOilModel(g, rock, fluid, w)
+            m = GenericBlackOilModelAD(g, rock, fluid, w)
             st = State(**base)
         return g, m, st
 

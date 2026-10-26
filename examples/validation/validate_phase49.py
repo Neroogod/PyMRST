@@ -39,7 +39,7 @@ import numpy as np
 import scipy.io
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
-from pymrst.modules.ad_blackoil import GenericBlackOilModel
+from pymrst.modules.ad_blackoil import GenericBlackOilModelAD
 from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
 from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.modules.ad_props import init_simple_adi_fluid
@@ -81,7 +81,7 @@ def build(ref):
     # MRST's own tolerances are 1e-3/1e-7 and leave a residual of their own; the
     # dump tightens them to 1e-10, so match that rather than compare a converged
     # answer against a half-converged one.
-    model = GenericBlackOilModel(g, rock, fluid, w, gravity=NORM_GRAVITY,
+    model = GenericBlackOilModelAD(g, rock, fluid, w, gravity=NORM_GRAVITY,
                                  tol_cnv=1e-10, tol_mb=1e-13, tol_well=1e-10)
 
     st = State(pressure=np.full(nc, p_ref), sW=np.full(nc, 0.15),

@@ -21,6 +21,7 @@ from pymrst.modules.ad_core.backends.diagonal.kernels import (
     matmul_left_row_major,
     row_repeat_row_major,
     take_rows_row_major,
+    vstack_row_major,
 )
 
 
@@ -67,6 +68,56 @@ class RowMajorDiagonalJacobian:
     def copy(self) -> "RowMajorDiagonalJacobian":
         return RowMajorDiagonalJacobian(self.data.copy(), self.col.copy(),
                                         self.indptr.copy(), self.shape)
+
+    @classmethod
+    def vertcat(cls, parts: "list[RowMajorDiagonalJacobian]") -> "RowMajorDiagonalJacobian":
+        """Stack blocks by row - MRST's `DiagonalJacobian.vertcat`, on the
+        row-major layout. See `DiagonalJacobian.vertcat`, whose docstring
+        this mirrors: only `dim == 1` is fast-pathed, matching MRST's own
+        `cat`, and every part must share its column count."""
+        parts = list(parts)
+        if not parts:
+            return cls.zeros(0, 0)
+        ncol = parts[0].shape[1]
+        if any(p.shape[1] != ncol for p in parts):
+            raise ValueError(
+                "vertcat requires every block to share its column count")
+        data, col, indptr, nrows = vstack_row_major(
+            [p.data for p in parts], [p.col for p in parts],
+            [p.indptr for p in parts], [p.shape[0] for p in parts])
+        return cls(data, col, indptr, (int(nrows), ncol))
+
+    def subset_plus(self, v: "RowMajorDiagonalJacobian",
+                    subs: np.ndarray) -> "RowMajorDiagonalJacobian":
+        """MRST's `subsetPlus`: add `v` into the rows at `subs`.
+
+        Composed from `to_sparse`/`from_sparse` rather than a dedicated
+        kernel - unlike `vertcat`, this is not on `vertcat_adi`'s hot path,
+        and a correct sparse composition is preferable to a new, less-tested
+        native code path for an operation nothing here currently calls under
+        load.
+        """
+        if v.shape[1] != self.shape[1]:
+            raise ValueError(
+                f"subset_plus needs matching column counts; got "
+                f"{self.shape[1]} and {v.shape[1]}")
+        subs = np.asarray(subs, dtype=np.int64).ravel()
+        if v.shape[0] != subs.size:
+            raise ValueError(
+                f"subs names {subs.size} rows but v has {v.shape[0]}")
+        out = self.to_sparse().tolil()
+        out[subs, :] = out[subs, :] + v.to_sparse()
+        return RowMajorDiagonalJacobian.from_sparse(out.tocsr())
+
+    subsetPlus = subset_plus
+
+    def subset_minus(self, v: "RowMajorDiagonalJacobian",
+                     subs: np.ndarray) -> "RowMajorDiagonalJacobian":
+        """MRST's `subsetMinus`: `subsetPlus(x, -v, subs)`, literally."""
+        neg = RowMajorDiagonalJacobian(-v.data, v.col, v.indptr, v.shape)
+        return self.subset_plus(neg, subs)
+
+    subsetMinus = subset_minus
 
     def to_sparse(self) -> sp.csr_array:
         return sp.csr_array((self.data, self.col, self.indptr), shape=self.shape)
@@ -222,6 +273,11 @@ if __name__ == "__main__":
         print("ok test_row_major_row_ops")
 
     def test_row_major_direct_matmul_left_matches_sparse_product():
+        """`mat`'s row 0 combines `j`'s src_row 0 and src_row 2 (both carry
+        a column-0 entry); row 1 combines src_row 1 and src_row 2 (both
+        carry a column-2 entry). `matmul_left` must merge each pair into
+        one stored entry - `ref.nnz` is the ground truth, since scipy's
+        own CSR@CSR product never leaves explicit duplicate indices."""
         j = RowMajorDiagonalJacobian.from_sparse(sp.csr_array([[1.0, 2.0, 0.0],
                                                                [0.0, 3.0, 4.0],
                                                                [5.0, 0.0, 6.0]]))
@@ -230,9 +286,16 @@ if __name__ == "__main__":
         out = j.matmul_left(mat)
         ref = mat @ j.to_sparse()
         assert np.allclose(out.toarray(), ref.toarray())
+        assert out.nnz == ref.nnz, (out.nnz, ref.nnz)
         print("ok test_row_major_direct_matmul_left_matches_sparse_product")
 
-    def test_row_major_direct_addition_matches_sparse_sum_with_duplicate_entries():
+    def test_row_major_direct_addition_merges_shared_row_col_entries():
+        """`a` and `b` both carry a row-0/col-0 entry; `__add__` must sum
+        them into one stored entry, not keep both. Pins the fix for the
+        bug `_merge_row_duplicates` closes: this used to assert
+        `out.nnz == a.nnz + b.nnz` (4), pinning unmerged concatenation as
+        intended behavior. True unique count is 3 - row0 col0 merged
+        (1+3=4), row1 keeps its col0 (-4) and col1 (2) separately."""
         a = RowMajorDiagonalJacobian.from_sparse(sp.csr_array([[1.0, 0.0],
                                                                [0.0, 2.0]]))
         b = RowMajorDiagonalJacobian.from_sparse(sp.csr_array([[3.0, 0.0],
@@ -240,11 +303,43 @@ if __name__ == "__main__":
         out = a + b
         ref = a.to_sparse() + b.to_sparse()
         assert np.allclose(out.toarray(), ref.toarray())
-        assert out.nnz == a.nnz + b.nnz
-        print("ok test_row_major_direct_addition_matches_sparse_sum_with_duplicate_entries")
+        assert out.nnz == 3, out.nnz
+        print("ok test_row_major_direct_addition_merges_shared_row_col_entries")
+
+    def test_row_major_vertcat_matches_sparse_vstack():
+        a = RowMajorDiagonalJacobian.from_sparse(sp.csr_array(
+            [[1.0, 2.0, 0.0], [0.0, 3.0, 4.0]]))
+        b = RowMajorDiagonalJacobian.from_sparse(sp.csr_array([[5.0, 0.0, 6.0]]))
+        out = RowMajorDiagonalJacobian.vertcat([a, b])
+        ref = sp.vstack([a.to_sparse(), b.to_sparse()])
+        assert out.shape == (3, 3)
+        assert np.allclose(out.toarray(), ref.toarray())
+        print("ok test_row_major_vertcat_matches_sparse_vstack")
+
+    def test_row_major_subset_plus_matches_manual_row_add():
+        x = RowMajorDiagonalJacobian.from_sparse(sp.csr_array(
+            [[1.0, 0.0], [1.0, 0.0], [1.0, 0.0]]))
+        v = RowMajorDiagonalJacobian.from_sparse(sp.csr_array([[0.0, 9.0]]))
+        out = x.subset_plus(v, np.array([1]))
+        expect = x.toarray().copy()
+        expect[1, :] += v.toarray()[0, :]
+        assert np.allclose(out.toarray(), expect)
+        assert np.allclose(out.toarray()[0], x.toarray()[0])
+        assert np.allclose(out.toarray()[2], x.toarray()[2])
+        print("ok test_row_major_subset_plus_matches_manual_row_add")
+
+    def test_row_major_subset_minus_is_subset_plus_of_the_negation():
+        x = RowMajorDiagonalJacobian.identity(2)
+        v = RowMajorDiagonalJacobian.from_sparse(sp.csr_array([[4.0, 0.0]]))
+        out = x.subset_minus(v, np.array([0]))
+        assert np.isclose(out.toarray()[0, 0], 1.0 - 4.0)
+        print("ok test_row_major_subset_minus_is_subset_plus_of_the_negation")
 
     test_row_major_identity_and_sparse_roundtrip()
     test_row_major_row_ops()
     test_row_major_direct_matmul_left_matches_sparse_product()
-    test_row_major_direct_addition_matches_sparse_sum_with_duplicate_entries()
+    test_row_major_direct_addition_merges_shared_row_col_entries()
+    test_row_major_vertcat_matches_sparse_vstack()
+    test_row_major_subset_plus_matches_manual_row_add()
+    test_row_major_subset_minus_is_subset_plus_of_the_negation()
     print("\nAll tests passed!")

@@ -6,7 +6,7 @@ uses, and `read_norne_grdecl` assembles them the way `makeNorneGRDECL.m` does.
 """
 
 from pymrst.modules.deckformat.grdecl import read_grdecl, read_keywords
-from pymrst.modules.deckformat.egg import egg_data_directory, fetch_egg_dataset, read_egg_deck
+from pymrst.modules.deckformat.egg import egg_data_directory, fetch_egg_dataset
 from pymrst.modules.deckformat.norne import (
     fetch_norne,
     fetch_norne_field_model,
@@ -25,7 +25,7 @@ from pymrst.modules.deckformat.spe10 import (
 from pymrst.modules.deckformat.params.rock import process_aquifer
 
 __all__ = [
-    "read_spe1_deck", "read_spe3_deck", "read_spe9_deck", "read_egg_deck",
+    "read_spe1_deck", "read_spe3_deck", "read_spe9_deck",
     "egg_data_directory", "fetch_egg_dataset", "read_grdecl", "read_keywords",
     "fetch_spe10_dataset", "load_spe10_model1", "spe10_data_directory",
     "fetch_norne", "read_norne_grdecl", "norne_rock",

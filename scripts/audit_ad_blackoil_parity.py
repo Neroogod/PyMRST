@@ -12,7 +12,8 @@ from pathlib import Path
 
 FIELDS = (
     "mrst_path", "symbol", "subsystem", "port_status",
-    "python_counterpart", "port_evidence", "validation_status",
+    "python_counterpart", "port_evidence", "mrst_methods",
+    "methods_absent", "depth", "validation_status",
     "validation_files", "notes",
 )
 
@@ -22,11 +23,49 @@ PLACEHOLDERS = {
 }
 
 PARTIAL = {
+}
+
+# Validated ports whose reference comparison is not exact throughout, and why.
+NOTES = {
+    "blackoilTutorialMexAcceleration": (
+        "20x20x10: the run with a direct solver identical in iterations, states to 3e-13; "
+        "AMGCL_CPRSolverAD's prepared system (matrix, rhs, DRS weights) MRST's to 1e-14; the "
+        "AMGCL solve is MRST's own C++ (amgcl_matlab.cpp) compiled for Python, as MRST's MEX "
+        "cannot be built here; no OpenMP, so the 4-thread run is serial"
+    ),
     "blackoilTimeIntegrationExample": (
-        "FIM, CFL-controlled explicit, and AIM SPE1 exist; cross-method SPE9 integration comparison remains"
+        "name = 'spe1' (the script's default): fully implicit, explicit and AIM over 120 steps "
+        "with identical iterations and ministeps, AIM's implicit fractions identical, states to "
+        "1e-7. 'spe9': fully implicit and AIM over 35 steps likewise, states to 7e-7; explicit "
+        "identical through step 7, then parted by GMRES noise on singular systems - MRST parts "
+        "from itself the same way on a one-ulp change - and both stop on the substep limit"
+    ),
+    "tenthCSP_Model_I": (
+        "setup to 1e-14, steps 1-2 to 1e-13, step 3 from MRST's step-2 state to 3e-10; the full "
+        "131 steps with identical ministeps and controls, iterations 603 vs 609, states to 6e-5 - "
+        "the direct solvers' round-off sign in sG at the SGOF knot so = 1 parts the runs in step 3"
+    ),
+    "setupAquifertest": (
+        "MRST 2024a's function cannot finish (AquiferBlackOilModel no longer exists); the "
+        "port stops with the same error, and its steps before it match MRST exactly"
     ),
     "fieldModelNorneExample": (
-        "complete deck/output import, native schedule/wells, VFP tables, fault/NNC-aware operators, two-region fluid, model/state initialization, checkpoint/resume, bounded-CPR adaptive simulation, converged first four report periods through day 56, and field-scale reference regression exist; complete 247-step trajectory validation and regional facility surface densities remain"
+        "initial state to 1e-12, first system and first Newton update to round-off; "
+        "direct solver: step 1 MRST's iterations, pressure 1e-6; step 2 8 vs 9 iterations, "
+        "pressure 2e-5 - MATLAB's complex rv (RvMax's power of a negative factor) in up to six "
+        "cells, of which the port keeps the real part; CPR/GMRES well curves within 1e-4"
+    ),
+    "simulatorWorkflowExample": (
+        "MRST's makeModel3 draws passed in (MATLAB's randn cannot be reproduced); fine, simply "
+        "upscaled and flow-upscaled runs with identical iterations, states to 1e-9; upscaleTrans "
+        "to 4e-11 (fine pressure-solve round-off); diagnostics to 4e-12; the closing "
+        "interactiveDiagnostics viewer is not ported, its computations (well pairs, F-Phi, Lorenz, "
+        "sweep, well TOFs, first arrival) are, validated in validate_diagnostics_utils.py"
+    ),
+    "blackoilTutorialSPE9": (
+        "steps 1-17 identical iterations, states to 1e-5; step 18 converges or cuts on a "
+        "1-ulp change in MRST itself, so it is checked on MRST's ministeps (to 1e-9) and "
+        "steps 18-35 are reported"
     ),
 }
 
@@ -92,12 +131,86 @@ def classify(matlab_file, matlab_root, repo, python_sources):
     return "pending", "", "no reviewed Python owner"
 
 
+def matlab_methods(path: Path) -> list:
+    """Method names of a MATLAB `classdef`, or `[]` for a plain function file.
+
+    A `.m` file that is not a class has no protocol to be missing, so it is
+    excluded rather than counted as depth 1.00 - which would let plain
+    functions inflate the average and hide a shallow class.
+    """
+    text = path.read_text(errors="ignore")
+    if not re.search(r"^\s*classdef\b", text, re.M):
+        return []
+    return sorted(set(re.findall(
+        r"^\s*function\s+(?:\[[^\]]*\]\s*=\s*|\w[\w.]*\s*=\s*)?(\w+)\s*\(",
+        text, re.M)))
+
+
+def python_names(python_root: Path) -> set:
+    """Every name defined or aliased anywhere in the *whole* Python package.
+
+    Not just `ad_blackoil`. A method inherited from `ad_core` - and after the
+    `ThreePhaseBlackOilModel` migration most of that protocol is inherited -
+    is genuinely available on the class, so scanning only this module reported
+    five methods absent that `hasattr` finds. The scan follows what a caller
+    can actually call.
+    """
+    names = set()
+    root = python_root
+    while root.name != "pymrst" and root.parent != root:
+        root = root.parent
+    for f in root.rglob("*.py"):
+        if "__pycache__" in str(f):
+            continue
+        text = f.read_text(errors="ignore")
+        names |= set(re.findall(r"^\s*(?:def|class)\s+(\w+)", text, re.M))
+        names |= set(re.findall(r"^\s*(\w+)\s*=\s*[A-Za-z_][\w.]*\s*$", text, re.M))
+    return names
+
+
+def _defined(method: str, defined: set) -> bool:
+    """Whether a MATLAB method name is reachable under any Python spelling.
+
+    The `get_`-dropped form matters: this port names accessors after the thing
+    they return, so `getComponentDensity` is `component_density`. Without it
+    the ledger reports a method absent that is defined two lines away.
+    """
+    snake = snake_case(method)
+    candidates = {method, snake}
+    for prefix in ("get_", "set_"):
+        if snake.startswith(prefix):
+            candidates.add(snake[len(prefix):])
+    return bool(candidates & defined)
+
+
+def measure_depth(matlab_file: Path, defined: set) -> tuple:
+    """`(n_methods, absent, depth)` for one MATLAB class.
+
+    This is the check the ledger did not have, and its absence is why 20
+    absent methods sat unreported behind rows marked `ported`: a file-level
+    scan asks whether a counterpart *exists*, which a class with one method
+    out of fifteen satisfies as readily as a complete one.
+
+    A constructor is skipped - MATLAB names it after the class, Python calls
+    it `__init__`, and counting it would report every class as one method
+    short forever.
+    """
+    methods = [m for m in matlab_methods(matlab_file)
+               if m != matlab_file.stem]
+    if not methods:
+        return "", "", ""
+    absent = [m for m in methods if not _defined(m, defined)]
+    depth = (len(methods) - len(absent))/len(methods)
+    return str(len(methods)), " ".join(absent), f"{depth:.2f}"
+
+
 def generate_rows(repo: Path, matlab_root: Path, python_root: Path):
     python_sources = source_index(sorted(python_root.rglob("*.py")))
     validation_paths = sorted((repo / "tests").rglob("*.py"))
     validation_paths += sorted((repo / "examples" / "validation").rglob("*.py"))
     validation_paths = [p for p in validation_paths if "parity" not in p.stem]
     validations = source_index(validation_paths)
+    defined = python_names(python_root)
     rows = []
     for matlab_file in sorted(matlab_root.rglob("*.m")):
         rel = matlab_file.relative_to(matlab_root)
@@ -105,6 +218,7 @@ def generate_rows(repo: Path, matlab_root: Path, python_root: Path):
         status, counterpart, evidence = classify(
             matlab_file, matlab_root, repo, python_sources
         )
+        n_methods, absent, depth = measure_depth(matlab_file, defined)
         pattern = token(symbol)
         validation_files = [p for p, text in validations.items() if pattern.search(text)]
         rows.append({
@@ -114,9 +228,12 @@ def generate_rows(repo: Path, matlab_root: Path, python_root: Path):
             "port_status": status,
             "python_counterpart": counterpart,
             "port_evidence": evidence,
+            "mrst_methods": n_methods,
+            "methods_absent": absent,
+            "depth": depth,
             "validation_status": "validated-reference" if validation_files else "unvalidated",
             "validation_files": relative_list(validation_files, repo),
-            "notes": "",
+            "notes": NOTES.get(symbol, ""),
         })
     return rows
 

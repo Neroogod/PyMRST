@@ -17,9 +17,9 @@ from pymrst.modules.ad_blackoil.examples.spe1.blackoil_tutorial_spe1 import (
 )
 from pymrst.modules.ad_core import NonLinearSolver
 from pymrst.modules.ad_core.solvers.concrete_solvers import (
-    BackslashSolverAD, GMRES_ILUSolverAD,
+    BackslashSolverAD, GMRES_ILUSolverADAD,
 )
-from pymrst.modules.ad_core.solvers.cpr_solver_ad import CPRSolverAD
+from pymrst.modules.ad_core.solvers.cpr_solver_ad import CPRSolverADAD
 from pymrst.research_studio.validation import (
     EvidenceEdge, EvidenceGraph, EvidenceNode, EvidenceNodeKind, Independence,
     TolerancePolicy, edge_from_comparison,
@@ -92,10 +92,10 @@ def qualify(reference: Path = REFERENCE):
     times = np.cumsum(np.asarray(ref["tsteps"], dtype=float).reshape(-1))
     solvers = {
         "direct": BackslashSolverAD(),
-        "gmres_ilu": GMRES_ILUSolverAD(
+        "gmres_ilu": GMRES_ILUSolverADAD(
             tolerance=1e-10, max_iterations=200, restart=40,
         ),
-        "cpr": CPRSolverAD(tolerance=1e-8, max_iterations=200),
+        "cpr": CPRSolverADAD(tolerance=1e-8, max_iterations=200),
     }
     runs = {key: _run(solver, times.size) for key, solver in solvers.items()}
 

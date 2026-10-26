@@ -3,7 +3,7 @@
 import numpy as np
 
 from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
-from pymrst.modules.ad_core.solvers.concrete_solvers import GMRES_ILUSolverAD
+from pymrst.modules.ad_core.solvers.concrete_solvers import GMRES_ILUSolverADAD
 from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.utils.adi import init_variables_adi, value
 
@@ -43,14 +43,14 @@ def test_direct_diagnostic_reaches_step_report_without_changing_solve_contract()
 
 def test_gmres_iteration_and_true_residual_reach_step_report():
     state = State(x=np.array([0.0]))
-    linear = GMRES_ILUSolverAD(tolerance=1e-12, max_iterations=10)
+    linear = GMRES_ILUSolverADAD(tolerance=1e-12, max_iterations=10)
     _, report = NonLinearSolver(
         max_iterations=3, linear_solver=linear,
     ).solve_ministep(_ScalarModel(), state, state.copy(), 1.0)
     assert report.converged
     assert report.linear_iterations == [1]
     solve = report.linear_solves[0]
-    assert solve.solver.startswith("GMRES_ILUSolverAD")
+    assert solve.solver.startswith("GMRES_ILUSolverADAD")
     assert solve.residual_norm < 1e-12
     assert solve.relative_residual < 1e-12
     assert solve.degrees_of_freedom == 1

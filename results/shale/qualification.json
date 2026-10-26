@@ -1,0 +1,31 @@
+{
+  "schema": "pymrst.shale.qualification.v1",
+  "generated_at": "2026-08-03T23:37:19.983837+00:00",
+  "matlab_regenerated": false,
+  "passed": true,
+  "steps": [
+    {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+        "scripts/audit_shale_parity.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.1540755829992122,
+      "stdout": "wrote docs/shale/parity.csv and SHALE_PARITY_AUDIT.md\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/shale"
+      ],
+      "returncode": 0,
+      "seconds": 70.2542689999973,
+      "stdout": "........................................................................ [ 62%]\n............................................                             [100%]\n=============================== warnings summary ===============================\ntests/shale/test_shale_plotting.py::test_plot_frac_system_returns_mrst_handle_groups_and_engineering_markers\n  /Users/Shared/PyMRST_workspace/PyMRST/tests/shale/test_shale_plotting.py:34: UserWarning: \n  This system does not appear to be running an xserver.\n  PyVista will likely segfault when rendering.\n  \n  Alternatively, an offscreen version using OSMesa libraries and ``vtk`` is available as of VTK 9.5.\n  \n    plotter = pv.Plotter(off_screen=True)\n\ntests/shale/test_shale_plotting.py::test_plot_frac_system_subset_is_zero_based_and_validated\n  /Users/Shared/PyMRST_workspace/PyMRST/tests/shale/test_shale_plotting.py:48: UserWarning: \n  This system does not appear to be running an xserver.\n  PyVista will likely segfault when rendering.\n  \n  Alternatively, an offscreen version using OSMesa libraries and ``vtk`` is available as of VTK 9.5.\n  \n    plotter = pv.Plotter(off_screen=True)\n\ntests/shale/test_shale_plotting.py::test_plot_frac_system_nf_classifies_hydraulic_and_natural_fractures\n  /Users/Shared/PyMRST_workspace/PyMRST/tests/shale/test_shale_plotting.py:61: UserWarning: \n  This system does not appear to be running an xserver.\n  PyVista will likely segfault when rendering.\n  \n  Alternatively, an offscreen version using OSMesa libraries and ``vtk`` is available as of VTK 9.5.\n  \n    plotter = pv.Plotter(off_screen=True)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n116 passed, 3 warnings in 69.60s (0:01:09)\n",
+      "stderr": ""
+    }
+  ]
+}

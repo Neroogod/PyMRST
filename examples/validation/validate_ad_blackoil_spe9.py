@@ -4,14 +4,14 @@ from pathlib import Path
 import numpy as np
 from scipy.io import loadmat
 
-from pymrst.modules.ad_blackoil.examples.spe9 import setup_spe9, simulate_spe9
+from pymrst.modules.ad_blackoil.examples.spe9 import setup_spe9_ad, simulate_spe9_ad
 
 HERE = Path(__file__).resolve().parent
 
 
 def validate():
     ref = loadmat(HERE/"ref_ad_blackoil_spe9.mat", squeeze_me=True)
-    deck, model, schedule, state = setup_spe9()
+    deck, model, schedule, state = setup_spe9_ad()
     assert model.G.cells.num == int(ref["nc"]) == 9000
     assert tuple(deck["cartDims"]) == tuple(np.asarray(ref["cartDims"], int))
     np.testing.assert_allclose(state["pressure"], ref["pressure"], rtol=2e-7)
@@ -27,7 +27,7 @@ def validate():
     values = [control.W[producer].val for control in schedule.controls]
     reference_values = [np.asarray(v).ravel()[producer] for v in np.atleast_1d(ref["well_val"])]
     np.testing.assert_allclose(values, reference_values, rtol=2e-12)
-    result = simulate_spe9(1, verbose=False)
+    result = simulate_spe9_ad(1, verbose=False)
     final = result.states[0]
     # Different nonlinear stopping rules and direct solvers yield a small
     # first-step spread; phase/state trends remain tightly aligned.

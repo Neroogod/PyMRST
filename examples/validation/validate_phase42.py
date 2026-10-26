@@ -23,12 +23,12 @@ import numpy as np
 import scipy.io
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
-from pymrst.modules.ad_blackoil import GenericBlackOilModel
+from pymrst.modules.ad_blackoil import GenericBlackOilModelAD
 from pymrst.modules.ad_core.initialization import (
     EquilibriumRegion,
     init_state_equil,
-    initialize_equilibrium_pressures,
-    initialize_equilibrium_saturations,
+    initialize_equilibrium_pressures_ad,
+    initialize_equilibrium_saturations_ad,
 )
 from pymrst.modules.ad_props import init_simple_adi_fluid
 from pymrst.params import NORM_GRAVITY, make_rock
@@ -55,7 +55,7 @@ def build(ref, use_pc: bool):
         mu=np.array([1.0, 5.0]) * CENTI * POISE, rho=[rho_w, rho_o],
         n=[2, 2], c=[0.0, 0.0], p_ref=p_ref, pc_ow=pc_ow,
     )
-    model = GenericBlackOilModel(g, rock, fluid, [], gravity=NORM_GRAVITY)
+    model = GenericBlackOilModelAD(g, rock, fluid, [], gravity=NORM_GRAVITY)
 
     region = EquilibriumRegion(
         datum_depth=top, datum_pressure=p_ref, contacts=[float(ref["woc"])],
@@ -65,6 +65,34 @@ def build(ref, use_pc: bool):
         pc_sign=(np.array([-1.0, 1.0]) if use_pc else None),
     )
     return model, region
+
+
+def faithful_state(ref, use_pc: bool):
+    """The dump's own calls: MRST's `getInitializationRegionsBlackOil` and
+    `initStateBlackOilAD` on a `GenericBlackOilModel`."""
+    from pymrst.modules.ad_blackoil.models import GenericBlackOilModel
+    from pymrst.modules.ad_core.initialization import (
+        get_initialization_regions_black_oil,
+        init_state_black_oil_ad,
+    )
+    from pymrst.params.gravity.gravity import gravity
+
+    gravity("reset", "on")
+    top, p_ref, pc0 = float(ref["top"]), float(ref["pRef"]), float(ref["pc0"])
+    g = cart_grid([1, 1, int(ref["nz"])], [10.0, 10.0, float(ref["thick"])])
+    g.nodes.coords[:, 2] += top
+    g = compute_geometry(g)
+    rock = make_rock(g, 100 * MILLI * DARCY, 0.25)
+    fluid = init_simple_adi_fluid(phases="WO", mu=np.array([1.0, 5.0]) * CENTI * POISE,
+                                  rho=[float(ref["rhoW"]), float(ref["rhoO"])],
+                                  n=[2, 2], c=[0.0, 0.0], p_ref=p_ref)
+    if use_pc:
+        fluid.pcOW = lambda sw: pc0 * (1 - sw)
+    model = GenericBlackOilModel(g, rock, fluid, water=True, oil=True,
+                                 gas=False).validate_model()
+    region = get_initialization_regions_black_oil(
+        model, float(ref["woc"]), datum_depth=top, datum_pressure=p_ref)
+    return init_state_black_oil_ad(model, region)
 
 
 def compare(name, py, ml, rtol, atol=0.0) -> int:
@@ -92,8 +120,8 @@ def main() -> int:
         print(f"\n{label}:")
         model, region = build(ref, use_pc)
 
-        p = initialize_equilibrium_pressures(model, region, NORM_GRAVITY)
-        s = initialize_equilibrium_saturations(model, region, p)
+        p = initialize_equilibrium_pressures_ad(model, region, NORM_GRAVITY)
+        s = initialize_equilibrium_saturations_ad(model, region, p)
         st = init_state_equil(model, region, NORM_GRAVITY)
 
         # each phase's own hydrostatic pressure
@@ -111,6 +139,12 @@ def main() -> int:
         print(f"  {'ok  ' if same else 'FAIL'} transition zone: {n_zone} cells "
               f"(MATLAB: {n_zone_ml})")
         failed += 0 if same else 1
+
+        state, pressures = faithful_state(ref, use_pc)
+        print("  MRST's own chain (getInitializationRegionsBlackOil + initStateBlackOilAD):")
+        failed += compare("phase pressures", pressures, ref[f"{tag}_pp"], 1e-12)
+        failed += compare("saturations", state["s"], ml_s, 1e-12, atol=1e-14)
+        failed += compare("state pressure", state["pressure"], ref[f"{tag}_p"], 1e-12)
 
     print("\nEquilibrium initialisation matches MATLAB!" if failed == 0
           else f"\n{failed} comparisons FAILED")

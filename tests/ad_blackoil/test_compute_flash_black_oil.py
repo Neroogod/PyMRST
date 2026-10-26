@@ -11,7 +11,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from pymrst.modules.ad_blackoil.utils.compute_flash_black_oil import (
-    compute_flash_black_oil,
+    compute_flash_black_oil_ad,
 )
 
 
@@ -53,7 +53,7 @@ def test_negative_gas_is_clipped_and_the_others_take_its_share():
     rescaled by ``1 - s_negative``, which is what keeps the triple summing to
     one without inventing volume.
     """
-    state = compute_flash_black_oil(
+    state = compute_flash_black_oil_ad(
         _state([0.2], [0.9], [-0.1]), _state([0.2], [0.8], [0.0]), _model(),
     )
     np.testing.assert_allclose(
@@ -66,7 +66,7 @@ def test_each_phase_in_turn_can_go_negative():
     for index, sats in enumerate(([-0.1, 0.6, 0.5],
                                   [0.3, -0.1, 0.8],
                                   [0.3, 0.8, -0.1])):
-        state = compute_flash_black_oil(
+        state = compute_flash_black_oil_ad(
             _state([sats[0]], [sats[1]], [sats[2]]),
             _state([0.3], [0.4], [0.3]), _model(),
         )
@@ -85,14 +85,14 @@ def test_rs_is_pinned_to_the_curve_where_gas_is_present_and_capped_elsewhere():
     # cell 0: gas present (sg > 0), rs below the curve -> pinned up to 50
     # cell 1: no gas, rs above the curve -> capped down to 50
     # cell 2: no gas, rs below the curve -> left alone
-    state = compute_flash_black_oil(
+    state = compute_flash_black_oil_ad(
         _state([0.1, 0.1, 0.1], [0.6, 0.9, 0.9], [0.3, 0.0, 0.0],
                rs=10.0, status=1),
         _state([0.1, 0.1, 0.1], [0.6, 0.9, 0.9], [0.3, 0.0, 0.0], status=1),
         _model(),
     )
     state["rs"][:] = state["rs"]
-    result = compute_flash_black_oil(
+    result = compute_flash_black_oil_ad(
         {**_state([0.1, 0.1, 0.1], [0.6, 0.9, 0.9], [0.3, 0.0, 0.0], status=0),
          "rs": np.array([10.0, 90.0, 10.0])},
         _state([0.1, 0.1, 0.1], [0.6, 0.9, 0.9], [0.3, 0.0, 0.0], status=0),
@@ -110,7 +110,7 @@ def test_rs_never_leaves_the_flash_negative():
     reached. It has to be a cell with no free gas whose previous status keeps
     gas absent, so `rs` is only capped and stays negative until `max(rs, 0)`.
     """
-    result = compute_flash_black_oil(
+    result = compute_flash_black_oil_ad(
         {**_state([0.2], [0.8], [0.0], status=1), "rs": np.array([-5.0])},
         {**_state([0.2], [0.8], [0.0], status=1), "rs": np.array([-5.0])},
         _model(),
@@ -125,7 +125,7 @@ def test_status_packs_oil_and_gas_presence_into_one_integer():
     Pinned because the factor of two carries the gas bit: dropping it makes
     an oil-and-gas cell indistinguishable from an oil-only one.
     """
-    result = compute_flash_black_oil(
+    result = compute_flash_black_oil_ad(
         _state([0.1], [0.6], [0.3], status=0), _state([0.1], [0.6], [0.3]),
         _model(vapoil=False),
     )
@@ -143,7 +143,7 @@ def test_without_dissolved_gas_the_previous_rs_is_the_bound_and_gas_is_present()
     false - and there it reported status 1 where MRST reports 3, because
     `gasPresent` is what contributes the 2.
     """
-    result = compute_flash_black_oil(
+    result = compute_flash_black_oil_ad(
         _state([0.2], [0.7], [0.1], rs=10.0, status=1),
         _state([0.2], [0.7], [0.1], rs=10.0, status=1),
         _model(disgas=False, vapoil=True),
@@ -154,7 +154,7 @@ def test_without_dissolved_gas_the_previous_rs_is_the_bound_and_gas_is_present()
 
 
 def test_without_dissolved_gas_a_high_rs_is_pulled_back_to_the_previous_value():
-    result = compute_flash_black_oil(
+    result = compute_flash_black_oil_ad(
         {**_state([0.2], [0.7], [0.1], status=1), "rs": np.array([900.0])},
         _state([0.2], [0.7], [0.1], rs=10.0, status=1),
         _model(disgas=False, vapoil=True),
@@ -164,7 +164,7 @@ def test_without_dissolved_gas_a_high_rs_is_pulled_back_to_the_previous_value():
 
 def test_a_water_only_cell_reports_both_phases_present():
     """`watOnly` forces presence, so an empty cell does not look undersaturated."""
-    result = compute_flash_black_oil(
+    result = compute_flash_black_oil_ad(
         _state([1.0], [0.0], [0.0], status=1), _state([1.0], [0.0], [0.0]),
         _model(),
     )
@@ -181,7 +181,7 @@ def test_saturations_are_renormalized_which_mrst_does_not_do():
     repairs it - which also means this function cannot be used to detect that
     upstream fault.
     """
-    result = compute_flash_black_oil(
+    result = compute_flash_black_oil_ad(
         _state([0.2], [0.5], [0.1]), _state([0.2], [0.5], [0.1]), _model(),
     )
     np.testing.assert_allclose(_saturations(result).sum(), 1.0, rtol=1e-12)
@@ -203,7 +203,7 @@ def test_the_clipping_cascade_and_a_plain_renormalization_agree():
     read the surviving mutant as missing coverage.
     """
     for sats in ([0.2, 0.9, -0.1], [-0.1, 1.2, -0.1], [0.3, -0.2, 0.9]):
-        cascaded = compute_flash_black_oil(
+        cascaded = compute_flash_black_oil_ad(
             _state([sats[0]], [sats[1]], [sats[2]]),
             _state([0.3], [0.4], [0.3]), _model(),
         )

@@ -25,7 +25,7 @@ from pymrst.gridprocessing import (
     cart_grid, compute_geometry, tensor_grid,
 )
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel, initial_state_from_deck,
+    GenericBlackOilModelAD, initial_state_from_deck,
 )
 from pymrst.modules.ad_core.statefunctions.flowprops import (
     BaseRelativePermeability,
@@ -59,7 +59,7 @@ def check_base_oil_water():
                  compi=np.array([1.0, 0.0]), sign=1)
     w = add_well(w, g, rock, np.array([g.cells.num - 1]), well_type="bhp",
                  val=150 * BARSA, compi=np.array([0.0, 1.0]), sign=-1)
-    model = GenericBlackOilModel(g, rock, fluid, w)
+    model = GenericBlackOilModelAD(g, rock, fluid, w)
     model.FlowPropertyFunctions.set_state_function(
         "BaseRelativePermeability", BaseRelativePermeability(model))
     model.FlowPropertyFunctions.set_state_function(
@@ -88,7 +88,7 @@ def check_base_and_hysteresis_black_oil():
                          val=wd["val"], radius=wd["radius"], compi=wd["compi"],
                          sign=wd["sign"], name=name, ref_depth=wd["ref_depth"],
                          gravity=np.array([0.0, 0.0, NORM_GRAVITY]))
-    model = GenericBlackOilModel(g, rock, fluid, wells, disgas=True,
+    model = GenericBlackOilModelAD(g, rock, fluid, wells, disgas=True,
                                  gravity=NORM_GRAVITY)
     nc = g.cells.num
     st = dict(initial_state_from_deck(model, deck))

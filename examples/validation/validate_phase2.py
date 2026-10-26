@@ -13,7 +13,7 @@ import scipy.io
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.params import add_bc, add_source, add_well, gravity_vector, make_rock
-from pymrst.modules.incomp import incomp_tpfa, init_single_fluid
+from pymrst.modules.incomp import incomp_tpfa_ad as incomp_tpfa, init_single_fluid
 from pymrst.solvers import compute_trans, init_res_sol, init_state
 from pymrst.utils.units import BARSA, CENTI, DARCY, MILLI, POISE
 

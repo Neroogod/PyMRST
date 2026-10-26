@@ -4,9 +4,9 @@ import numpy as np
 # showConceptualAD.
 
 from pymrst.modules.ad_core.examples import (
-    TutorialAdd,
-    TutorialNumber,
-    TutorialProduct,
+    TutorialAddAD,
+    TutorialNumberAD,
+    TutorialProductAD,
     build_tutorial_state_function_group,
     run_conceptual_ad,
 )

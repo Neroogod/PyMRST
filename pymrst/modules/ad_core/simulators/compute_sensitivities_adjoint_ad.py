@@ -3,8 +3,12 @@
 The current flow adjoint differentiates schedule well-control targets.  This
 module adds MRST's parameter grouping surface: one parameter can select wells
 and one or more control steps, with a single value shared across those steps.
-Rock and initial-state parameters require residual parameter seeding and are
-rejected explicitly until that backend support is available.
+Initial-state (`state0`) parameters are supported too: their derivative is a
+by-product of the same backward sweep, so it costs one extra
+transpose-multiply rather than another simulation. Rock parameters are not -
+they need the residual differentiated with respect to porosity and
+permeability, which means seeding those as AD variables inside the model's
+assembly, and that is a change to the model rather than to this module.
 """
 
 from __future__ import annotations
@@ -38,15 +42,62 @@ def _get(value: Any, name: str, default=None):
     return getattr(value, name, default)
 
 
+def _state0_gradient(result: AdjointResult,
+                     parameter: AdjointParameter) -> np.ndarray:
+    """dJ/dx_0 restricted to the cells this parameter selects.
+
+    The initial-state sensitivity comes out of the same backward sweep as the
+    control gradients - it is the first step's multiplier pushed back through
+    that step's derivative with respect to the state it started from - so this
+    costs nothing beyond the sweep already run.
+
+    `subset` selects entries of the *state vector*, which for a two-phase
+    model is `[pressure; sW; well unknowns]`. A parameter naming initial
+    pressure therefore passes the pressure block's indices; there is no
+    field-name lookup here because the state layout belongs to the model, not
+    to this function, and inventing one would guess it.
+    """
+    gradient = result.initial_state_gradient
+    if gradient is None:
+        raise ValueError(
+            "the adjoint sweep produced no initial-state gradient; a schedule "
+            "with no timesteps has nothing to differentiate")
+    subset = _get(parameter, "subset")
+    if subset is None:
+        return np.asarray(gradient, dtype=float)
+    indices = np.asarray(subset, dtype=int)
+    if indices.size and (indices.min() < 0 or indices.max() >= gradient.size):
+        raise IndexError(
+            f"parameter subset selects entries outside the {gradient.size}-"
+            f"element state vector")
+    return np.asarray(gradient, dtype=float)[indices]
+
+
 def _parameter_gradient(
-    full: np.ndarray, parameter: AdjointParameter, well_types: Sequence[str]
+    full: np.ndarray, parameter: AdjointParameter,
+    well_types: Sequence[str], result: AdjointResult | None = None
 ) -> np.ndarray:
-    belongs = _get(parameter, "belongs_to",
-                   _get(parameter, "belongsTo", "schedule"))
-    if str(belongs).lower() != "schedule":
+    belongs = str(_get(parameter, "belongs_to",
+                       _get(parameter, "belongsTo", "schedule"))).lower()
+    if belongs == "state0":
+        if result is None:
+            raise ValueError("a state0 parameter needs the adjoint result")
+        return _state0_gradient(result, parameter)
+    if belongs != "schedule":
+        # Rock parameters - porosity, permeability, transmissibility - need
+        # the *residual* differentiated with respect to them, which means
+        # seeding them as AD variables inside `assemble`. That is a change to
+        # the model, not to this function, and no amount of post-processing
+        # the control gradient can substitute for it.
+        #
+        # `state0` is different and is handled above: its derivative is
+        # already a by-product of the backward sweep, which is why one is
+        # available and the other is not.
         raise NotImplementedError(
-            "adjoint seeding for model/state0 parameters is not yet available"
-        )
+            f"adjoint seeding for {belongs!r} parameters needs the residual "
+            f"differentiated with respect to them - rock properties must be "
+            f"AD variables in the model's assemble() for that. 'schedule' and "
+            f"'state0' parameters are supported.")
     control_type = str(_get(parameter, "control_type",
                             _get(parameter, "controlType", ""))).lower()
     if control_type not in {"bhp", "rate", "wrat", "orat", "grat"}:
@@ -108,7 +159,7 @@ def compute_sensitivities_adjoint_ad(
         if name in sensitivities:
             raise ValueError(f"duplicate sensitivity parameter name {name!r}")
         sensitivities[name] = _parameter_gradient(
-            result.gradient, parameter, well_types
+            result.gradient, parameter, well_types, result
         )
     return sensitivities
 

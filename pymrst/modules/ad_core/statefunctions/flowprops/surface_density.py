@@ -37,7 +37,7 @@ __all__ = ["SurfaceDensity"]
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-        GenericBlackOilModel,
+        GenericBlackOilModelAD,
     )
     from pymrst.modules.ad_core.statefunctions.state_function import State
     from pymrst.modules.ad_props import init_simple_adi_fluid
@@ -52,7 +52,7 @@ if __name__ == "__main__":
             n=[2, 2], c=[1e-6 / BARSA, 1e-4 / BARSA], p_ref=200 * BARSA)
         w = add_well(None, g, rock, np.array([0]), well_type="rate", val=2e-3,
                      compi=np.array([1.0, 0.0]), sign=1)
-        model = GenericBlackOilModel(g, rock, fluid, w)
+        model = GenericBlackOilModelAD(g, rock, fluid, w)
         return model, g.cells.num
 
     def test_surface_density_broadcasts_rho_s():

@@ -125,21 +125,30 @@ def tokenize_with_lines(text: str) -> Tuple[List[str], List[int]]:
         matches = list(re.finditer(r"'[^']*'|\"[^\"]*\"|[^\s,]+", line))
         for position, match in enumerate(matches):
             token = match.group(0)
-            # a trailing slash is its own token, however it is written
-            if len(token) > 1 and token.endswith("/") and not token.startswith("'"):
-                tokens.extend((token[:-1], "/"))
-                lines.extend((number, number))
+            quoted = token.startswith(("'", '"'))
+            # A record-ending slash is its own token however it is written, and
+            # it need not be at the *end* of one: the aquifertest deck writes
+            # `'BHP' 2* 300 /|`, where the slash carries a stray character.
+            # ECLIPSE ends the record at the slash and ignores the rest of the
+            # line; matching only a trailing slash left `/|` as an ordinary
+            # value, so the record never terminated and the reader ran on into
+            # the next keyword - swallowing `WCONPROD` as a data row and
+            # leaving the producer with no control.
+            cut = -1 if quoted else token.find("/")
+            if cut >= 0 and token != "/":
+                if cut:
+                    tokens.append(token[:cut])
+                    lines.append(number)
+                tokens.append("/")
+                lines.append(number)
+                token = "/"          # for the commentary rule below
             else:
                 tokens.append(token)
                 lines.append(number)
             # Free-form text after a record-ending slash is commentary in
             # many production decks (for example ``/ Justert 22/7`` in
             # Norne). Preserve compact numeric records such as ``1 / 2 /``.
-            ended = token == "/" or (
-                len(token) > 1 and token.endswith("/")
-                and not token.startswith(("'", '"'))
-            )
-            if ended and position + 1 < len(matches):
+            if token == "/" and position + 1 < len(matches):
                 following = matches[position + 1].group(0)
                 if re.match(r"[A-Za-z]", following):
                     break
@@ -248,6 +257,29 @@ if __name__ == "__main__":
         assert "'PROD A'" in tokens, tokens
         print("ok test_tokenize_keeps_quoted_strings_whole")
 
+    def test_a_slash_with_trailing_junk_still_ends_the_record() -> None:
+        """The aquifertest deck writes `'BHP' 2* 300 /|`. ECLIPSE ends the
+        record at the slash and ignores the rest of the line.
+
+        Matching only a *trailing* slash left `/|` as an ordinary value, so
+        the record never terminated: the reader ran past the table's own `/`
+        into the next keyword and kept `WCONPROD` as a data row of
+        `WCONINJE`. The producer then had no control at all - it came out
+        with a 0 bar target, and one cell's pressure collapsed to 4.5 bar
+        against ECLIPSE's 200.8.
+        """
+        assert tokenize("'INJE01' 'BHP' 2* 300 /|") == [
+            "'INJE01'", "'BHP'", "2*", "300", "/"]
+        cursor = DeckCursor(tokenize("'A' 1 /|\n/\n"))
+        assert cursor.read_record_tokens() == ["'A'", "1"]
+        assert cursor.read_record_tokens() == []
+        print("ok test_a_slash_with_trailing_junk_still_ends_the_record")
+
+    def test_a_slash_inside_a_quoted_string_is_not_a_terminator() -> None:
+        """A well named `'A/B'` is a name, not the end of the record."""
+        assert tokenize("'A/B' 1 /") == ["'A/B'", "1", "/"]
+        print("ok test_a_slash_inside_a_quoted_string_is_not_a_terminator")
+
     def test_tokenize_drops_free_text_after_record_slash() -> None:
         tokens = tokenize("859.5 1033.0 0.854 / Justert 22/7\n")
         assert tokens == ["859.5", "1033.0", "0.854", "/"], tokens
@@ -336,6 +368,8 @@ if __name__ == "__main__":
     test_a_rewound_keyword_is_read_again()
     test_keyword_strips_a_terminating_slash()
     test_tokenize_drops_comments_and_splits_slashes()
+    test_a_slash_with_trailing_junk_still_ends_the_record()
+    test_a_slash_inside_a_quoted_string_is_not_a_terminator()
     test_tokenize_drops_free_text_after_record_slash()
     test_commas_separate_values_like_whitespace()
     test_tokenize_keeps_quoted_strings_whole()

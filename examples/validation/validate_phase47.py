@@ -48,7 +48,7 @@ import scipy.io
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
     blackoil_status,
 )
 from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
@@ -157,7 +157,7 @@ def build(ref, bhp_val: float):
     # MRST never sees this because it stops at 1e-3. PyMRST, asking for 1e-8,
     # walks into it. The tolerance is the thing that is wrong here, not the
     # physics: 1e-8 is not a tolerance this discretisation can always reach.
-    model = GenericBlackOilModel(g, rock, fluid, w, disgas=True, vapoil=True,
+    model = GenericBlackOilModelAD(g, rock, fluid, w, disgas=True, vapoil=True,
                                  gravity=0.0, tol_cnv=1e-3, tol_mb=1e-7,
                                  tol_well=1e-8)
 

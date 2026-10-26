@@ -48,6 +48,11 @@ def reorder_well_perforations_by_depth(wells: Sequence[Any],
     return wells
 
 
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+reorderWellPerforationsByDepth = reorder_well_perforations_by_depth
+
 __all__ = ["reorder_well_perforations_by_depth"]
 
 

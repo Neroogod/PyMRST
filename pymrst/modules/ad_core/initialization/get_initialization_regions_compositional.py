@@ -12,8 +12,8 @@ from typing import Any, Callable, Optional, Sequence
 import numpy as np
 
 from pymrst.modules.ad_core.initialization.regions import (
-    get_initialization_regions_base,
-    get_min_max_phase_saturations,
+    get_initialization_regions_base_ad,
+    get_min_max_phase_saturations_ad,
 )
 
 
@@ -106,11 +106,11 @@ def get_initialization_regions_compositional(
         )
 
     if s_min is None or s_max is None:
-        dmin, dmax = get_min_max_phase_saturations(model)
+        dmin, dmax = get_min_max_phase_saturations_ad(model)
         s_min = dmin if s_min is None else s_min
         s_max = dmax if s_max is None else s_max
     reference = names.index("O") if "O" in names else 0
-    return get_initialization_regions_base(
+    return get_initialization_regions_base_ad(
         model, rho, contacts, datum_depth=datum_depth,
         datum_pressure=datum_pressure, cells=cells,
         pc_functions=pc_functions, pc_sign=pc_sign,

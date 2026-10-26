@@ -60,7 +60,7 @@ def pressure_bc_contrib(
     return output, cells
 
 
-def pressure_bc_contrib_adi(
+def pressure_bc_contrib_adi_ad(
     grid,
     operators,
     phase_pressure,
@@ -93,11 +93,34 @@ def pressure_bc_contrib_adi(
 
 
 pressureBCContrib = pressure_bc_contrib
-pressureBCContribADI = pressure_bc_contrib_adi
 
 __all__ = [
     "pressure_bc_contrib",
     "pressureBCContrib",
-    "pressure_bc_contrib_adi",
-    "pressureBCContribADI",
+    "pressure_bc_contrib_adi_ad",
 ]
+
+
+if __name__ == "__main__":
+    from types import SimpleNamespace
+
+    from pymrst.gridprocessing import cart_grid, compute_geometry
+    from pymrst.modules.ad_core.utils.bc_to_ad_bc import bc_to_ad_bc
+    from pymrst.modules.ad_core.utils.pressure_bc_contrib_adi import pressure_bc_contrib_adi
+    from pymrst.params.gravity.gravity import isolated_gravity
+    from pymrst.params.wells_and_bc import add_bc
+
+    def test_the_earlier_adi_variant_agrees_with_mrsts_without_gravity():
+        G = compute_geometry(cart_grid([2, 1, 1], [2.0, 1.0, 1.0]))
+        west = int(np.flatnonzero(np.isclose(G.faces.centroids[:, 0], 0.0))[0])
+        bc = bc_to_ad_bc(G, add_bc(None, np.array([west]), "pressure", np.array([12.0])))
+        ops = SimpleNamespace(T_all=np.full(G.faces.num, 2.0))
+        args = ([np.array([10.0, 8.0])], [np.ones(2)], [np.full(2, 3.0)], [np.ones(2)], bc)
+        old, _ = pressure_bc_contrib_adi_ad(G, ops, *args)
+        with isolated_gravity("off"):
+            new, _ = pressure_bc_contrib_adi(G, ops, *args)
+        assert np.allclose(old[0], new[0])
+        print("ok test_the_earlier_adi_variant_agrees_with_mrsts_without_gravity")
+
+    test_the_earlier_adi_variant_agrees_with_mrsts_without_gravity()
+    print("\nAll tests passed!")

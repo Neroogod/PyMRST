@@ -23,7 +23,7 @@ import numpy as np
 import pytest
 
 from pymrst.gridprocessing import cart_grid, compute_geometry, process_grdecl
-from pymrst.modules.ad_core.initialization import get_initialization_regions_deck
+from pymrst.modules.ad_core.initialization import get_initialization_regions_deck_ad
 
 # datum depth, datum pressure, OWC, Pc_ow, GOC, Pc_go
 EQUIL_ONE = np.array([[2000.0, 200e5, 2050.0, 0.11, 2020.0, 0.22]])
@@ -92,7 +92,7 @@ def test_the_regions_partition_every_cell_exactly_once():
     pvtnum = np.ones(cells, dtype=np.int64)
     pvtnum[::2] = 2
 
-    regions = get_initialization_regions_deck(
+    regions = get_initialization_regions_deck_ad(
         _model(grid), _deck(EQUIL_TWO, EQLNUM=eqlnum, SATNUM=satnum,
                             PVTNUM=pvtnum))
     covered = _partition_of(regions)
@@ -110,7 +110,7 @@ def test_one_region_per_distinct_combination():
     pvtnum = np.ones(cells, dtype=np.int64)
     pvtnum[:4] = 2
 
-    regions = get_initialization_regions_deck(
+    regions = get_initialization_regions_deck_ad(
         _model(grid), _deck(EQUIL_TWO, EQLNUM=eqlnum, SATNUM=satnum, PVTNUM=pvtnum))
     tags = {(r.eqlnum, r.satnum, r.pvtnum) for r in regions}
     expected = {(int(e), int(s), int(p))
@@ -132,7 +132,7 @@ def test_region_arrays_are_mapped_through_the_active_cell_index():
     assert grid.cells.num < 8 and not np.array_equal(index_map, np.arange(8))
 
     cartesian_eqlnum = np.array([1, 1, 2, 2, 1, 1, 2, 2], dtype=np.int64)
-    regions = get_initialization_regions_deck(
+    regions = get_initialization_regions_deck_ad(
         _model(grid), _deck(EQUIL_TWO, EQLNUM=cartesian_eqlnum))
 
     expected = cartesian_eqlnum[index_map]
@@ -157,7 +157,7 @@ def test_an_equil_record_with_no_cells_produces_no_region():
     """
     grid = _grid()
     eqlnum = np.ones(grid.cells.num, dtype=np.int64)      # nothing in region 2
-    regions = get_initialization_regions_deck(
+    regions = get_initialization_regions_deck_ad(
         _model(grid), _deck(EQUIL_TWO, EQLNUM=eqlnum))
     assert len(regions) == 1
     assert regions[0].eqlnum == 1
@@ -165,32 +165,95 @@ def test_an_equil_record_with_no_cells_produces_no_region():
 
 def test_missing_regions_keywords_default_to_a_single_region():
     grid = _grid()
-    regions = get_initialization_regions_deck(_model(grid), _deck(EQUIL_ONE))
+    regions = get_initialization_regions_deck_ad(_model(grid), _deck(EQUIL_ONE))
     assert len(regions) == 1
     assert (regions[0].eqlnum, regions[0].satnum, regions[0].pvtnum) == (1, 1, 1)
     assert sorted(np.asarray(regions[0].cells).ravel().tolist()) == \
         list(range(grid.cells.num))
 
 
-def test_contacts_are_ordered_gas_oil_then_oil_water():
-    """Swapping these puts the gas-oil contact at the oil-water depth.
+def test_contacts_are_ordered_water_oil_then_gas_oil():
+    """**Phase order, not depth order** - and this test used to assert the
+    opposite, which is how the bug survived.
 
-    Nothing rejects it - the run initialises and produces a saturation field
-    that is simply wrong, which is why the order is asserted against the EQUIL
-    record's own columns rather than against a golden number.
+    `initialize_equilibrium_pressures_ad` walks the phases by index (water, then
+    gas) and takes the next contact for each, so the list is
+    `[water-oil, gas-oil]`. MRST passes the same:
+    `getInitializationRegionsBlackOil(model, [70, 30])` gives the deeper water
+    contact first.
+
+    Shallowest-first anchors water at the gas-oil contact and gas at the
+    water-oil contact. Each then floods its whole range and the oil is
+    squeezed out entirely - Norne equilibrated with zero oil in all 44431
+    cells. The previous version of this test asserted `[goc, owc]` while its
+    own docstring described that outcome as "simply wrong", which is why the
+    order below is checked against the *pressures it produces* and not only
+    against the array.
     """
     grid = _grid()
     owc, pc_ow, goc, pc_go = (EQUIL_ONE[0, 2], EQUIL_ONE[0, 3],
                               EQUIL_ONE[0, 4], EQUIL_ONE[0, 5])
 
-    two = get_initialization_regions_deck(_model(grid, 2), _deck(EQUIL_ONE))[0]
+    two = get_initialization_regions_deck_ad(_model(grid, 2), _deck(EQUIL_ONE))[0]
     np.testing.assert_allclose(np.asarray(two.contacts).ravel(), [owc])
     np.testing.assert_allclose(np.asarray(two.contacts_pc).ravel(), [pc_ow])
 
-    three = get_initialization_regions_deck(_model(grid, 3), _deck(EQUIL_ONE))[0]
-    np.testing.assert_allclose(np.asarray(three.contacts).ravel(), [goc, owc])
+    three = get_initialization_regions_deck_ad(_model(grid, 3), _deck(EQUIL_ONE))[0]
+    np.testing.assert_allclose(np.asarray(three.contacts).ravel(), [owc, goc])
     np.testing.assert_allclose(np.asarray(three.contacts_pc).ravel(),
-                               [pc_go, pc_ow])
+                               [pc_ow, pc_go])
+
+
+def test_each_phase_is_anchored_at_its_own_contact():
+    """The consequence, measured on a real model rather than assumed.
+
+    Water's phase pressure must cross the oil's *at the water-oil contact*,
+    and gas's at the gas-oil contact. That is what "anchored" means, and it is
+    the property the ordering exists to produce - so a future reordering fails
+    here even if someone updates the array assertion above to match it.
+
+    Swapping them is what left Norne with no oil in any of its 44431 cells.
+    """
+    from pymrst.gridprocessing import cart_grid, compute_geometry
+    from pymrst.modules.ad_blackoil.models import GenericBlackOilModelAD
+    from pymrst.modules.ad_core.initialization.get_initialization_regions_black_oil import (
+        get_initialization_regions_black_oil_ad,
+    )
+    from pymrst.modules.ad_core.initialization.equilibrium import (
+        initialize_equilibrium_pressures_ad,
+    )
+    from pymrst.modules.ad_props import init_simple_adi_fluid
+    from pymrst.params import make_rock
+    from pymrst.utils.units import BARSA, CENTI, DARCY, POISE
+
+    owc, goc = 70.0, 30.0                      # deeper first: water, then gas
+    g = compute_geometry(cart_grid([1, 1, 20], [10.0, 10.0, 100.0]))
+    rock = make_rock(g, 0.1 * DARCY, 0.3)
+    fluid = init_simple_adi_fluid(
+        n=[2, 3, 1], rho=[1000.0, 700.0, 10.0],
+        mu=np.array([1.0, 5.0, 0.1]) * CENTI * POISE,
+        c=np.array([0.0, 1e-6, 1e-4]) / BARSA)
+    model = GenericBlackOilModelAD(g, rock, fluid, [], gravity=9.80665)
+    region = get_initialization_regions_black_oil_ad(
+        model, [owc, goc], datum_pressure=200 * BARSA)
+
+    p = initialize_equilibrium_pressures_ad(model, region, 9.80665)
+    z = np.asarray(g.cells.centroids)[:, 2]
+    order = np.argsort(z)
+
+    for phase, contact in ((0, owc), (2, goc)):
+        # `p_phase - p_oil` rises with depth for water and *falls* for gas,
+        # so the crossing is located by the sign change rather than by
+        # `np.interp`, which needs an increasing abscissa and silently
+        # returns a plausible wrong answer for the gas otherwise.
+        difference = (p[:, phase] - p[:, 1])[order]
+        depths = z[order]
+        sign_change = np.flatnonzero(np.diff(np.sign(difference)) != 0)
+        assert sign_change.size == 1, (phase, sign_change)
+        k = int(sign_change[0])
+        lo, hi = difference[k], difference[k + 1]
+        crossing = depths[k] + (depths[k + 1] - depths[k])*(-lo)/(hi - lo)
+        assert abs(crossing - contact) < 3.0, (phase, crossing, contact)
 
 
 def test_the_datum_is_taken_from_the_matching_equil_record():
@@ -198,7 +261,7 @@ def test_the_datum_is_taken_from_the_matching_equil_record():
     cells = grid.cells.num
     eqlnum = np.ones(cells, dtype=np.int64)
     eqlnum[cells//2:] = 2
-    regions = get_initialization_regions_deck(
+    regions = get_initialization_regions_deck_ad(
         _model(grid), _deck(EQUIL_TWO, EQLNUM=eqlnum))
     by_tag = {r.eqlnum: r for r in regions}
     for tag, record in ((1, EQUIL_TWO[0]), (2, EQUIL_TWO[1])):
@@ -220,12 +283,12 @@ def test_a_deck_without_equil_is_refused():
     grid = _grid()
     for empty in ([], np.zeros((0, 6))):
         with pytest.raises(ValueError, match="EQUIL"):
-            get_initialization_regions_deck(
+            get_initialization_regions_deck_ad(
                 _model(grid), {"SOLUTION": {"EQUIL": empty}})
 
     for absent in ({"SOLUTION": {}}, {}):
         with pytest.raises((TypeError, ValueError)):
-            get_initialization_regions_deck(_model(grid), absent)
+            get_initialization_regions_deck_ad(_model(grid), absent)
 
 
 def test_a_fluid_without_surface_densities_is_refused():
@@ -233,7 +296,7 @@ def test_a_fluid_without_surface_densities_is_refused():
     model = _model(grid)
     model.fluid = SimpleNamespace(swcon=0.1)
     with pytest.raises(ValueError, match="surface densities"):
-        get_initialization_regions_deck(model, _deck(EQUIL_ONE))
+        get_initialization_regions_deck_ad(model, _deck(EQUIL_ONE))
 
 
 def test_surface_densities_do_not_vary_by_pvt_region():
@@ -251,7 +314,7 @@ def test_surface_densities_do_not_vary_by_pvt_region():
     pvtnum = np.ones(cells, dtype=np.int64)
     pvtnum[cells//2:] = 2
 
-    regions = get_initialization_regions_deck(
+    regions = get_initialization_regions_deck_ad(
         _model(grid), _deck(EQUIL_ONE, PVTNUM=pvtnum))
     assert {r.pvtnum for r in regions} == {1, 2}
     densities = [tuple(np.asarray(r.rho, dtype=float).ravel()) for r in regions]

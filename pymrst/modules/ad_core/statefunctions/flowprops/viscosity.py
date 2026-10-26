@@ -36,11 +36,32 @@ class Viscosity(StateFunction):
         else:
             self.depends_on("pressure", STATE)
 
+    def evaluate_phase_viscosity(self, model: Any, state: Any, name: str,
+                                 p: Any):
+        """One phase's viscosity at its own pressure.
+
+        MRST's extension seam: `evaluate_on_domain` loops the phases and
+        subclasses override this for a single phase rather than reimplementing
+        the loop. MRST reaches the curve as `fluid.mu<name>(p)`; PyMRST's
+        fluids expose one vectorised `fluid.mu(p)` returning every phase, so
+        this indexes that. Both spellings are accepted, MRST's first, so a
+        fluid carrying `muO` is used the way its author intended.
+        """
+        index = model.get_phase_index(name)
+        curve = getattr(getattr(model, "raw_fluid", None) or model.fluid,
+                        f"mu{name}", None)
+        if curve is not None:
+            return curve(p)
+        return model.fluid.mu(p)[index]
+
+    evaluatePhaseViscosity = evaluate_phase_viscosity
+
     def evaluate_on_domain(self, model: Any, state: Any):
         p_phase = phase_pressures(self, model, state)
-        if not self.use_phase_pressures:
-            return list(model.fluid.mu(p_phase[0]))
-        return [model.fluid.mu(p_phase[i])[i] for i in range(model.n_phases)]
+        names = model.get_phase_names()
+        return [self.evaluate_phase_viscosity(model, state, names[i],
+                                              p_phase[i])
+                for i in range(model.n_phases)]
 
 
 class BlackOilViscosity(Viscosity):
@@ -55,13 +76,21 @@ class BlackOilViscosity(Viscosity):
         if self.vapoil:
             self.depends_on(["rv", "status"], STATE)
 
-    def evaluate_on_domain(self, model: Any, state: Any):
-        p_phase = phase_pressures(self, model, state)
+    def evaluate_phase_viscosity(self, model: Any, state: Any, name: str,
+                                 p: Any):
+        """Live-oil and wet-gas branches; the base class otherwise.
+
+        MRST branches here on the phase name - oil with dissolved gas takes
+        `rs`, gas with vaporised oil takes `rv` - and the saturated flag says
+        which side of the bubble point each cell is on. PyMRST's fluids take
+        all four and branch internally, so passing them through is the same
+        computation with the decision made one level down.
+        """
+        index = model.get_phase_index(name)
         _, rs, sat, rv, sat_g = pvt_args(model, state)
-        if not self.use_phase_pressures:
-            return list(model.fluid.mu(p_phase[0], rs, sat, rv, sat_g))
-        return [model.fluid.mu(p_phase[i], rs, sat, rv, sat_g)[i]
-                for i in range(model.n_phases)]
+        return model.fluid.mu(p, rs, sat, rv, sat_g)[index]
+
+    evaluatePhaseViscosity = evaluate_phase_viscosity
 
 
 __all__ = ["BlackOilViscosity", "Viscosity"]
@@ -72,7 +101,7 @@ if __name__ == "__main__":
 
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-        GenericBlackOilModel,
+        GenericBlackOilModelAD,
     )
     from pymrst.modules.ad_core.statefunctions.pvt_property_functions import (
         Viscosity as LegacyViscosity,
@@ -93,7 +122,7 @@ if __name__ == "__main__":
                      compi=np.array([1.0, 0.0]), sign=1)
         w = add_well(w, g, rock, np.array([g.cells.num - 1]), well_type="bhp",
                      val=150 * BARSA, compi=np.array([0.0, 1.0]), sign=-1)
-        model = GenericBlackOilModel(g, rock, fluid, w)
+        model = GenericBlackOilModelAD(g, rock, fluid, w)
         st = model.init_state_ad(State(
             pressure=np.linspace(210, 190, g.cells.num) * BARSA,
             sW=np.full(g.cells.num, 0.45), qWs=np.array([2e-3]),

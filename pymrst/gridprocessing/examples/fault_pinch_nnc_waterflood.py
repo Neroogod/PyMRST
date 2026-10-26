@@ -98,7 +98,7 @@ def run_fault_pinch_nnc_waterflood():
     _deck, grid, faults, model = build_fault_pinch_nnc_waterflood()
     state = model.initial_state(250*BARSA, 0.15)
     steps = np.full(6, 2*DAY)
-    states, iterations = simulate_schedule_ad(state, model, steps)
+    states, iterations = simulate_schedule_ad(state, model, steps, verbose=False)
     return FaultPinchResult(
         grid=grid, faults=faults,
         pressure=np.vstack([s.pressure for s in states]),

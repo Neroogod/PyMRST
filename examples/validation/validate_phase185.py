@@ -17,6 +17,7 @@ from pymrst.modules.ad_core.models.facilities import (  # noqa: E402
     VFPTable,
     selectFacilityFromDeck,
     select_facility_from_deck,
+    select_facility_from_deck_ad,
     vfp_tables_from_deck,
 )
 from pymrst.params.wells_and_bc import Well  # noqa: E402
@@ -110,7 +111,7 @@ def validate_new_facility_selection() -> int:
     prod = _producer_table(300.0)
     well = _well("P1", sign=-1, vfp_index=1)
     model = ModelShell([well])
-    facility = select_facility_from_deck(_deck({"VFPPROD": [prod]}), model)
+    facility = select_facility_from_deck_ad(_deck({"VFPPROD": [prod]}), model)
 
     failures = 0
     failures += _check("selector creates a native FacilityModel",
@@ -133,7 +134,7 @@ def validate_existing_facility_update_and_warning() -> int:
 
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        returned = selectFacilityFromDeck(_deck({"VFPPROD": [prod_a]}, {"VFPPROD": [prod_b]}), model)
+        returned = select_facility_from_deck_ad(_deck({"VFPPROD": [prod_a]}, {"VFPPROD": [prod_b]}), model)
 
     failures = 0
     failures += _check("selector reuses an existing facility model",

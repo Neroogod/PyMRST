@@ -21,7 +21,14 @@ def equations_water_mech(model: MechWaterModel | MechWaterWellModel, state0,
     accepting them here keeps schedule-driven call sites interoperable.
     Set ``return_metadata=True`` for ``(eqs, names, types, state)``.
     """
-    if hasattr(model, "get_equations"):
+    # Not `hasattr`. `PhysicalModel` declares `get_equations` and raises from
+    # it, so once a model inherits that base the name exists on every model and
+    # this probe starts selecting a method that cannot run - turning a working
+    # fall-through into a NotImplementedError. What the branch actually wants
+    # to know is whether the model *implements* its own equations.
+    from pymrst.modules.ad_core.models.physical_model import PhysicalModel
+    own = getattr(type(model), "get_equations", None)
+    if own is not None and own is not PhysicalModel.get_equations:
         eqs = model.get_equations(state0, state, dt)
         return format_equation_output(model, state, eqs, ("water",),
                                       return_metadata)

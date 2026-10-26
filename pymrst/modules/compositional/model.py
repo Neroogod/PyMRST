@@ -244,7 +244,8 @@ class OverallCompositionModel:
         dz_max: float = 0.1,
         dp_max_rel: float = 0.25,
         gravity: float = 0.0,
-        tol_cnv: float = 1.0e-9,
+        # MRST's `ReservoirModel` default; see generic_black_oil_model.
+        tol_cnv: float = 1e-3,
         tol_well: float = 1.0e-10,
         max_iterations: int = 40,
         eos_model=None,
@@ -3247,11 +3248,11 @@ if __name__ == "__main__":
     from pymrst.params.wells_and_bc import add_source, add_well
     from pymrst.utils.units import ATM, DARCY, DAY, MILLI
 
-    def _closed_model(nx: int = 10):
+    def _closed_model(nx: int = 10, **tolerances):
         g = compute_geometry(cart_grid([nx, 1, 1], [100.0, 10.0, 10.0]))
         rock = make_rock(g, 100 * MILLI * DARCY, 0.25)
         return OverallCompositionModel(g, rock, simple_mixture(),
-                                       temperature=350.0)
+                                       temperature=350.0, **tolerances)
 
     def _well_model(nx: int = 8):
         g = compute_geometry(cart_grid([nx, 1, 1], [100.0, 10.0, 10.0]))
@@ -3313,7 +3314,20 @@ if __name__ == "__main__":
         print("ok test_jacobian_matches_finite_difference")
 
     def test_step_converges_and_conserves_mass():
-        m = _closed_model(nx=10)
+        """Mass is conserved on a closed system - asserted at a tight solve.
+
+        The drift tracks the convergence tolerance almost proportionally.
+        Measured over these five steps: `tol_cnv = 1e-3` (the MRST default the
+        constructor now carries) drifts 8.7e-5, `1e-6` drifts 5.0e-8, `1e-9`
+        drifts 1.5e-11. None of those is a defect - CNV is a per-cell mass
+        error bound and the model is honouring it.
+
+        But conservation is the property this test exists to check, and
+        checking it at a tolerance that *permits* the drift asks nothing. So
+        the model here is built tight, and the numbers above are recorded so
+        the trade is visible rather than buried in an rtol.
+        """
+        m = _closed_model(nx=10, tol_cnv=1e-9)
         nc, ncomp = m.g.cells.num, m.mix.n
         p0 = np.linspace(80 * BARSA, 60 * BARSA, nc)
         z0 = np.tile([0.5, 0.3, 0.2], (nc, 1))
@@ -3521,9 +3535,16 @@ if __name__ == "__main__":
     def test_water_model_conserves_water_and_components():
         g = compute_geometry(cart_grid([6, 1, 1], [60.0, 10.0, 10.0]))
         rock = make_rock(g, 100 * MILLI * DARCY, 0.25)
+        # Conservation is exact in the equations themselves (verified by
+        # tightening tol_cnv down to 1e-11: the apparent mass error below
+        # shrinks monotonically to ~1e-13). The default tol_cnv=1e-3 only
+        # bounds the per-cell Newton residual, not the rtol=1e-6 this test
+        # checks total mass to, so it must ask for a tight solve explicitly -
+        # matching the tol_cnv=1e-9 precedent used elsewhere in this file
+        # (_closed_model) for the same reason.
         m = OverallCompositionModel(g, rock, simple_mixture(),
                                     temperature=350.0, water=True,
-                                    n_kr=(2.0, 2.0, 2.0))
+                                    n_kr=(2.0, 2.0, 2.0), tol_cnv=1e-9)
         p0 = np.linspace(80 * BARSA, 60 * BARSA, m.g.cells.num)
         sw0 = np.linspace(0.15, 0.35, m.g.cells.num)
         st = m.initial_state(p0, [0.5, 0.3, 0.2], sW=sw0)
@@ -3573,10 +3594,15 @@ if __name__ == "__main__":
         g = compute_geometry(cart_grid([6, 1, 1], [60.0, 10.0, 10.0]))
         rock = make_rock(g, 100 * MILLI * DARCY, 0.25)
         pc0 = 0.4 * BARSA
+        # At the default tol_cnv=1e-3 the capillary redistribution signal is
+        # smaller than the convergence tolerance, so Newton calls the initial
+        # guess already converged (0 iterations) and sW never moves at all -
+        # a tolerance artifact, not physics. Tighten tol_cnv so the solver
+        # actually takes the step this test means to check.
         m = OverallCompositionModel(g, rock, simple_mixture(),
                                     temperature=350.0, water=True,
                                     pc_ow=lambda sw: pc0 * (1.0 - sw),
-                                    n_kr=(2.0, 2.0, 2.0))
+                                    n_kr=(2.0, 2.0, 2.0), tol_cnv=1e-9)
         sw0 = np.linspace(0.15, 0.35, g.cells.num)
         st = m.initial_state(70 * BARSA, [0.5, 0.3, 0.2], sW=sw0)
         st1, ok, _ = m.step(st, 20 * DAY)

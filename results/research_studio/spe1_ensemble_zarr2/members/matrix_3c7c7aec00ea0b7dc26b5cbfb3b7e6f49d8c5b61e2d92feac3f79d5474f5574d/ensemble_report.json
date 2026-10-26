@@ -1,0 +1,78 @@
+{
+  "effective_workers": 3,
+  "execution_backend": "resume_only",
+  "matrix_id": "matrix_3c7c7aec00ea0b7dc26b5cbfb3b7e6f49d8c5b61e2d92feac3f79d5474f5574d",
+  "memory_per_worker_bytes": 536870912,
+  "outcomes": [
+    {
+      "coordinate": {
+        "comparison_group": "time_integration",
+        "components": {
+          "time_integration": "fully-implicit"
+        },
+        "experiment_id": "experiment_06a02706a0f9858ca33c4ba05fe3ce2d513427564cc68ef376e388b6e3f1e643",
+        "member_id": "member_cca69992684cb62a8527aedafb86f8e33ca39d4f944ab10f74dbbf0459c25f9a",
+        "ordinal": 0,
+        "parameters": {},
+        "variant_name": "fim"
+      },
+      "elapsed_seconds": 0.7122089170006802,
+      "error_message": "",
+      "error_type": "",
+      "resumed": true,
+      "seed": 2337545716022286440,
+      "status": "completed",
+      "store_path": "results/research_studio/spe1_ensemble_zarr2/members/matrix_3c7c7aec00ea0b7dc26b5cbfb3b7e6f49d8c5b61e2d92feac3f79d5474f5574d/member_cca69992684cb62a8527aedafb86f8e33ca39d4f944ab10f74dbbf0459c25f9a"
+    },
+    {
+      "coordinate": {
+        "comparison_group": "time_integration",
+        "components": {
+          "time_integration": "explicit"
+        },
+        "experiment_id": "experiment_06a02706a0f9858ca33c4ba05fe3ce2d513427564cc68ef376e388b6e3f1e643",
+        "member_id": "member_14d854a781e0061c07aa19b08d03bd91e549f421371f6898259a2698c79bff84",
+        "ordinal": 1,
+        "parameters": {},
+        "variant_name": "explicit"
+      },
+      "elapsed_seconds": 0.6401170839999395,
+      "error_message": "",
+      "error_type": "",
+      "resumed": true,
+      "seed": 5054219341071659283,
+      "status": "completed",
+      "store_path": "results/research_studio/spe1_ensemble_zarr2/members/matrix_3c7c7aec00ea0b7dc26b5cbfb3b7e6f49d8c5b61e2d92feac3f79d5474f5574d/member_14d854a781e0061c07aa19b08d03bd91e549f421371f6898259a2698c79bff84"
+    },
+    {
+      "coordinate": {
+        "comparison_group": "time_integration",
+        "components": {
+          "time_integration": "adaptive-implicit"
+        },
+        "experiment_id": "experiment_06a02706a0f9858ca33c4ba05fe3ce2d513427564cc68ef376e388b6e3f1e643",
+        "member_id": "member_c0cfba8cb9e68b8176ebf253624096d03a0ea80a78ae650d4e8abbe728ec0757",
+        "ordinal": 2,
+        "parameters": {
+          "aim.threshold": 0.05
+        },
+        "variant_name": "aim"
+      },
+      "elapsed_seconds": 0.8059768340008304,
+      "error_message": "",
+      "error_type": "",
+      "resumed": true,
+      "seed": 8210840322351804976,
+      "status": "completed",
+      "store_path": "results/research_studio/spe1_ensemble_zarr2/members/matrix_3c7c7aec00ea0b7dc26b5cbfb3b7e6f49d8c5b61e2d92feac3f79d5474f5574d/member_c0cfba8cb9e68b8176ebf253624096d03a0ea80a78ae650d4e8abbe728ec0757"
+    }
+  ],
+  "requested_workers": 3,
+  "runner": "pymrst.research_studio.experiments.runners:spe1_time_integration_member",
+  "schema_version": 1,
+  "summary": {
+    "completed": 3,
+    "failed": 0,
+    "resumed": 3
+  }
+}

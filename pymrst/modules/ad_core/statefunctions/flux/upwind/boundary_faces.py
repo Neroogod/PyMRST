@@ -9,7 +9,7 @@ the ghost the same distance beyond the face as the cell is inside it, which is
 the standard zero-gradient mirror.
 
 Returns the boundary faces, their owning cells, and the mirrored face
-centroids. The reconstruction itself (`WENOUpwindDiscretization`) is not yet
+centroids. The reconstruction itself (`WENOUpwindDiscretizationAD`) is not yet
 ported (it needs a MATLAB reference to validate); this pure-geometry helper is,
 because its correctness is an invariant, not a comparison.
 """
@@ -21,7 +21,7 @@ from typing import Any, Optional, Tuple
 import numpy as np
 
 
-def get_boundary_faces_merged(g: Any, dim: Optional[int] = None
+def get_boundary_faces_merged_ad(g: Any, dim: Optional[int] = None
                               ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Boundary faces, their cells, and mirrored (ghost) face centroids.
 
@@ -59,7 +59,12 @@ def get_boundary_faces_merged(g: Any, dim: Optional[int] = None
     return bfaces, bcells, bfc
 
 
-__all__ = ["get_boundary_faces_merged"]
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+getBoundaryFacesMerged = get_boundary_faces_merged_ad
+
+__all__ = ["get_boundary_faces_merged_ad"]
 
 
 if __name__ == "__main__":
@@ -68,7 +73,7 @@ if __name__ == "__main__":
     def test_counts_and_cells_on_cartesian():
         """A 3x3x1 grid has 3*2*(3+3)=... boundary faces; each maps to a cell."""
         g = compute_geometry(cart_grid([3, 3, 1], [3.0, 3.0, 1.0]))
-        bfaces, bcells, bfc = get_boundary_faces_merged(g)
+        bfaces, bcells, bfc = get_boundary_faces_merged_ad(g)
         # every returned face is genuinely on the boundary
         assert np.all(np.any(g.faces.neighbors[bfaces] < 0, axis=1))
         # every owning cell is a real interior cell
@@ -81,7 +86,7 @@ if __name__ == "__main__":
         """The ghost centroid is the cell centroid reflected through the face:
         the face sits exactly halfway between cell and ghost."""
         g = compute_geometry(cart_grid([4, 2, 1], [8.0, 4.0, 2.0]))
-        bfaces, bcells, bfc = get_boundary_faces_merged(g)
+        bfaces, bcells, bfc = get_boundary_faces_merged_ad(g)
         fc = g.faces.centroids[bfaces, :3]
         cc = g.cells.centroids[bcells, :3]
         assert np.allclose(fc, 0.5 * (cc + bfc))
@@ -93,7 +98,7 @@ if __name__ == "__main__":
     def test_dim_argument_trims_centroids():
         """Passing dim=2 keeps only the first two coordinates."""
         g = compute_geometry(cart_grid([2, 2, 1], [2.0, 2.0, 1.0]))
-        _, _, bfc = get_boundary_faces_merged(g, dim=2)
+        _, _, bfc = get_boundary_faces_merged_ad(g, dim=2)
         assert bfc.shape[1] == 2
         print("ok test_dim_argument_trims_centroids")
 

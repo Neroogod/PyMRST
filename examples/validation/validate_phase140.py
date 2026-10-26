@@ -13,12 +13,12 @@ if str(ROOT) not in sys.path:
 
 from pymrst.modules.compositional.examples._shared import (  # noqa: E402
     ScheduleControl,
-    get_multiple_packed_simulator_outputs,
-    pack_simulation_problem,
+    get_multiple_packed_simulator_outputs_ad,
+    pack_simulation_problem_ad,
     run_schedule,
     run_steps,
     simple_schedule,
-    simulate_packed_problem,
+    simulate_packed_problem_ad,
 )
 
 
@@ -103,15 +103,15 @@ def validate_run_steps_reports() -> int:
 def validate_packed_reports_passthrough() -> int:
     model = DummyScheduleModel()
     schedule = simple_schedule([1.0])
-    problem = pack_simulation_problem(
+    problem = pack_simulation_problem_ad(
         0.0,
         model,
         schedule,
         "ValidationSuite",
         name="ScheduleReportProblem",
     )
-    simulate_packed_problem(problem, max_cuts=3)
-    _, states, reports, names = get_multiple_packed_simulator_outputs([problem])
+    simulate_packed_problem_ad(problem, max_cuts=3)
+    _, states, reports, names = get_multiple_packed_simulator_outputs_ad([problem])
 
     failures = 0
     failures += _check("packed helper preserves problem name",

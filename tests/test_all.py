@@ -36,6 +36,41 @@ def _is_example(path) -> bool:
     return "examples" in path.parts
 
 
+def _module_name(path):
+    """The dotted import name for a file inside an importable package.
+
+    ``None`` when any directory between ROOT and the file lacks an
+    ``__init__.py`` - such a file is not importable and must be run as a
+    script. The validators under `examples/validation/` are the case that
+    matters: they are deliberately standalone.
+    """
+    relative = path.relative_to(ROOT)
+    for parent in relative.parents:
+        if parent == Path("."):
+            break
+        if not (ROOT / parent / "__init__.py").is_file():
+            return None
+    return ".".join(relative.with_suffix("").parts)
+
+
+def _invocation(path):
+    """How to run a self-test: as a module where possible, else as a script.
+
+    This is the whole of the "55 failures" that the sweep carried for so long.
+    Running `pymrst/modules/adfne15/pipe.py` as a *script* puts its own
+    directory on `sys.path` and gives it no package context, so every
+    `from pymrst...` import inside it fails - the module is fine and the runner
+    was not. `python -m pymrst.modules.adfne15.pipe` imports it the way every
+    real caller does.
+
+    Sampled at the time of the fix: 19 of the first 20 failures passed under
+    `-m` unchanged.
+    """
+    name = _module_name(path)
+    return ([sys.executable, "-m", name] if name
+            else [sys.executable, str(path)])
+
+
 def _module_scripts():
     return [p for p in _all_scripts() if not _is_example(p)]
 
@@ -88,7 +123,7 @@ def test_module_selftests(script):
     defaults and run their tests fine, so a blanket exclusion would lose real
     coverage.
     """
-    r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+    r = subprocess.run(_invocation(script), cwd=ROOT,
                        capture_output=True, text=True, timeout=900)
     if r.returncode == 2 and "the following arguments are required" in r.stderr:
         pytest.skip(f"{script.name} is a command-line tool, not a self-test")
@@ -117,7 +152,7 @@ def test_example_drivers(script):
     unnoticed. The `slow` marker exists so a developer can say
     `-m "not slow"` deliberately, not so CI can skip them by accident.
     """
-    r = subprocess.run([sys.executable, str(script)], cwd=ROOT,
+    r = subprocess.run(_invocation(script), cwd=ROOT,
                        capture_output=True, text=True, timeout=3600)
     if r.returncode == 2 and "the following arguments are required" in r.stderr:
         pytest.skip(f"{script.name} is a command-line tool, not a self-test")
@@ -439,3 +474,40 @@ def test_no_selftest_opens_a_blocking_plot_window():
         "off-screen plotter, so they can block the whole sweep until it times "
         "out:\n" + "\n".join(f"  {f}:{line}  {fn}(...)" for f, line, fn in risky)
     )
+
+
+def test_the_default_run_excludes_the_slow_and_validation_marks():
+    """The docstring at the top of this file promises `pytest` is the fast
+    path. For a long time it was only a promise.
+
+    The markers were declared in `pytest.ini` and never deselected, so a bare
+    `pytest` also ran 143 example drivers on a 3600s timeout apiece and the
+    whole MATLAB validation set - 1h41m in total. A suite that takes that long
+    is one nobody runs while working, which is how it stops catching things.
+
+    Pinned here rather than left to the config file because the failure is
+    silent in both directions: remove the `addopts` line and the suite simply
+    gets slower, with every test still passing.
+    """
+    import configparser
+
+    config = configparser.ConfigParser()
+    config.read(ROOT / "pytest.ini")
+    addopts = config["pytest"].get("addopts", "")
+
+    assert "not slow" in addopts, (
+        "the default run must deselect the slow example drivers")
+    assert "not validation" in addopts, (
+        "the default run must deselect the MATLAB validation set")
+
+
+def test_the_slow_marks_still_reach_their_tests():
+    """The other half: deselecting by default is only safe if asking for them
+    still works. `-m slow` must select the example drivers, not nothing."""
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", str(Path(__file__).name),
+         "-m", "slow", "--collect-only", "-q"],
+        cwd=ROOT / "tests", capture_output=True, text=True, timeout=600)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "test_example_drivers" in result.stdout, (
+        "-m slow selected nothing; the marker no longer reaches the drivers")

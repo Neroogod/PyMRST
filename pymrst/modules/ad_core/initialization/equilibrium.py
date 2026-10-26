@@ -36,6 +36,9 @@ from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
 
 from pymrst.modules.ad_core.statefunctions.state_function import State
+from pymrst.modules.ad_blackoil.utils.get_cell_status_vo import (
+    get_cell_status_vo,
+)
 from pymrst.utils.adi import value
 
 
@@ -194,7 +197,7 @@ def _integrate_pressure(rho: Callable, p0: float, z0: float, g: float,
     return evaluate
 
 
-def initialize_equilibrium_pressures(model, region: EquilibriumRegion,
+def initialize_equilibrium_pressures_ad(model, region: EquilibriumRegion,
                                      gravity: float) -> np.ndarray:
     """Each phase's own pressure in every cell: (n_cells, n_phases)."""
     cells = (np.arange(model.G.cells.num) if region.cells is None
@@ -290,7 +293,7 @@ def _sharp_or_pc(dp, pc_fn, sign, s_lo, s_hi):
     return np.clip(si, s_lo, s_hi)
 
 
-def initialize_equilibrium_saturations(model, region: EquilibriumRegion,
+def initialize_equilibrium_saturations_ad(model, region: EquilibriumRegion,
                                        pressures: np.ndarray) -> np.ndarray:
     """Saturations from the phase pressures, by inverting capillarity.
 
@@ -404,8 +407,8 @@ def _reference_pressure(model, region: EquilibriumRegion, p: np.ndarray,
 def init_state_equil(model, region: EquilibriumRegion,
                      gravity: float) -> State:
     """The equilibrium initial state (MRST's `initStateBlackOilAD`)."""
-    p = initialize_equilibrium_pressures(model, region, gravity)
-    s = initialize_equilibrium_saturations(model, region, p)
+    p = initialize_equilibrium_pressures_ad(model, region, gravity)
+    s = initialize_equilibrium_saturations_ad(model, region, p)
     ref = _reference_index(model, region)
 
     st = State(pressure=_reference_pressure(model, region, p, s),
@@ -432,7 +435,23 @@ def init_state_equil(model, region: EquilibriumRegion,
         rs = np.minimum(rs_given, rs_max)
         rs[s[:, 2] > 0] = rs_max[s[:, 2] > 0]
         st["rs"] = rs
-        st["status"] = np.where(s[:, 2] > 0, 3, 1).astype(np.int64)
+        # MRST's `getCellStatusVO`, not `sG > 0 ? 3 : 1`. The two differ on a
+        # cell with **no free oil**, which the ad-hoc rule calls status 1
+        # (undersaturated oil) - and status 1's switched variable is `rs`,
+        # which reaches the equations only through `rs * b_o * s_o`. With
+        # `s_o = 0` it multiplies nothing, its column is structurally empty,
+        # and the Jacobian is singular before any numerics.
+        #
+        # `getCellStatusVO` declares a water-only cell to have *both*
+        # hydrocarbon phases, so its variable is `sG` - which enters through
+        # `s_g` directly and is determined whatever its value. That is the
+        # only well-posed choice, and it is why Norne's water leg made the
+        # whole field model unsolvable.
+        st1, st2, st3 = get_cell_status_vo(
+            s[:, 1], s[:, 0], s[:, 2],
+            disgas=bool(model.fluid.disgas), vapoil=bool(model.fluid.vapoil),
+        )
+        st["status"] = 1*np.asarray(st1) + 2*np.asarray(st2) + 3*np.asarray(st3)
     if model.fluid.vapoil:
         p_gas = p[:, 2]                       # rvSat answers to the gas pressure
         rv_max = np.asarray(value(model.raw_fluid.rv_sat(p_gas)), dtype=float)
@@ -444,9 +463,13 @@ def init_state_equil(model, region: EquilibriumRegion,
     return st
 
 
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
-    from pymrst.modules.ad_blackoil.models.generic_black_oil_model import GenericBlackOilModel
+    from pymrst.modules.ad_blackoil.models.generic_black_oil_model import GenericBlackOilModelAD
     from pymrst.modules.ad_props.init_simple_adi_fluid import init_simple_adi_fluid
     from pymrst.params.gravity_const import NORM_GRAVITY
     from pymrst.params.rock import make_rock
@@ -469,7 +492,7 @@ if __name__ == "__main__":
             mu=np.array([1.0, 5.0]) * CENTI * POISE, rho=[RHO_W, RHO_O],
             n=[2, 2], c=list(c), p_ref=200 * BARSA, pc_ow=pc_ow,
         )
-        return g, GenericBlackOilModel(g, rock, fluid, [], gravity=G_ACC)
+        return g, GenericBlackOilModelAD(g, rock, fluid, [], gravity=G_ACC)
 
     def test_pressure_follows_the_hydrostatic_gradient():
         """With an incompressible fluid the ODE has a closed form: the oil
@@ -479,7 +502,7 @@ if __name__ == "__main__":
         region = EquilibriumRegion(datum_depth=1000.0,
                                    datum_pressure=200 * BARSA,
                                    contacts=[woc])
-        p = initialize_equilibrium_pressures(m, region, G_ACC)
+        p = initialize_equilibrium_pressures_ad(m, region, G_ACC)
         z = g.cells.centroids[:, 2]
 
         p_oil = 200 * BARSA + RHO_O * G_ACC * (z - 1000.0)
@@ -499,7 +522,7 @@ if __name__ == "__main__":
         region = EquilibriumRegion(datum_depth=1000.0,
                                    datum_pressure=200 * BARSA,
                                    contacts=[woc])
-        p = initialize_equilibrium_pressures(m, region, G_ACC)
+        p = initialize_equilibrium_pressures_ad(m, region, G_ACC)
         z = g.cells.centroids[:, 2]
 
         dp = p[:, 0] - p[:, 1]                    # water minus oil

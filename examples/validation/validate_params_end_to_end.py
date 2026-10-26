@@ -6,7 +6,7 @@ import numpy as np
 import scipy.io
 
 from pymrst.gridprocessing import compute_geometry, process_grdecl
-from pymrst.modules.incomp import incomp_tpfa, init_single_fluid
+from pymrst.modules.incomp import incomp_tpfa_ad as incomp_tpfa, init_single_fluid
 from pymrst.params import (
     add_source, add_well, fluxside, gravity_vector, pore_volume, pside,
     vertical_well,

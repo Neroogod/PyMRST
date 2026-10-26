@@ -157,11 +157,13 @@ def _face_area_for_flag(g: Grid, cells: np.ndarray, flags: np.ndarray) -> np.nda
 
 
 def _expand(records: Iterable[tuple[int, int, int, int, int, int, int, int, float, float]]) -> np.ndarray:
+    # MRST expands the boxes with mcolon/rldecode on i, then j, then k: per
+    # record, i varies slowest and k fastest.
     rows = []
     for aquid, imin, imax, jmin, jmax, kmin, kmax, flag, influx, mult in records:
-        for k in range(kmin - 1, kmax):
+        for i in range(imin - 1, imax):
             for j in range(jmin - 1, jmax):
-                for i in range(imin - 1, imax):
+                for k in range(kmin - 1, kmax):
                     rows.append((i, j, k, aquid, influx, mult, flag))
     return np.asarray(rows, dtype=float)
 
@@ -205,7 +207,10 @@ def process_aquifer(deck: Mapping[str, Any], g: Grid) -> AquiferDeckOutput:
     nbr_lin[inside] = _cart_to_linear(nbr[inside, 0], nbr[inside, 1], nbr[inside, 2], dims)
     nbr_inactive = np.zeros(rows.shape[0], dtype=bool)
     nbr_inactive[inside] = ~active[nbr_lin[inside]]
-    rows, linear = rows[nbr_out | nbr_inactive], linear[nbr_out | nbr_inactive]
+    # MRST's `[aqcellout; aqcellin]`: the connections facing out of the box
+    # first, then those facing an inactive cell.
+    order = np.concatenate([np.flatnonzero(nbr_out), np.flatnonzero(nbr_inactive)])
+    rows, linear = rows[order], linear[order]
 
     conn = _cart_to_active(g, linear)
     flags = rows[:, 6].astype(np.int64)
@@ -268,4 +273,16 @@ if __name__ == "__main__":
         assert np.allclose(out.initval["pressures"], [250 * BARSA])
         print("ok test_process_aquifer_box_and_area_defaults")
 
+    def test_connections_come_in_mrsts_order():
+        """i slowest and k fastest within a record, as MRST's mcolon expansion
+        gives them (checked against MRST 2024a on the aquifertest decks)."""
+        g = compute_geometry(cart_grid([2, 1, 2], [20.0, 10.0, 10.0]))
+        deck = {"SOLUTION": {
+            "AQUANCON": [[1, 1, 2, 1, 1, 1, 2, "J-", 1.0, 1.0]],
+            "AQUFETP": np.array([[1, 2.5, 250*BARSA, 1e7, 1e-9, 3e-10, 1]])}}
+        out = process_aquifer(deck, g)
+        assert out.aquifers[:, out.aquind.conn].astype(int).tolist() == [0, 2, 1, 3]
+        print("ok test_connections_come_in_mrsts_order")
+
     test_process_aquifer_box_and_area_defaults()
+    test_connections_come_in_mrsts_order()

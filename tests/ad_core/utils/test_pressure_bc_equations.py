@@ -7,7 +7,7 @@ from pymrst.modules.ad_core.utils import (
     bc_to_ad_bc,
     combine_equations,
     pressure_bc_contrib,
-    pressure_bc_contrib_adi,
+    pressure_bc_contrib_adi_ad as pressure_bc_contrib_adi,
 )
 from pymrst.utils.adi import init_variables_adi
 

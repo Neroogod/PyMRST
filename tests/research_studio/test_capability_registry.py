@@ -15,7 +15,7 @@ def test_reference_blackoil_stack_is_declared_and_compatible():
          "backend": "numpy-scipy-reference"},
         phases=("water", "oil", "gas"), physics=("black-oil",),
         derivative="adi", restart=True, required_features=()))
-    assert selected["model"].resolve().__name__ == "GenericBlackOilModel"
+    assert selected["model"].resolve().__name__ == "GenericBlackOilModelAD"
     assert selected["backend"].devices == ("cpu",)
 
 

@@ -1,11 +1,24 @@
-"""MRST `ad-blackoil/models/WaterModel.m`."""
+"""MRST ``ad-blackoil/models/WaterModel.m``.
 
-from typing import Dict, List, Sequence, Tuple
+`WaterModel` is MRST's single-phase water model on the AD-OO framework:
+water only, no CNV convergence, and its equations from `equationsWater`.
+
+`WaterModelAD` is PyMRST's earlier single-phase model on the legacy contract
+(`qWs`/`bhp` arrays, a flat Newton increment). It stays for the code built on
+it; new code should use `WaterModel`.
+"""
+
+from typing import Any, Dict, List, Sequence, Tuple
 
 import numpy as np
 
 from pymrst.gridprocessing.grid import Grid
 from pymrst.modules.ad_blackoil.utils.equations_water import equations_water
+from pymrst.modules.ad_core.ad_oo.physical_model import merge_options
+from pymrst.modules.ad_core.ad_oo.reservoir_model import (
+    ReservoirModel as AdOoReservoirModel,
+)
+from pymrst.modules.ad_core.utils.boundary_conditions import add_bc_and_sources
 from pymrst.modules.ad_core.models.facilities.facility_model import FacilityModel
 from pymrst.modules.ad_core.utils.convergence import (
     cnv_mb_convergence,
@@ -23,10 +36,29 @@ from pymrst.params.wells_and_bc import Well
 from pymrst.utils.adi import init_variables_adi, value
 
 
+class WaterModel(AdOoReservoirModel):
+    """MRST `WaterModel`."""
+
+    def __init__(self, G: Any, rock: Any, fluid: Any, **options: Any):
+        super().__init__(G, rock, fluid)
+        self.oil = False
+        self.gas = False
+        self.water = True
+        self.useCNVConvergence = False
+        merge_options(self, options)
+
+    def get_equations(self, state0: Any, state: Any, dt: float,
+                      driving_forces: Any, **options: Any):
+        return equations_water(state0, state, self, dt, driving_forces,
+                               **options)
+
+    getEquations = get_equations
+
+
 def _as_water_phase_fluid(fluid) -> PhaseFluid:
     if isinstance(fluid, PhaseFluid):
         if fluid.n_phases != 1:
-            raise ValueError("WaterModel requires a single-phase fluid")
+            raise ValueError("WaterModelAD requires a single-phase fluid")
         return fluid
     if hasattr(fluid, "b_w"):
         rho = float(np.asarray(getattr(fluid, "rhoS", [1000.0]))[0])
@@ -35,12 +67,12 @@ def _as_water_phase_fluid(fluid) -> PhaseFluid:
     if callable(fluid):
         return water_phase_fluid(fluid, 1.0e-3, 1000.0)
     raise TypeError(
-        "WaterModel fluid must be a PhaseFluid, an ADFluid-like object with "
+        "WaterModelAD fluid must be a PhaseFluid, an ADFluid-like object with "
         "b_w/mu/rhoS, or a callable b(p)"
     )
 
 
-class WaterModel(ReservoirModel):
+class WaterModelAD(ReservoirModel):
     """Single-phase water model assembled through the AD-core graph."""
 
     def __init__(
@@ -51,9 +83,15 @@ class WaterModel(ReservoirModel):
         wells: Sequence[Well] = (),
         gravity: float = 0.0,
         dp_max_rel: float = 0.2,
-        tol_cnv: float = 1e-8,
-        tol_mb: float = 1e-12,
-        tol_well: float = 1e-10,
+        # MRST's own defaults (`ReservoirModel.m`): `toleranceCNV = 1e-3`,
+        # `toleranceMB = 1e-7`, computed here with MRST's exact formulas so the
+        # numbers are directly comparable. The previous 1e-8/1e-12 were five
+        # orders tighter than the code being ported; see
+        # `generic_black_oil_model` for the measurement and the reasoning,
+        # including why `tol_well` is a mapping rather than a transcription.
+        tol_cnv: float = 1e-3,
+        tol_mb: float = 1e-7,
+        tol_well: float = 1e-6,
         bc=None,
         src=None,
         mass_basis: bool = False,
@@ -61,7 +99,12 @@ class WaterModel(ReservoirModel):
         phase_fluid = _as_water_phase_fluid(fluid)
         operators = setup_operators_tpfa(g, rock)
         if gravity:
-            z = g.cells.centroids[:, 2]
+            # The *last* coordinate column, not column 2. On a 3-D grid these
+            # are the same thing; on a 2-D one - which MRST's one-phase
+            # tutorial uses, `cartGrid([50 50],[1000 100])` with gravity
+            # `[0 -norm(gravity)]` - column 2 does not exist and the vertical
+            # is y. Hardcoding 2 made every 2-D gravity case an IndexError.
+            z = g.cells.centroids[:, -1]
             gdz = gravity * (z[operators.N[:, 1]] - z[operators.N[:, 0]])
         else:
             gdz = np.zeros(operators.T.size)
@@ -111,7 +154,19 @@ class WaterModel(ReservoirModel):
         return out
 
     def get_equations(self, state0: State, state: State, dt: float):
-        return equations_water(state0, state, self, dt)
+        """The single-phase water residual and well equations, on PyMRST's
+        legacy contract (`State` with `qWs`/`bhp` arrays). The AD-OO
+        `WaterModel` in this file assembles through `equations_water`."""
+        st = self.init_state_ad(state)
+        self._conv_state = st
+        st0 = self._state0_props(state0)
+        eqs = self.conservation_equations(st0, st, dt)
+        eqs = add_bc_and_sources(self, eqs, st, self.bc, self.src)
+        q_s = [st["qWs"]]
+        cq_s, well_eqs, ctrl = self.facility.well_equations(
+            self, st, q_s, st["bhp"], state0=st0)
+        eqs = self.facility.apply_to_reservoir(eqs, cq_s, self._basis_scale())
+        return eqs + well_eqs + [ctrl]
 
     def _convergence_scaling(self):
         st = getattr(self, "_conv_state", None)
@@ -157,7 +212,7 @@ class WaterModel(ReservoirModel):
         return state
 
 
-__all__ = ["WaterModel"]
+__all__ = ["WaterModel", "WaterModelAD"]
 
 
 if __name__ == "__main__":
@@ -182,7 +237,7 @@ if __name__ == "__main__":
                      val=1e-4, compi=np.array([1.0]), sign=1)
         w = add_well(w, g, rock, np.array([7]), well_type="bhp",
                      val=190 * BARSA, compi=np.array([1.0]), sign=-1)
-        return WaterModel(g, rock, f, w)
+        return WaterModelAD(g, rock, f, w)
 
     def test_water_model_runs_and_injects():
         m = _model()

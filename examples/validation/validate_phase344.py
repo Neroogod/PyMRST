@@ -22,13 +22,13 @@ import numpy as np
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
 )
 from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.modules.ad_core.statefunctions.utils import (
     ancestors_of,
-    build_state_function_digraph,
-    get_state_function_grouping_dependency_graph,
+    build_state_function_digraph_ad,
+    get_state_function_grouping_dependency_graph_ad,
 )
 from pymrst.modules.ad_props import init_simple_adi_fluid
 from pymrst.params import add_well, make_rock
@@ -45,7 +45,7 @@ def build():
                  compi=np.array([1.0, 0.0]), sign=1)
     w = add_well(w, g, rock, np.array([g.cells.num - 1]), well_type="bhp",
                  val=150 * BARSA, compi=np.array([0.0, 1.0]), sign=-1)
-    model = GenericBlackOilModel(g, rock, fluid, w)
+    model = GenericBlackOilModelAD(g, rock, fluid, w)
     st = model.init_state_ad(State(
         pressure=np.linspace(210, 190, g.cells.num) * BARSA,
         sW=np.full(g.cells.num, 0.45), qWs=np.array([2e-3]),
@@ -54,7 +54,7 @@ def build():
 
 
 def check_completeness_and_order(model):
-    g = build_state_function_digraph(model)
+    g = build_state_function_digraph_ad(model)
     n_nodes = len(g["nodes"])
     print(f"  graph: {n_nodes} state-function nodes, {len(g['edges'])} edges, "
           f"{len(g['inputs'])} inputs")
@@ -72,7 +72,7 @@ def check_completeness_and_order(model):
 def check_ancestors_match_evaluation(model, st):
     """Seeding exactly the ancestors of a node lets it evaluate with no other
     grouping computation - the drawn subtree is the real one."""
-    g = get_state_function_grouping_dependency_graph(model)
+    g = get_state_function_grouping_dependency_graph_ad(model)
     target = "FluxDisc.ComponentTotalFlux"
     anc = ancestors_of(g, target)
 

@@ -2,7 +2,7 @@ import numpy as np
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
 )
 from pymrst.modules.ad_core.statefunctions.facility import (
     FacilityContext,
@@ -38,7 +38,7 @@ def _case():
         wells, grid, rock, np.array([2, 5]), well_type="bhp",
         val=150 * BARSA, compi=np.array([0.0, 1.0]), sign=-1, name="P",
     )
-    model = GenericBlackOilModel(grid, rock, fluid, wells)
+    model = GenericBlackOilModelAD(grid, rock, fluid, wells)
     reservoir_state = model.init_state_ad(State(
         pressure=np.full(grid.cells.num, 200 * BARSA),
         sW=np.linspace(0.35, 0.65, grid.cells.num),

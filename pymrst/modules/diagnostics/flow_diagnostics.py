@@ -157,7 +157,7 @@ def compute_sweep(f: np.ndarray, phi: np.ndarray
 
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
-    from pymrst.modules.incomp import incomp_tpfa, init_single_fluid
+    from pymrst.modules.incomp import incomp_tpfa_ad as incomp_tpfa, init_single_fluid
     from pymrst.params.rock import make_rock
     from pymrst.params.wells_and_bc import add_well
     from pymrst.solvers.state import init_state

@@ -17,12 +17,25 @@ dependencies = [
 
 [project.scripts]
 pymrst = "pymrst.cli.main:main"
+pymrst-studio = "pymrst.app.server:main"
+pymrst-studio-sidecar = "pymrst.app.desktop_sidecar:main"
 
 [project.optional-dependencies]
 # the elliptic stage of CPR (ad_core.CPRSolver). Without it that stage falls
 # back to an incomplete factorisation, which still beats a direct solve but
 # does not scale the way multigrid does.
 amg = ["pyamg>=5.0"]
+# MRST's actual AMGCLSolverAD/AMGCL_CPRSolverAD binding (pymrst.modules.ad_core
+# .solvers.amgcl_solver_ad), reached via MEX in MRST and via `pyamgcl` - a
+# pybind11 extension built against AMGCL's own C++ headers - here. `pyamgcl`
+# is a source distribution: it needs Boost headers and `pybind11` present at
+# *build* time (`brew install boost` on macOS), which is why this is opt-in
+# rather than a base dependency.
+amgcl = ["pyamgcl"]
+# background runs of packed problems (simulatePackedProblemBackground and
+# PackedProblemManager.simulateProblemsBatch) store the model on disk for a new
+# Python process; the AD-OO models hold closures that `pickle` cannot store.
+background = ["cloudpickle>=3.0"]
 plotting = ["pyvista>=0.43"]
 browser = ["plotly>=5.20"]
 # the interactive inspector (plot_toolbar); it degrades to a plain
@@ -34,6 +47,8 @@ ml = ["torch>=2.0"]
 # without this those files raise an ImportError telling you to install it.
 mat73 = ["h5py>=3.0"]
 studio = ["h5py>=3.10", "xarray>=2024.1", "zarr>=2.17", "pandas>=2.0", "pyarrow>=15"]
+app = ["fastapi>=0.115", "pydantic>=2.8", "uvicorn[standard]>=0.30", "psutil>=5.9"]
+release = ["cryptography>=42"]
 # the graph partitioner behind coarsegrid.partition_metis. Without it the
 # connection graph is still built and inspectable; only the partitioning call
 # raises. A substitute partitioner would produce different partitions, which

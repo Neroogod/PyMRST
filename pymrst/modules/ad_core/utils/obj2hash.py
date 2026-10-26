@@ -74,7 +74,11 @@ def _properties(value):
     return []
 
 
-def _hash(value, skip, max_size):
+def _hash(value, skip, max_size, path=frozenset()):
+    """`path` holds the containers being hashed above this one. A MATLAB value
+    cannot contain itself; a Python object can (a model's facility points
+    back at the model), and a container met again on its own path hashes as
+    its class name plus a cycle marker."""
     if _is_empty(value):
         value = "[]"
 
@@ -101,8 +105,12 @@ def _hash(value, skip, max_size):
             return _md5_bytes(_char_bytes(_matlab_class_name(value))), None
         return _md5_bytes(_numeric_bytes(value)), None
 
+    if id(value) in path:
+        return _md5_bytes(_char_bytes(_matlab_class_name(value) + ":cycle")), None
+    path = path | {id(value)}
+
     if isinstance(value, (list, tuple)):
-        hashes = [_hash(item, skip, max_size)[0] for item in value]
+        hashes = [_hash(item, skip, max_size, path)[0] for item in value]
         return _combine(hashes), None
 
     properties = [
@@ -110,12 +118,12 @@ def _hash(value, skip, max_size):
     ]
     if not properties:
         class_name = "struct" if isinstance(value, dict) else _matlab_class_name(value)
-        return _hash(class_name, skip, max_size)[0], {}
+        return _hash(class_name, skip, max_size, path)[0], {}
 
     hash_structure = {}
     hashes = []
     for name, item in properties:
-        item_hash, _ = _hash(item, skip, max_size)
+        item_hash, _ = _hash(item, skip, max_size, path)
         hash_structure[name] = item_hash
         hashes.append(item_hash)
     return _combine(hashes), hash_structure
@@ -143,3 +151,33 @@ def obj2hash(
 
 
 __all__ = ["obj2hash"]
+
+
+if __name__ == "__main__":
+    from types import SimpleNamespace
+
+    def test_an_object_that_contains_itself_hashes_finitely():
+        model = SimpleNamespace(a=np.arange(3.0))
+        model.facility = SimpleNamespace(owner=model)
+        first, second = obj2hash(model), obj2hash(model)
+        assert first == second and len(first) == 32
+        print("ok test_an_object_that_contains_itself_hashes_finitely")
+
+    def test_acyclic_objects_hash_as_before():
+        a = SimpleNamespace(x=np.arange(3.0), y="name")
+        b = SimpleNamespace(x=np.arange(3.0), y="name")
+        assert obj2hash(a) == obj2hash(b)
+        assert obj2hash(a) != obj2hash(SimpleNamespace(x=np.arange(4.0), y="name"))
+        print("ok test_acyclic_objects_hash_as_before")
+
+    def test_a_shared_but_acyclic_child_is_hashed_in_full_each_time():
+        child = SimpleNamespace(v=np.ones(2))
+        assert obj2hash(SimpleNamespace(a=child, b=child)) == \
+            obj2hash(SimpleNamespace(a=SimpleNamespace(v=np.ones(2)),
+                                     b=SimpleNamespace(v=np.ones(2))))
+        print("ok test_a_shared_but_acyclic_child_is_hashed_in_full_each_time")
+
+    test_an_object_that_contains_itself_hashes_finitely()
+    test_acyclic_objects_hash_as_before()
+    test_a_shared_but_acyclic_child_is_hashed_in_full_each_time()
+    print("\nAll tests passed!")

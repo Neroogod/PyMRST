@@ -5,11 +5,11 @@ import pytest
 from pymrst.modules.ad_core.solvers import (
     DirectSolver,
     getNonLinearSolver,
-    get_non_linear_solver,
+    get_non_linear_solver_ad,
 )
 from pymrst.modules.ad_core.timesteps import (
-    IterationCountTimeStepSelector,
-    StateChangeTimeStepSelector,
+    IterationCountTimeStepSelectorAD as IterationCountTimeStepSelector,
+    StateChangeTimeStepSelectorAD as StateChangeTimeStepSelector,
 )
 
 
@@ -28,7 +28,7 @@ class _Model:
 
 
 def test_default_matches_mrst_factory_configuration():
-    solver = getNonLinearSolver(_Model())
+    solver = get_non_linear_solver_ad(_Model())
     assert isinstance(solver.linear_solver, DirectSolver)
     assert isinstance(solver.timestep_selector, IterationCountTimeStepSelector)
     assert solver.timestep_selector.target_iteration_count == 8
@@ -46,14 +46,14 @@ def test_default_matches_mrst_factory_configuration():
     ],
 )
 def test_timestep_strategies(strategy, selector):
-    solver = get_non_linear_solver(
+    solver = get_non_linear_solver_ad(
         _Model(), timestep_strategy=strategy, use_cpr=False
     )
     assert isinstance(solver.timestep_selector, selector)
 
 
 def test_mrst_option_spellings_and_solver_options():
-    solver = get_non_linear_solver(
+    solver = get_non_linear_solver_ad(
         _Model(),
         TimestepStrategy="none",
         useCPR=False,
@@ -68,4 +68,4 @@ def test_mrst_option_spellings_and_solver_options():
 
 def test_unknown_strategy_is_rejected():
     with pytest.raises(ValueError, match="unknown timestepping strategy"):
-        get_non_linear_solver(_Model(), timestep_strategy="mystery")
+        get_non_linear_solver_ad(_Model(), timestep_strategy="mystery")

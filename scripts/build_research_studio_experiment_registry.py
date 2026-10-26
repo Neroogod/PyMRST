@@ -36,7 +36,7 @@ def spe1_time_integration_experiment() -> ExperimentDefinition:
             dataset.sha256,
         ),
         model=OwnerReference(
-            "pymrst.modules.ad_blackoil.models:GenericBlackOilModel",
+            "pymrst.modules.ad_blackoil.models:GenericBlackOilModelAD",
             {"disgas": True, "vapoil": False}),
         schedule=OwnerReference(
             "pymrst.modules.ad_core.initialization:setupSPE1",

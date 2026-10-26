@@ -3,7 +3,7 @@
 import numpy as np
 
 from pymrst.gridprocessing.grid import Grid
-from pymrst.modules.incomp import incomp_tpfa, init_single_fluid
+from pymrst.modules.incomp import incomp_tpfa_ad as incomp_tpfa, init_single_fluid
 from pymrst.modules.upscaling.coarsegrid.generate_coarse_grid import CoarseGrid
 from pymrst.modules.upscaling.upscale import _block_subgrid
 from pymrst.params.rock import Rock, make_rock

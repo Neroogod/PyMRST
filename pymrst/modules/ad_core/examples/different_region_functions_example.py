@@ -8,7 +8,7 @@ import numpy as np
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
 )
 from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.modules.ad_props import init_simple_adi_fluid
@@ -75,7 +75,7 @@ def different_region_functions_example(
     curves = [lambda s: s**2, lambda s: s]
     fluid.kr_w = curves
     fluid.kr_o = curves
-    model = GenericBlackOilModel(grid, rock, fluid, [])
+    model = GenericBlackOilModelAD(grid, rock, fluid, [])
     if not via_rock:
         model.FlowPropertyFunctions.get_state_function(
             "RelativePermeability"

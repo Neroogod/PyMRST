@@ -15,7 +15,7 @@ from pymrst.params import add_source, gravity_vector, make_rock, pore_volume
 from pymrst.modules.incomp import (
     explicit_transport,
     implicit_transport,
-    incomp_tpfa,
+    incomp_tpfa_ad as incomp_tpfa,
     init_simple_fluid,
 )
 from pymrst.solvers import compute_trans, init_res_sol

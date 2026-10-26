@@ -48,7 +48,7 @@ from pymrst.modules.deckformat.deckinput.read_eclipse_deck import read_eclipse_d
 from pymrst.modules.deckformat.deckinput.read_grid import read_grid
 from pymrst.modules.deckformat.grid import init_eclipse_grid
 from pymrst.modules.deckformat.params.rock import compress_rock, init_eclipse_rock
-from pymrst.modules.deckformat.params.wells_and_bc import process_wells
+from pymrst.modules.deckformat.params.wells_and_bc import process_wells_ad
 
 # The Egg model's published dimensions, used as assertions rather than as
 # documentation: a deck that reads to a different active count has been read
@@ -151,7 +151,7 @@ def _egg_wells(deck, g, rock) -> list:
     if not hasattr(first, "keys"):
         return []
     try:
-        return process_wells(g, rock.as_rock(), first)
+        return process_wells_ad(g, rock.as_rock(), first)
     except Exception:
         return []
 

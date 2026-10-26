@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import scipy.io
 
-from pymrst.modules.ad_core.initialization import init_eclipse_problem_ad
+from pymrst.modules.ad_core.initialization import init_eclipse_problem_ad_ad
 
 
 def main() -> int:
@@ -15,7 +15,7 @@ def main() -> int:
     ref = scipy.io.loadmat(
         here / "ref_ad_core_init_eclipse_problem.mat", squeeze_me=True
     )
-    state, model, schedule, nonlinear = init_eclipse_problem_ad(deck)
+    state, model, schedule, nonlinear = init_eclipse_problem_ad_ad(deck)
     ml_s = np.atleast_2d(np.asarray(ref["s"], float))
     checks = {
         "pressure": (state["pressure"], ref["pressure"], 1e-8),

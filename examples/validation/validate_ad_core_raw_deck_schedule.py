@@ -7,7 +7,7 @@ import numpy as np
 import scipy.io
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
-from pymrst.modules.ad_core.utils import convert_deck_schedule_to_mrst
+from pymrst.modules.ad_core.utils import convert_deck_schedule_to_mrst_ad
 from pymrst.params import make_rock
 from pymrst.utils.units import DARCY, MILLI
 
@@ -51,7 +51,7 @@ def main() -> int:
         squeeze_me=True,
     )
     model, deck = _inputs()
-    schedule = convert_deck_schedule_to_mrst(model, deck)
+    schedule = convert_deck_schedule_to_mrst_ad(model, deck)
     names = np.asarray(ref["names"], dtype=object)
     cells = np.asarray(ref["cells"], dtype=object)
     types = np.asarray(ref["types"], dtype=object)

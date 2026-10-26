@@ -25,9 +25,14 @@ from pymrst.modules.ad_core.utils.schedule import (
     subset_schedule,
 )
 from pymrst.modules.ad_core.utils.cfl import (
-    estimate_composition_cfl,
-    estimate_saturation_cfl,
+    estimate_composition_cfl_ad,
+    estimate_saturation_cfl_ad,
     fractional_flow_derivative,
+)
+from pymrst.modules.ad_core.utils.estimate_composition_cfl import estimate_composition_cfl
+from pymrst.modules.ad_core.utils.estimate_saturation_cfl import estimate_saturation_cfl
+from pymrst.modules.ad_core.utils.get_fractional_flow_magnitude import (
+    get_fractional_flow_magnitude,
 )
 from pymrst.modules.ad_core.utils.phase_densities_to_bfactor import (
     phase_densities_to_bfactor,
@@ -42,15 +47,18 @@ from pymrst.modules.ad_core.utils.convert_reservoir_fluxes_to_surface import (
 from pymrst.modules.ad_core.utils.select_model_from_deck import (
     deck_model_choice,
     select_model_from_deck,
+    select_model_from_deck_ad,
 )
 from pymrst.modules.ad_core.utils.standalone_solve import standalone_solve
-from pymrst.modules.ad_core.utils.get_well_output import get_well_output
+from pymrst.modules.ad_core.utils.get_well_output import get_well_output, get_well_output_ad
 from pymrst.modules.ad_core.utils.convert_deck_schedule_to_mrst import (
     convert_deck_schedule_to_mrst,
+    convert_deck_schedule_to_mrst_ad,
     convertDeckScheduleToMRST,
 )
 from pymrst.modules.ad_core.utils.make_schedule_consistent import (
     make_schedule_consistent,
+    make_schedule_consistent_ad,
     makeScheduleConsistent,
 )
 from pymrst.modules.ad_core.utils.init_well_sol_ad import (
@@ -137,7 +145,7 @@ from pymrst.modules.ad_core.utils.reorder_for_ilu import (
     reorder_for_ilu,
     reorderForILU,
 )
-from pymrst.modules.ad_core.utils.multi_dim_interpolator import (
+from pymrst.modules.ad_core.utils.get_multi_dim_interpolator import (
     get_multi_dim_interpolator,
     getMultiDimInterpolator,
 )
@@ -146,6 +154,9 @@ from pymrst.modules.ad_core.utils.handle_struct import HandleStruct
 from pymrst.modules.ad_core.utils.pressure_bc_contrib import (
     pressure_bc_contrib,
     pressureBCContrib,
+    pressure_bc_contrib_adi_ad,
+)
+from pymrst.modules.ad_core.utils.pressure_bc_contrib_adi import (
     pressure_bc_contrib_adi,
     pressureBCContribADI,
 )
@@ -161,8 +172,9 @@ from pymrst.modules.ad_core.utils.get_grid_symrcm_ordering import (
     get_grid_symrcm_ordering,
     getGridSYMRCMOrdering,
 )
-from pymrst.modules.ad_core.utils.convert_to_ms_well import (
-    convert_to_ms_well,
+from pymrst.modules.ad_core.utils.convert_to_ms_well import convert_to_ms_well
+from pymrst.modules.ad_core.utils.convert2_ms_well import (
+    convert2_ms_well,
     convert2MSWell,
 )
 from pymrst.modules.ad_core.utils.get_report_output import (
@@ -176,6 +188,7 @@ from pymrst.modules.ad_core.utils.compute_cp_geometry import (
 from pymrst.modules.ad_core.utils.get_equil_pc import get_equil_pc, getEquilPC
 from pymrst.modules.ad_core.utils.set_time_discretization import (
     set_time_discretization,
+    set_time_discretization_ad,
     setTimeDiscretization,
 )
 from pymrst.modules.ad_core.utils.set_mpfa_discretization import (
@@ -194,10 +207,12 @@ from pymrst.modules.ad_core.utils.convert_multi_segment_wells_deck import (
 )
 from pymrst.modules.ad_core.utils.set_weno_discretization import (
     set_weno_discretization,
+    set_weno_discretization_ad,
     setWENODiscretization,
 )
 
 __all__ = [
+    "ResultHandler",
     "Operators",
     "ForceContributions",
     "add_bc_and_sources",
@@ -207,6 +222,7 @@ __all__ = [
     "setup_operators_tpfa",
     "source_reservoir_fluxes",
     "set_weno_discretization",
+    "set_weno_discretization_ad",
     "setWENODiscretization",
     "cnv_mb_convergence",
     "cnv_mb_values",
@@ -220,7 +236,10 @@ __all__ = [
     "simple_schedule",
     "subset_schedule",
     "estimate_composition_cfl",
+    "estimate_composition_cfl_ad",
     "estimate_saturation_cfl",
+    "estimate_saturation_cfl_ad",
+    "get_fractional_flow_magnitude",
     "fractional_flow_derivative",
     "phase_densities_to_bfactor",
     "interpolate_idw",
@@ -230,11 +249,15 @@ __all__ = [
     "convert_reservoir_fluxes_to_surface",
     "deck_model_choice",
     "select_model_from_deck",
+    "select_model_from_deck_ad",
     "standalone_solve",
     "get_well_output",
+    "get_well_output_ad",
     "convert_deck_schedule_to_mrst",
+    "convert_deck_schedule_to_mrst_ad",
     "convertDeckScheduleToMRST",
     "make_schedule_consistent",
+    "make_schedule_consistent_ad",
     "makeScheduleConsistent",
     "init_well_sol_ad",
     "initWellSolAD",
@@ -305,6 +328,7 @@ __all__ = [
     "get_grid_symrcm_ordering",
     "getGridSYMRCMOrdering",
     "convert_to_ms_well",
+    "convert2_ms_well",
     "convert2MSWell",
     "get_report_output",
     "getReportOutput",
@@ -313,6 +337,7 @@ __all__ = [
     "get_equil_pc",
     "getEquilPC",
     "set_time_discretization",
+    "set_time_discretization_ad",
     "setTimeDiscretization",
     "set_mpfa_discretization",
     "setMPFADiscretization",
@@ -323,3 +348,5 @@ __all__ = [
     "convert_multi_segment_wells_deck",
     "convertMultiSegmentWellsDeck",
 ]
+
+from pymrst.modules.ad_core.utils.result_handler import ResultHandler

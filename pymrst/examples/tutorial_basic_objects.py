@@ -21,7 +21,7 @@ fail so the tutorial runs on any checkout:
 * ``run_bed_model_section`` reads BedModel2 through ``read_grdecl``. That
   dataset is not installed here, so it returns ``None``.
 * ``run_eclipse_case_section`` builds a whole case from the SPE9 deck. The deck
-  is present and reads correctly, but PyMRST's ``init_eclipse_problem_ad``
+  is present and reads correctly, but PyMRST's ``init_eclipse_problem_ad_ad``
   supports only the SPE1-style parsed-deck subset and rejects a full ECLIPSE
   deck. It therefore returns a reason rather than a result, and the self-test
   asserts that reason so the gap stays visible and the test flips the day
@@ -176,13 +176,13 @@ def run_eclipse_case_section(deck_file=None):
     """MRST's closing section: a complete simulation case from an ECLIPSE deck.
 
     Reads SPE9 through ``read_eclipse_deck`` and ``convert_deck_units``, then
-    hands the deck to ``init_eclipse_problem_ad``, which should return the
+    hands the deck to ``init_eclipse_problem_ad_ad``, which should return the
     initial state, model and schedule ready to simulate. The point of the
     section is that a whole case can come from a deck rather than being
     assembled by hand.
 
     **This does not work yet, and the reason is worth stating rather than
-    hiding.** The deck reads fine, but PyMRST's ``init_eclipse_problem_ad``
+    hiding.** The deck reads fine, but PyMRST's ``init_eclipse_problem_ad_ad``
     accepts only the SPE1-style parsed-deck subset carrying `x`/`y`/`z`/`poro`/
     `perm`, and raises `NotImplementedError` for a full ECLIPSE deck such as
     SPE9 unless a `model=` is supplied. So the section returns a `(None,
@@ -197,7 +197,7 @@ def run_eclipse_case_section(deck_file=None):
         return None, "SPE9 dataset not found"
 
     from pymrst.modules.ad_core.initialization.init_eclipse_problem_ad import (
-        init_eclipse_problem_ad,
+        init_eclipse_problem_ad_ad,
     )
     from pymrst.modules.deckformat.deckinput.convert_deck_units import (
         convert_deck_units,
@@ -207,9 +207,9 @@ def run_eclipse_case_section(deck_file=None):
     )
     deck = convert_deck_units(read_eclipse_deck(deck_file))
     try:
-        return init_eclipse_problem_ad(deck), None
+        return init_eclipse_problem_ad_ad(deck), None
     except NotImplementedError as exc:
-        return None, f"init_eclipse_problem_ad does not support this deck: {exc}"
+        return None, f"init_eclipse_problem_ad_ad does not support this deck: {exc}"
 
 
 if __name__ == "__main__":
@@ -302,7 +302,7 @@ if __name__ == "__main__":
         if result is None:
             # A known limitation, asserted so it cannot be mistaken for a
             # missing dataset and so this test starts failing the day
-            # `init_eclipse_problem_ad` grows full-deck support.
+            # `init_eclipse_problem_ad_ad` grows full-deck support.
             assert "does not support this deck" in reason, reason
             print(f"ok test_eclipse_case_section_reports_its_limitation "
                   f"({reason.split(':')[0]})")

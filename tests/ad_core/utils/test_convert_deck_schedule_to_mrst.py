@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from pymrst.modules.ad_core.utils import convert_deck_schedule_to_mrst
+from pymrst.modules.ad_core.utils import convert_deck_schedule_to_mrst_ad
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.params import make_rock
 from pymrst.params.wells_and_bc import Well
@@ -33,7 +33,7 @@ def test_steps_phase_mapping_and_consistent_well_order():
             {"W": [_well("B", [0.6, 0.4, 0.0])]},
         ],
     }
-    schedule = convert_deck_schedule_to_mrst(_model(), deck)
+    schedule = convert_deck_schedule_to_mrst_ad(_model(), deck)
     assert np.array_equal(schedule.step_control, [0, 1, 1])
     assert [w.name for w in schedule.controls[0].W] == ["A", "B"]
     assert [w.name for w in schedule.controls[1].W] == ["A", "B"]
@@ -51,7 +51,7 @@ def test_nested_deck_step_limit_and_dictionary_well():
             "WI": [3.0], "r": [0.1], "dZ": [4.0], "compi": [1, 0, 0],
         }]}],
     }}
-    schedule = convert_deck_schedule_to_mrst(_model(), deck, step_limit=1)
+    schedule = convert_deck_schedule_to_mrst_ad(_model(), deck, step_limit=1)
     assert schedule.n_steps == 1
     assert schedule.controls[0].W[0].cells.tolist() == [2]
     assert schedule.controls[0].W[0].name == "P"
@@ -63,7 +63,7 @@ def test_raw_records_require_grid_and_rock():
         "control": [{"WELSPECS": [["P", "G", 1, 1]], "COMPDAT": []}],
     }
     with pytest.raises(ValueError, match="model.G and model.rock"):
-        convert_deck_schedule_to_mrst(_model(), deck)
+        convert_deck_schedule_to_mrst_ad(_model(), deck)
 
 
 def test_raw_completions_and_controls_persist_across_periods():
@@ -93,7 +93,7 @@ def test_raw_completions_and_controls_persist_across_periods():
             },
         ],
     }
-    schedule = convert_deck_schedule_to_mrst(model, deck)
+    schedule = convert_deck_schedule_to_mrst_ad(model, deck)
     first = {well.name: well for well in schedule.controls[0].W}
     second = {well.name: well for well in schedule.controls[1].W}
     assert first["I"].cells.tolist() == [0, 2]

@@ -42,11 +42,11 @@ from pymrst.modules.ad_core.backends import (
 )
 from pymrst.modules.ad_core.initialization import (
     EquilibriumRegion,
-    init_eclipse_problem_ad,
+    init_eclipse_problem_ad_ad,
     initEclipseProblemAD,
     init_state_equil,
-    initialize_equilibrium_pressures,
-    initialize_equilibrium_saturations,
+    initialize_equilibrium_pressures_ad,
+    initialize_equilibrium_saturations_ad,
 )
 from pymrst.modules.ad_core.solvers.linear_solvers import (
     CPR_CROSSOVER_BLOCK_JACOBI,
@@ -56,7 +56,7 @@ from pymrst.modules.ad_core.solvers.linear_solvers import (
     select_linear_solver,
 )
 from pymrst.modules.ad_core.solvers.get_non_linear_solver import (
-    get_non_linear_solver,
+    get_non_linear_solver_ad,
     getNonLinearSolver,
 )
 from pymrst.modules.ad_core.models.facilities.facility_model import FacilityModel
@@ -124,14 +124,14 @@ __all__ = [
     "computeSourcesAndBoundaryConditionsAD", "source_reservoir_fluxes",
     "set_weno_discretization", "setWENODiscretization",
     "EquilibriumRegion", "init_state_equil",
-    "init_eclipse_problem_ad", "initEclipseProblemAD",
-    "initialize_equilibrium_pressures", "initialize_equilibrium_saturations",
+    "init_eclipse_problem_ad_ad", "initEclipseProblemAD",
+    "initialize_equilibrium_pressures_ad", "initialize_equilibrium_saturations_ad",
     # components
     "Component", "ImmiscibleComponent", "GasComponent", "OilComponent",
     "ConcentrationComponent", "blackoil_components",
     # linear solvers
     "CPRSolver", "DirectSolver", "select_linear_solver",
-    "get_non_linear_solver", "getNonLinearSolver",
+    "get_non_linear_solver_ad", "getNonLinearSolver",
     "CPR_CROSSOVER_BLOCK_JACOBI", "CPR_CROSSOVER_ILU",
     # adaptive timestepping
     "SimpleTimeStepSelector", "FactorTimeStepSelector",

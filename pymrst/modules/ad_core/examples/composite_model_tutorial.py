@@ -8,7 +8,7 @@ import numpy as np
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
 )
 from pymrst.modules.ad_core.models.composite.composite_model import CompositeModel
 from pymrst.modules.ad_core.statefunctions.composite.coupling_term import (
@@ -35,7 +35,7 @@ def _submodel(pressure: float):
     fluid = init_simple_adi_fluid(
         mu=[1.0, 2.0], rho=[1000.0, 800.0], n=[2.0, 2.0]
     )
-    model = GenericBlackOilModel(grid, rock, fluid, [])
+    model = GenericBlackOilModelAD(grid, rock, fluid, [])
     raw = State(
         pressure=np.full(grid.cells.num, pressure),
         sW=np.full(grid.cells.num, 0.4),

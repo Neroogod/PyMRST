@@ -7,7 +7,7 @@ validated**.
 
 So this replays the Phases 5a and 5b comparisons - the same cases, the same
 MATLAB reference files (`ref_p5_ow.mat`, `ref_p5b_spe1.mat`) - but assembles
-the residual through the graph (`GenericBlackOilModel`) instead of through
+the residual through the graph (`GenericBlackOilModelAD`) instead of through
 the hand-rolled models. If the graph is right, both cases still match MATLAB
 to the tolerances they matched at before, and the graph inherits their
 validation. If a state function is wrong, a dependency is missing, or the
@@ -31,7 +31,7 @@ from pymrst.modules.ad_blackoil.models.three_phase_black_oil_model import (
     initial_state_spe1,
 )
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
     initial_state_from_deck,
 )
 from pymrst.modules.ad_blackoil.models.two_phase_oil_water_model import TwoPhaseOilWaterModelAD
@@ -81,7 +81,7 @@ def ow_initial(g, wells, p0=200 * BARSA, sw0=0.2) -> State:
 def run_ow_graph() -> Tuple[Any, Dict[str, np.ndarray]]:
     """Phase 5a's schedule, assembled through the state-function graph."""
     g, rock, fluid, wells = build_ow()
-    model = GenericBlackOilModel(g, rock, fluid, wells)
+    model = GenericBlackOilModelAD(g, rock, fluid, wells)
     solver = NonLinearSolver()
     st = ow_initial(g, wells)
 
@@ -136,7 +136,7 @@ def build_spe1(order):
 def run_spe1_graph(order) -> Tuple[Any, Dict[str, np.ndarray]]:
     """SPE 1's first 30 report steps, assembled through the graph."""
     deck, g, rock, fluid, wells = build_spe1(order)
-    model = GenericBlackOilModel(g, rock, fluid, wells, disgas=True,
+    model = GenericBlackOilModelAD(g, rock, fluid, wells, disgas=True,
                                  gravity=NORM_GRAVITY, tol_well=1e-8)
     solver = NonLinearSolver()
     st = initial_state_from_deck(model, deck)

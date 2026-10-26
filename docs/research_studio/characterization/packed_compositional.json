@@ -61,7 +61,7 @@
   ],
   "metrics": {},
   "provenance": {
-    "commit": "dee4e49",
+    "commit": "dc68531",
     "matlab_reference": "",
     "matlab_reference_sha256_16": "",
     "numpy": "2.4.6",
@@ -702,6 +702,6 @@
     }
   },
   "timing": {
-    "seconds": 2.121
+    "seconds": 2.097
   }
 }

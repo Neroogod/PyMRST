@@ -1,0 +1,55 @@
+{
+  "artifacts": [
+    {
+      "kind": "cases",
+      "name": "spe1.case.json",
+      "source": "/Users/Shared/PyMRST_workspace/PyMRST/results/research_studio/m3_branch_package_final/spe1.case.json"
+    },
+    {
+      "kind": "cases",
+      "name": "water_export.DATA",
+      "source": "/Users/Shared/PyMRST_workspace/PyMRST/results/research_studio/m3_branch_package_final/water_export.DATA"
+    },
+    {
+      "kind": "evidence",
+      "name": "water_export.pymrst-manifest.json",
+      "source": "/Users/Shared/PyMRST_workspace/PyMRST/results/research_studio/m3_branch_package_final/water_export.pymrst-manifest.json"
+    },
+    {
+      "kind": "evidence",
+      "name": "reproducibility_manifest.json",
+      "source": "/Users/Shared/PyMRST_workspace/PyMRST/results/research_studio/m3_branch_package_final/evidence/reproducibility_manifest.json"
+    },
+    {
+      "kind": "evidence",
+      "name": "qualification.json",
+      "source": "/Users/Shared/PyMRST_workspace/PyMRST/results/research_studio/m3_branch_package_final/evidence/qualification.json"
+    },
+    {
+      "kind": "comparisons",
+      "name": "branch_comparison.json",
+      "source": "/Users/Shared/PyMRST_workspace/PyMRST/results/research_studio/m3_branch_package_final/evidence/branch_comparison.json"
+    },
+    {
+      "kind": "tables",
+      "name": "branch_errors.csv",
+      "source": "/Users/Shared/PyMRST_workspace/PyMRST/results/research_studio/m3_branch_package_final/evidence/branch_errors.csv"
+    }
+  ],
+  "experiment_id": "experiment_06a02706a0f9858ca33c4ba05fe3ce2d513427564cc68ef376e388b6e3f1e643",
+  "member_ids": [
+    "member_1a5546c3c9202e55e3b5d8875a34e60c3d7d394b6d0b5e59f4497d8950013086",
+    "member_4ee6577e5959e0918ed1bcabe35dbdd29381857427dbca7f1124115e0ab515c6"
+  ],
+  "metadata": {
+    "matrix_id": "matrix_3c7c7aec00ea0b7dc26b5cbfb3b7e6f49d8c5b61e2d92feac3f79d5474f5574d"
+  },
+  "name": "PyMRST M3 SPE1 branch qualification",
+  "package_id": "package_b425aa657da62482a41f2c4006b80933a5a0ed47722566fd64b3328718671427",
+  "reproduction_command": [
+    "python3",
+    "-c",
+    "from pymrst.research_studio.case import read_reservoir_case; c=read_reservoir_case('cases/spe1.case.json'); c.construct(); print(c.content_hash)"
+  ],
+  "schema_version": 1
+}

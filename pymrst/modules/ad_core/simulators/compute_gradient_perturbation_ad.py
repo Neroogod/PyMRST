@@ -81,6 +81,11 @@ def compute_gradient_perturbation(
     return AdjointResult(value=val0, gradient=grad, states=states0)
 
 
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+computeGradientPerturbationAD = compute_gradient_perturbation
+
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_blackoil.models.two_phase_oil_water_model import (

@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
 from pymrst.modules.ad_core.models.facilities import (  # noqa: E402
     FacilityModel,
     group_controls_from_deck,
-    selectFacilityFromDeck,
+    select_facility_from_deck_ad,
 )
 from pymrst.modules.ad_core.statefunctions.state_function import State  # noqa: E402
 from pymrst.params.wells_and_bc import Well  # noqa: E402
@@ -101,7 +101,7 @@ def validate_group_schedule_collector() -> int:
 def validate_new_facility_receives_deck_groups() -> int:
     wells = [_well("P1"), _well("P2"), _well("P3")]
     model = ModelShell(wells)
-    facility = selectFacilityFromDeck(_deck(), model)
+    facility = select_facility_from_deck_ad(_deck(), model)
     ok = facility.update_switched_controls(_state(), ["qWs", "qOs", "qGs"])
 
     failures = 0
@@ -125,7 +125,7 @@ def validate_existing_facility_receives_deck_groups() -> int:
     wells = [_well("P1"), _well("P2"), _well("P3")]
     facility = FacilityModel(wells)
     model = ModelShell([], facility=facility)
-    returned = selectFacilityFromDeck(_deck(), model)
+    returned = select_facility_from_deck_ad(_deck(), model)
 
     failures = 0
     failures += _check("selectFacilityFromDeck reuses existing facility for group import",

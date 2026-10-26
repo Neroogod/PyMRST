@@ -3,9 +3,9 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
 from pymrst.modules.ad_core.solvers import (
-    CPRSolverAD,
+    CPRSolverADAD,
     HandleLinearSolverAD,
-    LinearizedProblem,
+    LinearizedProblemAD as LinearizedProblem,
 )
 
 
@@ -24,7 +24,8 @@ def test_handle_linear_solver_wraps_callable():
 
 def test_cpr_solver_ad_direct_metadata_free_path_and_problem_sign():
     matrix, rhs, exact = _system()
-    solver = CPRSolverAD(tolerance=1e-12)
+    solver = CPRSolverADAD(tolerance=1e-12)
     assert np.allclose(solver.solve(matrix, rhs), exact)
     problem = LinearizedProblem(matrix, -rhs)
-    assert np.allclose(solver.solve_linear_problem(problem), exact)
+    _, result, _ = solver.solve_linear_problem(problem)
+    assert np.allclose(result, exact)

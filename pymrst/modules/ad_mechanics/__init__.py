@@ -7,7 +7,7 @@
   `PoroMechanicalPoreVolume`: the pore volume grows with the rock's
   dilation. Nothing downstream knows that mechanics happened.
 - `MechBlackOilModel`: the multiphase version (MRST's `MechOilWaterModel`
-  and `MechBlackOilModel`) - the validated `GenericBlackOilModel` with the
+  and `MechBlackOilModel`) - the validated `GenericBlackOilModelAD` with the
   same pore volume installed and the displacement added as a primary
   variable. **Note:** MRST's `equationsOilWaterMech` omits the cell volume
   on its Biot term; PyMRST is correct, and `mrst_oilwater_bug=True`

@@ -94,7 +94,7 @@ def spe1_branch_member(context) -> MemberPayload:
         _collect_history, setup_spe1_tutorial,
     )
     from pymrst.modules.ad_core import NonLinearSolver
-    from pymrst.modules.ad_core.utils import set_time_discretization
+    from pymrst.modules.ad_core.utils import set_time_discretization_ad
 
     required = {"pressure", "sW", "sG", "rs"}
     missing = required-set(context.parent_fields)
@@ -102,7 +102,7 @@ def spe1_branch_member(context) -> MemberPayload:
         raise ValueError(f"SPE1 branch checkpoint is missing {sorted(missing)}")
     deck, model, state = setup_spe1_tutorial()
     mode = context.definition.components.get("time_integration", "fully-implicit")
-    set_time_discretization(model, mode)
+    set_time_discretization_ad(model, mode)
     pressure = np.asarray(context.parent_fields["pressure"], dtype=float)
     sw = np.asarray(context.parent_fields["sW"], dtype=float)
     sg = np.asarray(context.parent_fields["sG"], dtype=float)

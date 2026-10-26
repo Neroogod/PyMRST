@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from pymrst.modules.ad_core.utils.get_well_output import get_well_output
+from pymrst.modules.ad_core.utils.get_well_output import get_well_output_ad
 
 
 def _solutions():
@@ -20,7 +20,7 @@ def _solutions():
 
 
 def test_selects_fields_wells_and_one_based_vector_index():
-    data, names = get_well_output(
+    data, names = get_well_output_ad(
         _solutions(), ["bhp", "q"], ["P", "I"], index=1
     )
     assert names == ["P", "I"]
@@ -28,7 +28,7 @@ def test_selects_fields_wells_and_one_based_vector_index():
     assert np.array_equal(data[:, 0, 0], [150.0, 149.0, 148.0])
     assert np.allclose(data[:, 1, 1], [2e-3, 2.1e-3, 2.2e-3])
 
-    oil_rate, names = get_well_output(
+    oil_rate, names = get_well_output_ad(
         _solutions(), "q", ["P"], index=2
     )
     assert names == ["P"]
@@ -36,9 +36,9 @@ def test_selects_fields_wells_and_one_based_vector_index():
 
 
 def test_empty_output_and_invalid_selection():
-    data, names = get_well_output([])
+    data, names = get_well_output_ad([])
     assert data.shape == (0, 0, 0) and names == []
     with pytest.raises(ValueError, match="has no value"):
-        get_well_output(_solutions(), "bhp", index=2)
+        get_well_output_ad(_solutions(), "bhp", index=2)
     with pytest.raises(ValueError):
-        get_well_output(_solutions(), "bhp", ["missing"])
+        get_well_output_ad(_solutions(), "bhp", ["missing"])

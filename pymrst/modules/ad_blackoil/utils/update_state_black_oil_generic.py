@@ -3,7 +3,7 @@
 import numpy as np
 
 from pymrst.modules.ad_blackoil.utils.compute_flash_black_oil import (
-    compute_flash_black_oil,
+    compute_flash_black_oil_ad,
 )
 
 
@@ -36,6 +36,19 @@ def update_state_black_oil_generic(
             state["sW"] + np.clip(dsw, -model.ds_max, model.ds_max), 0.0, 1.0
         )
         offset = 2*nc
+        if nph > 2:
+            # A three-phase model without dissolution carries `sG` as a second
+            # independent saturation, seeded by `init_state_ad` right after
+            # `sW`. The unpacking here has to use the same layout: reading the
+            # well block from `2*nc` instead leaves the bottom-hole pressures
+            # frozen at their initial guess while the rates absorb the gas
+            # saturation's increment, and Newton never converges.
+            dsg = increment[2*nc:3*nc]
+            new["sG"] = np.clip(
+                state["sG"] + np.clip(dsg, -model.ds_max, model.ds_max),
+                0.0, 1.0)
+            new["sO"] = 1.0 - new["sW"] - new["sG"]
+            offset = 3*nc
     else:
         st1, st2, st3 = model._status_masks(state["status"])
         dx_hc = increment[2*nc:3*nc]
@@ -85,7 +98,7 @@ def update_state_black_oil_generic(
                 cursor += count
 
     if model.disgas or model.vapoil:
-        compute_flash_black_oil(new, state, model)
+        compute_flash_black_oil_ad(new, state, model)
     model.facility.update_switched_controls(new, rate_names)
     new.clear_cache()
     return new

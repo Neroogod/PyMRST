@@ -10,12 +10,13 @@ water occupies pore space too, so the oil saturation at a given Sg is
 1 - Sg - Swcon, not 1 - Sg. Assigning SGOF before SWOF therefore shifts the
 whole krOG curve by the connate water saturation.
 
-MRST warns and falls back to Swcon = 0 in that case rather than failing. This
-port raises instead: a silent shift of a relative permeability curve is not
-something a caller can be expected to notice, and the ordering is entirely
-within the caller's control.
+MRST warns ("No relperm points found in assignment of SGOF.") and uses
+Swcon = 0 in that case, which is right for a fluid with no water at all -
+MRST's tenthCSP_Model_I assigns SGOF to an oil-gas `initSimpleADIFluid`
+fluid exactly so. The port does the same.
 """
 
+import warnings
 from typing import Any, Callable, Dict, List, Tuple
 
 import numpy as np
@@ -24,19 +25,16 @@ from pymrst.modules.ad_props.utils.extend_tab import extend_tab
 
 
 def _points(sgof: np.ndarray, swcon: float) -> Tuple[np.ndarray, np.ndarray]:
-    """End points of the gas and oil-in-gas curves."""
+    """End points of the gas and oil-in-gas curves (MRST's getPoints)."""
     gas = np.zeros(4)
     gas[0] = sgof[0, 0]                                    # connate gas
-    immobile = np.flatnonzero(sgof[:, 1] == 0)
-    gas[1] = sgof[immobile[-1], 0] if immobile.size else sgof[0, 0]
+    gas[1] = sgof[np.flatnonzero(sgof[:, 1] == 0)[-1], 0]  # critical gas
     gas[2] = sgof[-1, 0]
     gas[3] = sgof[-1, 1]                                   # maximum krG
 
     oil = np.zeros(4)
     oil[2] = 1.0
-    dry = np.flatnonzero(sgof[:, 2] <= np.finfo(float).eps)
-    oil[1] = (1.0 - sgof[dry[0], 0] - swcon if dry.size
-              else 1.0 - sgof[-1, 0] - swcon)
+    oil[1] = 1.0 - sgof[np.flatnonzero(sgof[:, 2] <= np.finfo(float).eps)[0], 0] - swcon
     oil[3] = sgof[0, 2]                                    # maximum krOG
     return gas, oil
 
@@ -44,11 +42,6 @@ def _points(sgof: np.ndarray, swcon: float) -> Tuple[np.ndarray, np.ndarray]:
 def assign_sgof(f: Dict[str, Any], sgof, reg) -> Dict[str, Any]:
     """Store ``krG``, ``krOG``, ``krPts`` and - if stated - ``pcOG``."""
     points = f.get("krPts", {}).get("w")
-    if points is None:
-        raise ValueError(
-            "SGOF needs the connate water saturation from SWOF; assign SWOF "
-            "first, or krOG is shifted by Swcon")
-
     kr_g: List[Callable] = []
     kr_og: List[Callable] = []
     pc_og: List[Callable] = []
@@ -57,11 +50,24 @@ def assign_sgof(f: Dict[str, Any], sgof, reg) -> Dict[str, Any]:
     has_pc = False
 
     for index in range(reg.sat):
-        swcon = float(points[index][0])
+        if points is not None:
+            swcon = float(np.atleast_2d(points)[index][0])
+        else:
+            warnings.warn("No relperm points found in assignment of SGOF.")
+            swcon = 0.0
         table = np.asarray(sgof[index], dtype=float)
         pts_g[index], pts_og[index] = _points(table, swcon)
 
-        table = extend_tab(table)
+        sg = table[:, 0]
+        ds = np.diff(sg)
+        if getattr(reg, "optimize", False) and np.all(np.abs(ds - ds[0]) < np.sqrt(np.spacing(ds[0]))):
+            ds = ds[0]
+            rows = np.r_[0, np.arange(table.shape[0]), table.shape[0] - 1]
+            table = np.column_stack([np.r_[sg[0] - ds, sg, sg[-1] + ds], table[rows, 1:]])
+            interp = reg.interp_uniform
+        else:
+            table = extend_tab(table)
+            interp = reg.interp
         sg = table[:, 0]
         pc = table[:, 3]
         has_pc = has_pc or bool(np.any(pc != 0))
@@ -70,9 +76,9 @@ def assign_sgof(f: Dict[str, Any], sgof, reg) -> Dict[str, Any]:
         so = 1.0 - (sg[::-1] + swcon)
         krog = table[::-1, 2]
 
-        kr_g.append(lambda s, *, x=sg, y=table[:, 1]: reg.interp(x, y, s))
-        kr_og.append(lambda s, *, x=so, y=krog: reg.interp(x, y, s))
-        pc_og.append(lambda s, *, x=sg, y=pc: reg.interp(x, y, s))
+        kr_g.append(lambda s, *, x=sg, y=table[:, 1], fn=interp: fn(x, y, s))
+        kr_og.append(lambda s, *, x=so, y=krog, fn=interp: fn(x, y, s))
+        pc_og.append(lambda s, *, x=sg, y=pc, fn=interp: fn(x, y, s))
 
     f["krG"], f["krOG"] = kr_g, kr_og
     f.setdefault("krPts", {})
@@ -124,14 +130,14 @@ if __name__ == "__main__":
             "would mean Swcon was dropped"
         print("ok test_ignoring_connate_water_would_give_a_different_curve")
 
-    def test_assigning_sgof_before_swof_is_rejected() -> None:
-        try:
-            assign_sgof({}, [SGOF], Regions())
-        except ValueError as error:
-            assert "SWOF" in str(error)
-            print("ok test_assigning_sgof_before_swof_is_rejected")
-            return
-        raise AssertionError("SGOF without SWOF must be rejected")
+    def test_without_swof_mrst_warns_and_takes_no_connate_water() -> None:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            f = assign_sgof({}, [SGOF], Regions())
+        assert any("No relperm points" in str(w.message) for w in caught)
+        assert np.isclose(f["krOG"][0](1.0 - 0.20), 0.55)
+        assert np.isclose(f["krPts"]["og"][0][1], 1.0 - 0.88)
+        print("ok test_without_swof_mrst_warns_and_takes_no_connate_water")
 
     def test_oil_end_point_subtracts_connate_water() -> None:
         f, reg = _with_swof()
@@ -176,7 +182,7 @@ if __name__ == "__main__":
     test_krg_is_read_at_gas_saturation()
     test_krog_accounts_for_connate_water()
     test_ignoring_connate_water_would_give_a_different_curve()
-    test_assigning_sgof_before_swof_is_rejected()
+    test_without_swof_mrst_warns_and_takes_no_connate_water()
     test_oil_end_point_subtracts_connate_water()
     test_gas_end_points_describe_the_deck_table()
     test_swof_points_are_not_overwritten()

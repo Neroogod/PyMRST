@@ -162,7 +162,7 @@
       "input_schemas": [],
       "kind": "model",
       "output_schemas": [],
-      "owner": "pymrst.modules.ad_blackoil.models:GenericBlackOilModel",
+      "owner": "pymrst.modules.ad_blackoil.models:GenericBlackOilModelAD",
       "phases": [
         "water",
         "oil",

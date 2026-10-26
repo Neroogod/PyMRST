@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
 )
 from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
 from pymrst.modules.ad_core.solvers.linear_solvers import CPRSolver
@@ -77,10 +77,64 @@ def test_reassembly_consumes_stale_well_limit_switch_flag():
             raise Reassembled
 
     with pytest.raises(Reassembled):
-        GenericBlackOilModel.get_equations(Dummy(), State(), State(), 1.0)
+        GenericBlackOilModelAD.get_equations(Dummy(), State(), State(), 1.0)
 
 
 def test_cpr_amg_rebuild_interval_must_be_positive():
     assert CPRSolver(amg_rebuild_interval=3).amg_rebuild_interval == 3
     with pytest.raises(ValueError, match="positive"):
         CPRSolver(amg_rebuild_interval=0)
+
+
+def test_verbose_schedule_reports_every_accepted_timestep(capsys):
+    class ConvergedModel:
+        @staticmethod
+        def get_equations(state0, state, dt):
+            return []
+
+        @staticmethod
+        def get_convergence(equations, dt):
+            return True, {"CNV": 0.0, "MB": 0.0}
+
+    solver = NonLinearSolver(verbose=True)
+    states, report = solver.simulate_schedule(
+        ConvergedModel(), State(x=np.ones(1)), [86400.0, 172800.0],
+    )
+
+    output = capsys.readouterr().out
+    assert len(states) == len(report.steps) == 2
+    assert "Report step   1/2" in output
+    assert "Report step   2/2" in output
+    assert "time       3 d" in output
+    assert "accepted" in output
+
+
+def test_newton_progress_mode_prints_residuals(capsys):
+    class ConvergedModel:
+        @staticmethod
+        def get_equations(state0, state, dt):
+            return []
+
+        @staticmethod
+        def get_convergence(equations, dt):
+            return True, {"CNV": 2.5e-9}
+
+    solver = NonLinearSolver(progress="newton")
+    state = State(x=np.ones(1))
+    solver.solve_ministep(ConvergedModel(), state, state.copy(), 1.0)
+
+    output = capsys.readouterr().out
+    assert "Newton 01" in output
+    assert "2.500000e-09" in output
+    assert "converged" in output
+
+
+def test_invalid_progress_mode_is_rejected():
+    with pytest.raises(ValueError, match="progress"):
+        NonLinearSolver(progress="sometimes")
+
+
+def test_progress_can_be_disabled_explicitly(capsys):
+    solver = NonLinearSolver(verbose=False)
+    solver._progress("must remain quiet")
+    assert capsys.readouterr().out == ""

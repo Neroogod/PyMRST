@@ -56,6 +56,11 @@ def convert_reservoir_fluxes_to_surface(model, states) -> List[Dict]:
     return out
 
 
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+convertReservoirFluxesToSurface = convert_reservoir_fluxes_to_surface
+
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.ad_core.utils.operators import setup_operators_tpfa

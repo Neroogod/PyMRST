@@ -8,3 +8,12 @@ __pycache__/
 .env
 .venv/
 venv/
+
+# Desktop UI build output
+ui/node_modules/
+ui/dist/
+ui/src-tauri/target/
+ui/src-tauri/gen/schemas/
+ui/src-tauri/binaries/*
+!ui/src-tauri/binaries/.gitkeep
+*.tsbuildinfo

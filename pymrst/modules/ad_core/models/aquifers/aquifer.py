@@ -165,7 +165,7 @@ def equilibrium_aquifer_pressure(conn: AquiferConnections, p_w: np.ndarray,
     return np.linalg.solve(mtm, -(m.T @ r))
 
 
-class AquiferModel:
+class AquiferModelAD:
     """A set of Fetkovich aquifers attached to a reservoir model.
 
     Mirrors MRST's `AquiferModel`: it holds the connection geometry and the
@@ -234,6 +234,95 @@ class AquiferModel:
         q = value(self.fluxes(model, state, p0, v0, dt))
         return update_aquifer_state(self.connections, p0, v0, q, dt)
 
+    # ======================================================================
+    # MRST's own surface.
+    #
+    # PyMRST keeps the aquifer pressure and volume as two flat arrays on the
+    # reservoir state (`aquifer_p`, `aquifer_V`), because they have to survive
+    # a Newton iteration and a timestep cut and the state is what gets rolled
+    # back. MRST keeps a struct array, `state.aquiferSol(k)`, which also holds
+    # the *flux* each aquifer delivered.
+    #
+    # Both are maintained: the flat arrays stay the source of truth for the
+    # solve, and `aquiferSol` is written alongside them, because the flux is
+    # genuinely extra information - it is what a report or a material-balance
+    # check reads, and it cannot be recovered from p and V after the fact.
+    # ======================================================================
+
+    def init_state_aquifer(self, state: State) -> State:
+        """Seed both representations (MRST `initStateAquifer`)."""
+        state = self.init_state(state)
+        state["aquiferSol"] = [
+            {"pressure": float(p), "volume": float(v), "flux": None}
+            for p, v in zip(self.pressures, self.volumes)]
+        return state
+
+    initStateAquifer = init_state_aquifer
+
+    def add_aquifers_contribution(self, model, eqs, names, state, dt,
+                                  p_aq=None, v_aq=None):
+        """Subtract the influx from the *named* water equation.
+
+        The difference from `add_contribution` is the lookup, and it is not
+        cosmetic. That method indexes `eqs[self.water_index]`; this one finds
+        the equation called "water". A compositional or thermal model carries
+        equations in a different order, and indexing then subtracts the water
+        influx from whatever equation happens to sit in slot zero - a
+        conservation error in a phase that has no aquifer, which balances
+        globally and is wrong per phase.
+
+        Returns `eqs` unchanged when the model has no water equation, rather
+        than raising: a model without water simply has nowhere for an aquifer
+        influx to go, and that is a configuration, not a fault.
+        """
+        index = next((i for i, n in enumerate(names)
+                      if str(n).lower() == "water"), None)
+        if index is None:
+            return eqs
+
+        if p_aq is None:
+            p_aq = np.asarray(state["aquifer_p"], dtype=float)
+        if v_aq is None:
+            v_aq = np.asarray(state["aquifer_V"], dtype=float)
+
+        q = self.fluxes(model, state, p_aq, v_aq, dt)
+        q = model._basis_scale()[self.water_index]*q
+
+        eqs = list(eqs)
+        cells = self.connections.cells
+        eq = eqs[index]
+        eq[cells] = eq[cells] - q
+        eqs[index] = eq
+        return eqs
+
+    addAquifersContribution = add_aquifers_contribution
+
+    def update_aquifer_fluxes(self, model, state: State, dt: float = 0.0
+                              ) -> State:
+        """Record each aquifer's connection fluxes on the state.
+
+        Per *aquifer*, not per connection: an aquifer may feed several cells
+        and what a report wants is the total it delivered. The split is kept
+        by storing the connection fluxes belonging to each aquifer, which is
+        what MRST's `q(aquid == k)` selects.
+        """
+        p_aq = np.asarray(state["aquifer_p"], dtype=float)
+        v_aq = np.asarray(state["aquifer_V"], dtype=float)
+        q = np.asarray(value(self.fluxes(model, state, p_aq, v_aq, dt)),
+                       dtype=float).ravel()
+
+        sols = state.get("aquiferSol") if hasattr(state, "get") else None
+        if not sols:
+            sols = [{"pressure": float(p), "volume": float(v), "flux": None}
+                    for p, v in zip(p_aq, v_aq)]
+        aquid = self.connections.aquid
+        for k in range(self.connections.n_aq):
+            sols[k]["flux"] = q[aquid == k]
+        state["aquiferSol"] = sols
+        return state
+
+    updateAquiferFluxes = update_aquifer_fluxes
+
 
 if __name__ == "__main__":
     from pymrst.gridprocessing import cart_grid, compute_geometry
@@ -253,7 +342,7 @@ if __name__ == "__main__":
             depth_conn=np.full(n, depth_conn), depth_aq=np.full(n, depth_aq),
             c_aq=np.array([c]),
         )
-        return AquiferModel(conn, np.array([p]), np.array([v]))
+        return AquiferModelAD(conn, np.array([p]), np.array([v]))
 
     def test_flux_matches_hand_computation():
         """q = alpha J (p_aq - p_w) with coef = 1 at dt = 0, no gravity."""
@@ -354,14 +443,14 @@ if __name__ == "__main__":
         print("ok test_two_aquifers_map_independently")
 
     def _sealed_ow_model(aq, gravity=0.0):
-        from pymrst.modules.ad_blackoil.models.generic_black_oil_model import GenericBlackOilModel
+        from pymrst.modules.ad_blackoil.models.generic_black_oil_model import GenericBlackOilModelAD
         g = compute_geometry(cart_grid([3, 1, 1], [30.0, 10.0, 10.0]))
         rock = make_rock(g, 100 * MILLI * DARCY, 0.3)
         fluid = init_simple_adi_fluid(
             mu=np.array([1.0, 5.0]) * CENTI * POISE, rho=[1000.0, 800.0],
             n=[2, 2], c=[1e-6 / BARSA, 1e-4 / BARSA], p_ref=200 * BARSA,
         )
-        model = GenericBlackOilModel(g, rock, fluid, wells=[],
+        model = GenericBlackOilModelAD(g, rock, fluid, wells=[],
                                      gravity=gravity, aquifer=aq)
         return g, model
 

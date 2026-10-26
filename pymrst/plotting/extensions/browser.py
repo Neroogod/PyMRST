@@ -47,6 +47,9 @@ class BrowserReservoirPayload:
     face_neighbors: np.ndarray = _dc_field(default_factory=lambda: np.zeros((0, 2), np.int64))
     ijk: np.ndarray | None = None
     cart_dims: tuple[int, ...] | None = None
+    griddim: int = 3
+    cell_pos: np.ndarray | None = None
+    cell_nodes: np.ndarray | None = None
 
 
 def reservoir_browser_data(
@@ -350,6 +353,9 @@ def _scene_model(
         "centroids": _flat(payload.centroids),
         "ijk": None if payload.ijk is None else [int(v) for v in payload.ijk.ravel()],
         "cartDims": None if payload.cart_dims is None else [int(v) for v in payload.cart_dims],
+        "griddim": int(payload.griddim),
+        "cellPos": None if payload.cell_pos is None else [int(v) for v in payload.cell_pos],
+        "cellNodes": None if payload.cell_nodes is None else [int(v) for v in payload.cell_nodes],
         "fields": {name: _json_array(series) for name, series in payload.fields.items()},
         "kinds": kinds,
         "defaultCmaps": {name: _DEFAULT_CMAP[kind] for name, kind in kinds.items()},
@@ -563,6 +569,8 @@ def _topology(g: Grid) -> dict:
     coords = np.asarray(g.nodes.coords, dtype=float)
     if coords.shape[1] == 2:
         coords = np.column_stack([coords, np.zeros(coords.shape[0])])
+    griddim = int(getattr(g, "griddim", 3) or 3)
+    cell_pos, cell_nodes = _cell_polygons(g) if griddim == 2 else (None, None)
     return {
         "nodes": coords,
         "face_pos": np.asarray(g.faces.nodePos, dtype=np.int64),
@@ -570,7 +578,43 @@ def _topology(g: Grid) -> dict:
         "face_neighbors": np.asarray(g.faces.neighbors, dtype=np.int64).reshape(-1, 2),
         "ijk": _cell_ijk(g),
         "cart_dims": tuple(int(v) for v in g.cartDims) if getattr(g, "cartDims", None) is not None else None,
+        "griddim": griddim,
+        "cell_pos": cell_pos,
+        "cell_nodes": cell_nodes,
     }
+
+
+def _cell_polygons(g: Grid) -> tuple[np.ndarray, np.ndarray]:
+    """Per-cell node rings for 2-D grids, angularly sorted around the centroid.
+
+    A 2-D grid's faces are edges - two nodes each - not polygons, so the
+    face-boundary algorithm the browser uses to skin a 3-D solid has nothing
+    to triangulate: every face gets treated as degenerate and dropped. A flat
+    grid has no interior to hide in the first place, so every cell is its own
+    visible polygon; the angular sort works for any convex cell shape
+    (Cartesian, PEBI, ...) without assuming a particular face ordering.
+    """
+    cell_face_pos = np.asarray(g.cells.facePos, dtype=np.int64)
+    cell_faces = np.asarray(g.cells.faces, dtype=np.int64)
+    face_node_pos = np.asarray(g.faces.nodePos, dtype=np.int64)
+    face_nodes = np.asarray(g.faces.nodes, dtype=np.int64)
+    coords = np.asarray(g.nodes.coords, dtype=float)
+    centroids = np.asarray(g.cells.centroids, dtype=float)
+    cell_pos = [0]
+    cell_nodes: list[int] = []
+    for c in range(g.cells.num):
+        faces = cell_faces[cell_face_pos[c]:cell_face_pos[c + 1]]
+        nodes: set[int] = set()
+        for f in faces:
+            nodes.update(int(n) for n in face_nodes[face_node_pos[f]:face_node_pos[f + 1]])
+        if len(nodes) < 3:
+            cell_pos.append(cell_pos[-1])
+            continue
+        cx, cy = float(centroids[c, 0]), float(centroids[c, 1])
+        ordered = sorted(nodes, key=lambda n: np.arctan2(coords[n, 1] - cy, coords[n, 0] - cx))
+        cell_nodes.extend(ordered)
+        cell_pos.append(len(cell_nodes))
+    return np.asarray(cell_pos, dtype=np.int64), np.asarray(cell_nodes, dtype=np.int64)
 
 
 def _cell_ijk(g: Grid) -> np.ndarray | None:
@@ -1090,12 +1134,24 @@ function computeVisible(){
 var surface = null;
 /* Draw a face only where it separates a shown cell from a hidden one: that is
    the reservoir's visible skin, and it makes filters read as solid cutaways. */
+function finishSurface(vis, shown, X, Y, Z, I, J, K, owner, EX, EY, EZ){
+  var meta = new Array(owner.length);
+  for (var v2=0;v2<owner.length;v2++) meta[v2] = cellRecord(owner[v2]);
+  var pidx = [], pmeta = [];
+  if (M.style !== 'mesh'){
+    for (var c2=0;c2<NC;c2++) if (vis[c2]){ pidx.push(c2); pmeta.push(cellRecord(c2)); }
+  }
+  surface = {X:X,Y:Y,Z:Z,I:I,J:J,K:K,owner:owner,meta:meta,
+             pointIdx:pidx, pointMeta:pmeta,
+             EX:EX,EY:EY,EZ:EZ,vis:vis,shown:shown};
+}
 function buildSurface(){
   var vis = computeVisible();
+  var shown=0; for (var c=0;c<NC;c++) if (vis[c]) shown++;
+  if (M.griddim === 2 && M.cellPos) return buildSurface2D(vis, shown);
   var N=M.nodes, FP=M.facePos, FN=M.faceNodes, NB=M.faceNeighbors;
   var X=[],Y=[],Z=[],I=[],J=[],K=[],owner=[],EX=[],EY=[],EZ=[];
   var NN=N.length/3, seenEdge=new Set();
-  var shown=0; for (var c=0;c<NC;c++) if (vis[c]) shown++;
   for (var f=0;f<NF;f++){
     var a=NB[2*f], b=NB[2*f+1];
     var va = a>=0 && vis[a]===1, vb = b>=0 && vis[b]===1;
@@ -1119,15 +1175,36 @@ function buildSurface(){
       EZ.push(N[3*na+2],N[3*nb+2],null);
     }
   }
-  var meta = new Array(owner.length);
-  for (var v2=0;v2<owner.length;v2++) meta[v2] = cellRecord(owner[v2]);
-  var pidx = [], pmeta = [];
-  if (M.style !== 'mesh'){
-    for (var c2=0;c2<NC;c2++) if (vis[c2]){ pidx.push(c2); pmeta.push(cellRecord(c2)); }
+  finishSurface(vis, shown, X, Y, Z, I, J, K, owner, EX, EY, EZ);
+}
+/* A 2-D grid's faces are edges, not polygons: there is no boundary-face skin
+   to compute, because there is no interior to hide in a flat sheet. Every
+   visible cell draws its own pre-ordered polygon (see _cell_polygons in the
+   Python writer) instead of the face/neighbour test buildSurface() uses. */
+function buildSurface2D(vis, shown){
+  var N=M.nodes, CP=M.cellPos, CN=M.cellNodes;
+  var X=[],Y=[],Z=[],I=[],J=[],K=[],owner=[],EX=[],EY=[],EZ=[];
+  var NN=N.length/3, seenEdge=new Set();
+  for (var c=0;c<NC;c++){
+    if (!vis[c]) continue;
+    var s=CP[c], e=CP[c+1], m=e-s;
+    if (m<3) continue;
+    var base=X.length;
+    for (var p=s;p<e;p++){
+      var n=CN[p];
+      X.push(N[3*n]); Y.push(N[3*n+1]); Z.push(N[3*n+2]); owner.push(c);
+    }
+    for (var t=1;t<m-1;t++){ I.push(base); J.push(base+t); K.push(base+t+1); }
+    for (var q=0;q<m;q++){
+      var na=CN[s+q], nb=CN[s+((q+1)%m)];
+      var key = na<nb ? na*NN+nb : nb*NN+na;
+      if (seenEdge.has(key)) continue;
+      seenEdge.add(key);
+      EX.push(N[3*na],N[3*nb],null); EY.push(N[3*na+1],N[3*nb+1],null);
+      EZ.push(N[3*na+2],N[3*nb+2],null);
+    }
   }
-  surface = {X:X,Y:Y,Z:Z,I:I,J:J,K:K,owner:owner,meta:meta,
-             pointIdx:pidx, pointMeta:pmeta,
-             EX:EX,EY:EY,EZ:EZ,vis:vis,shown:shown};
+  finishSurface(vis, shown, X, Y, Z, I, J, K, owner, EX, EY, EZ);
 }
 
 /* ---------------- traces + layout ---------------- */

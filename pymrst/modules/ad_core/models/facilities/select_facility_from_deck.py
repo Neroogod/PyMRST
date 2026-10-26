@@ -1,4 +1,11 @@
-"""MRST ``ad-core/models/facilities/selectFacilityFromDeck.m``."""
+"""MRST ``ad-core/models/facilities/selectFacilityFromDeck.m``.
+
+`select_facility_from_deck` is the port, for the AD-OO models in
+`ad_core.ad_oo`: the model's facility (a `GenericFacilityModel` for the
+generic black-oil model), given the deck's VFP tables.
+`select_facility_from_deck_ad` is PyMRST's earlier version for the legacy
+`FacilityModel` (wells, group controls), kept for its callers.
+"""
 
 from __future__ import annotations
 
@@ -137,7 +144,7 @@ def _attach_facility(model, facility: FacilityModel) -> None:
             continue
 
 
-def select_facility_from_deck(
+def select_facility_from_deck_ad(
     deck,
     model=None,
     *,
@@ -179,6 +186,80 @@ def select_facility_from_deck(
     return facility
 
 
+def select_facility_from_deck(deck, model):
+    """MRST `selectFacilityFromDeck`: the model's facility, with VFP tables.
+
+    MRST keeps an injector table only where the list already has that slot,
+    and the list starts empty, so injector tables are never stored; producer
+    tables are stored and the list grows to fit. Both are reproduced.
+    """
+    facility = model.FacilityModel
+    if facility is None:
+        from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
+            GenericBlackOilModel,
+        )
+        from pymrst.modules.ad_core.ad_oo.facility_model import (
+            FacilityModel as AdOoFacilityModel,
+        )
+        from pymrst.modules.ad_core.ad_oo.generic_facility_model import (
+            GenericFacilityModel,
+        )
+        facility = (GenericFacilityModel(model) if isinstance(model, GenericBlackOilModel)
+                    else AdOoFacilityModel(model))
+    controls = _controls_from_deck(deck)
+    if not controls:
+        return facility
+    runspec = _get(deck, "RUNSPEC", default={})
+    first = controls[0]
+    if (_get(runspec, "VFPIDIMS") is not None or _get(first, "VFPPROD") is not None
+            or _get(first, "VFPINJ") is not None):
+        facility.VFPTablesInjector = []
+        facility.VFPTablesProducer = []
+        has_warned = False
+        for control in controls:
+            for tno, table in enumerate(_table_list(_get(control, "VFPINJ"))):
+                if _is_empty(table) or len(facility.VFPTablesInjector) <= tno:
+                    continue
+                if not _is_empty(facility.VFPTablesInjector[tno]) and not has_warned:
+                    warnings.warn("MRST does not presently support overwriting VFP tables")
+                    has_warned = True
+                facility.VFPTablesInjector[tno] = _as_vfp_table(table)
+            for tno, table in enumerate(_table_list(_get(control, "VFPPROD"))):
+                if _is_empty(table):
+                    continue
+                tables = facility.VFPTablesProducer
+                if len(tables) > tno and not _is_empty(tables[tno]) and not has_warned:
+                    warnings.warn("MRST does not presently support overwriting VFP tables")
+                    has_warned = True
+                tables.extend([None]*(tno + 1 - len(tables)))
+                tables[tno] = _as_vfp_table(table)
+    return facility
+
+
+def _table_list(records) -> list:
+    """A control's VFPINJ/VFPPROD cell array as a list (table `k` at `k-1`)."""
+    if records is None:
+        return []
+    if isinstance(records, VFPTable) or _is_vfp_deck_table(records):
+        return [records]
+    if isinstance(records, Mapping):
+        out: list[Any] = []
+        for key, table in records.items():
+            out.extend([None]*(int(key) - len(out)))
+            out[int(key) - 1] = table
+        return out
+    return list(records)
+
+
+def _is_empty(item) -> bool:
+    """MATLAB `isempty` for a table slot."""
+    if item is None:
+        return True
+    if isinstance(item, (Sequence, Mapping)) and not isinstance(item, str):
+        return len(item) == 0
+    return False
+
+
 selectFacilityFromDeck = select_facility_from_deck
 
 
@@ -186,5 +267,45 @@ __all__ = [
     "selectFacilityFromDeck",
     "group_controls_from_deck",
     "select_facility_from_deck",
+    "select_facility_from_deck_ad",
     "vfp_tables_from_deck",
 ]
+
+
+if __name__ == "__main__":
+    from types import SimpleNamespace
+
+    def _table():
+        return object.__new__(VFPTable)
+
+    def _deck(*controls, runspec=None):
+        return {"RUNSPEC": runspec or {}, "SCHEDULE": {"control": list(controls)}}
+
+    def test_the_models_facility_is_kept():
+        facility = SimpleNamespace(VFPTablesInjector=["kept"], VFPTablesProducer=[])
+        model = SimpleNamespace(FacilityModel=facility)
+        assert select_facility_from_deck(_deck({"WCONPROD": []}), model) is facility
+        assert facility.VFPTablesInjector == ["kept"], "no VFP keywords: untouched"
+        print("ok test_the_models_facility_is_kept")
+
+    def test_producer_tables_are_stored_at_their_numbers():
+        facility = SimpleNamespace(VFPTablesInjector=[], VFPTablesProducer=[])
+        model = SimpleNamespace(FacilityModel=facility)
+        second = _table()
+        select_facility_from_deck(_deck({"VFPPROD": [None, second]}), model)
+        assert facility.VFPTablesProducer == [None, second]
+        print("ok test_producer_tables_are_stored_at_their_numbers")
+
+    def test_injector_tables_are_never_stored_as_in_mrst():
+        """MRST stores an injector table only into an existing slot, and the
+        list starts empty."""
+        facility = SimpleNamespace(VFPTablesInjector=[], VFPTablesProducer=[])
+        model = SimpleNamespace(FacilityModel=facility)
+        select_facility_from_deck(_deck({"VFPINJ": [_table()]}), model)
+        assert facility.VFPTablesInjector == []
+        print("ok test_injector_tables_are_never_stored_as_in_mrst")
+
+    test_the_models_facility_is_kept()
+    test_producer_tables_are_stored_at_their_numbers()
+    test_injector_tables_are_never_stored_as_in_mrst()
+    print("\nAll tests passed!")

@@ -1,0 +1,290 @@
+{
+  "base_ensemble": {
+    "effective_workers": 3,
+    "execution_backend": "process_pool",
+    "matrix_id": "matrix_3c7c7aec00ea0b7dc26b5cbfb3b7e6f49d8c5b61e2d92feac3f79d5474f5574d",
+    "memory_per_worker_bytes": 536870912,
+    "outcomes": [
+      {
+        "coordinate": {
+          "comparison_group": "time_integration",
+          "components": {
+            "time_integration": "fully-implicit"
+          },
+          "experiment_id": "experiment_06a02706a0f9858ca33c4ba05fe3ce2d513427564cc68ef376e388b6e3f1e643",
+          "member_id": "member_cca69992684cb62a8527aedafb86f8e33ca39d4f944ab10f74dbbf0459c25f9a",
+          "ordinal": 0,
+          "parameters": {},
+          "variant_name": "fim"
+        },
+        "elapsed_seconds": 0.7208306249995076,
+        "error_message": "",
+        "error_type": "",
+        "resumed": false,
+        "seed": 2337545716022286440,
+        "status": "completed",
+        "store_path": "results/research_studio/m3_branch_package_final/base/matrix_3c7c7aec00ea0b7dc26b5cbfb3b7e6f49d8c5b61e2d92feac3f79d5474f5574d/member_cca69992684cb62a8527aedafb86f8e33ca39d4f944ab10f74dbbf0459c25f9a"
+      },
+      {
+        "coordinate": {
+          "comparison_group": "time_integration",
+          "components": {
+            "time_integration": "explicit"
+          },
+          "experiment_id": "experiment_06a02706a0f9858ca33c4ba05fe3ce2d513427564cc68ef376e388b6e3f1e643",
+          "member_id": "member_14d854a781e0061c07aa19b08d03bd91e549f421371f6898259a2698c79bff84",
+          "ordinal": 1,
+          "parameters": {},
+          "variant_name": "explicit"
+        },
+        "elapsed_seconds": 0.6629684999988967,
+        "error_message": "",
+        "error_type": "",
+        "resumed": false,
+        "seed": 5054219341071659283,
+        "status": "completed",
+        "store_path": "results/research_studio/m3_branch_package_final/base/matrix_3c7c7aec00ea0b7dc26b5cbfb3b7e6f49d8c5b61e2d92feac3f79d5474f5574d/member_14d854a781e0061c07aa19b08d03bd91e549f421371f6898259a2698c79bff84"
+      },
+      {
+        "coordinate": {
+          "comparison_group": "time_integration",
+          "components": {
+            "time_integration": "adaptive-implicit"
+          },
+          "experiment_id": "experiment_06a02706a0f9858ca33c4ba05fe3ce2d513427564cc68ef376e388b6e3f1e643",
+          "member_id": "member_c0cfba8cb9e68b8176ebf253624096d03a0ea80a78ae650d4e8abbe728ec0757",
+          "ordinal": 2,
+          "parameters": {
+            "aim.threshold": 0.05
+          },
+          "variant_name": "aim"
+        },
+        "elapsed_seconds": 0.8229129999999714,
+        "error_message": "",
+        "error_type": "",
+        "resumed": false,
+        "seed": 8210840322351804976,
+        "status": "completed",
+        "store_path": "results/research_studio/m3_branch_package_final/base/matrix_3c7c7aec00ea0b7dc26b5cbfb3b7e6f49d8c5b61e2d92feac3f79d5474f5574d/member_c0cfba8cb9e68b8176ebf253624096d03a0ea80a78ae650d4e8abbe728ec0757"
+      }
+    ],
+    "requested_workers": 3,
+    "runner": "pymrst.research_studio.experiments.runners:spe1_time_integration_member",
+    "schema_version": 1,
+    "summary": {
+      "completed": 3,
+      "failed": 0,
+      "resumed": 0
+    }
+  },
+  "branches": {
+    "aim-branch": {
+      "definition": {
+        "branch_id": "branch_126e3638cd8df3bc7e7346131f8c1944600fc1431658fd2d30493a915b46be68",
+        "comparison_group": "spe1-branch",
+        "components": {
+          "time_integration": "adaptive-implicit"
+        },
+        "controls": {},
+        "name": "aim-branch",
+        "parameters": {},
+        "parent_member_id": "member_cca69992684cb62a8527aedafb86f8e33ca39d4f944ab10f74dbbf0459c25f9a",
+        "parent_time_index": -1,
+        "properties": {},
+        "required_fields": [
+          "pressure",
+          "sW",
+          "sG",
+          "rs"
+        ],
+        "schema_version": 1
+      },
+      "outcome": {
+        "branch_id": "branch_126e3638cd8df3bc7e7346131f8c1944600fc1431658fd2d30493a915b46be68",
+        "elapsed_seconds": 0.6029220830005215,
+        "member_id": "member_4ee6577e5959e0918ed1bcabe35dbdd29381857427dbca7f1124115e0ab515c6",
+        "parent_member_id": "member_cca69992684cb62a8527aedafb86f8e33ca39d4f944ab10f74dbbf0459c25f9a",
+        "parent_time": 259200.0,
+        "status": "completed",
+        "store_path": "results/research_studio/m3_branch_package_final/branches/branch_126e3638cd8df3bc7e7346131f8c1944600fc1431658fd2d30493a915b46be68/member_4ee6577e5959e0918ed1bcabe35dbdd29381857427dbca7f1124115e0ab515c6"
+      }
+    },
+    "fim-continuation": {
+      "definition": {
+        "branch_id": "branch_636a57ae18d87969671eeb2d3717853bb6c53b44ede2817a29e9ee6c5053eca1",
+        "comparison_group": "spe1-branch",
+        "components": {
+          "time_integration": "fully-implicit"
+        },
+        "controls": {},
+        "name": "fim-continuation",
+        "parameters": {},
+        "parent_member_id": "member_cca69992684cb62a8527aedafb86f8e33ca39d4f944ab10f74dbbf0459c25f9a",
+        "parent_time_index": -1,
+        "properties": {},
+        "required_fields": [
+          "pressure",
+          "sW",
+          "sG",
+          "rs"
+        ],
+        "schema_version": 1
+      },
+      "outcome": {
+        "branch_id": "branch_636a57ae18d87969671eeb2d3717853bb6c53b44ede2817a29e9ee6c5053eca1",
+        "elapsed_seconds": 0.5155889170000592,
+        "member_id": "member_1a5546c3c9202e55e3b5d8875a34e60c3d7d394b6d0b5e59f4497d8950013086",
+        "parent_member_id": "member_cca69992684cb62a8527aedafb86f8e33ca39d4f944ab10f74dbbf0459c25f9a",
+        "parent_time": 259200.0,
+        "status": "completed",
+        "store_path": "results/research_studio/m3_branch_package_final/branches/branch_636a57ae18d87969671eeb2d3717853bb6c53b44ede2817a29e9ee6c5053eca1/member_1a5546c3c9202e55e3b5d8875a34e60c3d7d394b6d0b5e59f4497d8950013086"
+      }
+    }
+  },
+  "comparison": {
+    "candidate_member": "member_4ee6577e5959e0918ed1bcabe35dbdd29381857427dbca7f1124115e0ab515c6",
+    "comparison_group": "spe1-branch",
+    "passed": true,
+    "reference_member": "member_1a5546c3c9202e55e3b5d8875a34e60c3d7d394b6d0b5e59f4497d8950013086",
+    "results": {
+      "fields.pressure": {
+        "candidate_unit": "Pa",
+        "compared_shape": [
+          1,
+          300
+        ],
+        "maximum_absolute_error": 0.0,
+        "maximum_relative_error": 0.0,
+        "maximum_scaled_error": 0.0,
+        "passed": true,
+        "reference_unit": "Pa",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_entity": "fields.pressure[0]",
+        "worst_time": 432000.0
+      },
+      "fields.rs": {
+        "candidate_unit": "dimensionless",
+        "compared_shape": [
+          1,
+          300
+        ],
+        "maximum_absolute_error": 0.0,
+        "maximum_relative_error": 0.0,
+        "maximum_scaled_error": 0.0,
+        "passed": true,
+        "reference_unit": "dimensionless",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_entity": "fields.rs[0]",
+        "worst_time": 432000.0
+      },
+      "fields.sG": {
+        "candidate_unit": "dimensionless",
+        "compared_shape": [
+          1,
+          300
+        ],
+        "maximum_absolute_error": 0.0,
+        "maximum_relative_error": 0.0,
+        "maximum_scaled_error": 0.0,
+        "passed": true,
+        "reference_unit": "dimensionless",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_entity": "fields.sG[0]",
+        "worst_time": 432000.0
+      },
+      "fields.sW": {
+        "candidate_unit": "dimensionless",
+        "compared_shape": [
+          1,
+          300
+        ],
+        "maximum_absolute_error": 0.0,
+        "maximum_relative_error": 0.0,
+        "maximum_scaled_error": 0.0,
+        "passed": true,
+        "reference_unit": "dimensionless",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_entity": "fields.sW[0]",
+        "worst_time": 432000.0
+      },
+      "wells.bhp": {
+        "candidate_unit": "Pa",
+        "compared_shape": [
+          1,
+          2
+        ],
+        "maximum_absolute_error": 0.0,
+        "maximum_relative_error": 0.0,
+        "maximum_scaled_error": 0.0,
+        "passed": true,
+        "reference_unit": "Pa",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_entity": "wells.bhp[0]",
+        "worst_time": 432000.0
+      },
+      "wells.qGs": {
+        "candidate_unit": "dimensionless",
+        "compared_shape": [
+          1,
+          2
+        ],
+        "maximum_absolute_error": 0.0,
+        "maximum_relative_error": 0.0,
+        "maximum_scaled_error": 0.0,
+        "passed": true,
+        "reference_unit": "dimensionless",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_entity": "wells.qGs[0]",
+        "worst_time": 432000.0
+      },
+      "wells.qOs": {
+        "candidate_unit": "dimensionless",
+        "compared_shape": [
+          1,
+          2
+        ],
+        "maximum_absolute_error": 0.0,
+        "maximum_relative_error": 0.0,
+        "maximum_scaled_error": 0.0,
+        "passed": true,
+        "reference_unit": "dimensionless",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_entity": "wells.qOs[0]",
+        "worst_time": 432000.0
+      },
+      "wells.qWs": {
+        "candidate_unit": "dimensionless",
+        "compared_shape": [
+          1,
+          2
+        ],
+        "maximum_absolute_error": 0.0,
+        "maximum_relative_error": 0.0,
+        "maximum_scaled_error": 0.0,
+        "passed": true,
+        "reference_unit": "dimensionless",
+        "sign_scale": 1.0,
+        "unit_scale": 1.0,
+        "worst_entity": "wells.qWs[0]",
+        "worst_time": 432000.0
+      }
+    },
+    "schema_version": 1
+  },
+  "eclipse_deck": "results/research_studio/m3_branch_package_final/water_export.DATA",
+  "portable_case_hash": "b2500f176647709bea951667bc65bc4fff874234ba382b2434bbb70c456075ad",
+  "schema_version": 1,
+  "work_packages": [
+    "M3.6",
+    "M3.7",
+    "M3.8",
+    "M3.9"
+  ]
+}

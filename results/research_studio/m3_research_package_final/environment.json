@@ -1,0 +1,13 @@
+{
+  "packages": {
+    "h5py": "3.16.0",
+    "numpy": "2.4.6",
+    "pandas": "3.0.3",
+    "pymrst": "0.1.0",
+    "scipy": "1.17.1",
+    "xarray": "2026.7.0",
+    "zarr": "3.3.0"
+  },
+  "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.5"
+}

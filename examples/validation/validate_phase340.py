@@ -28,7 +28,7 @@ import numpy as np
 
 from pymrst.gridprocessing import compute_geometry, tensor_grid
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
     initial_state_from_deck,
 )
 from pymrst.modules.ad_core.statefunctions.flowprops import (
@@ -66,7 +66,7 @@ def build_spe1_model():
                          val=wd["val"], radius=wd["radius"], compi=wd["compi"],
                          sign=wd["sign"], name=name, ref_depth=wd["ref_depth"],
                          gravity=np.array([0.0, 0.0, NORM_GRAVITY]))
-    model = GenericBlackOilModel(g, rock, fluid, wells, disgas=True,
+    model = GenericBlackOilModelAD(g, rock, fluid, wells, disgas=True,
                                  gravity=NORM_GRAVITY)
     st = initial_state_from_deck(model, deck)
     # push part of the field over the bubble point so both the saturated and

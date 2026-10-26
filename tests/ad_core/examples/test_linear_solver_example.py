@@ -10,8 +10,8 @@ def test_native_solvers_recover_the_same_sparse_solution():
 
     assert [result.solver for result in results] == [
         "BackslashSolverAD",
-        "GMRES_ILUSolverAD",
-        "CPRSolverAD",
+        "GMRES_ILUSolverADAD",
+        "CPRSolverADAD",
     ]
     for result in results:
         assert result.relative_residual < 1e-9

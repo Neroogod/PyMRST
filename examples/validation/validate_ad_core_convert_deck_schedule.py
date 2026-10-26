@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from pymrst.io.mrst_mat import load_mrst_mat
-from pymrst.modules.ad_core.utils import convert_deck_schedule_to_mrst
+from pymrst.modules.ad_core.utils import convert_deck_schedule_to_mrst_ad
 
 
 def _items(value):
@@ -30,7 +30,7 @@ def main() -> int:
     model = SimpleNamespace(
         fluid=SimpleNamespace(phases=("water", "oil", "gas"))
     )
-    schedule = convert_deck_schedule_to_mrst(model, raw)
+    schedule = convert_deck_schedule_to_mrst_ad(model, raw)
     expected_val = np.atleast_1d(raw["step"]["val"]).astype(float)
     expected_ctrl = np.atleast_1d(raw["step"]["control"]).astype(int) - 1
     failed = 0

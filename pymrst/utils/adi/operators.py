@@ -2,13 +2,62 @@
 
 import numpy as np
 import scipy.sparse as sp
+from scipy.sparse import _sparsetools
 
-from pymrst.utils.adi.adi import ADI, _diag_mul
+from pymrst.utils.adi.adi import ADI, _diag_mul, _fast_csr
 from pymrst.utils.adi.value import value
 
 
 def _is_generic_ad(x) -> bool:
     return x.__class__.__name__ == "GenericAD"
+
+
+def _fast_matmul(mat: sp.csr_array, jac: sp.csr_array) -> sp.csr_array:
+    """`mat @ jac` for two CSR matrices, skipping scipy's redundant
+    constructor validation on the result.
+
+    Mirrors `scipy.sparse._compressed._cs_matrix._matmul_sparse` exactly -
+    same `csr_matmat_maxnnz`/`csr_matmat` C routines scipy's own `@`
+    dispatches to, computing the identical `data`/`indices`/`indptr` - but
+    wraps the (already scipy-computed, already-canonical) result via
+    `_fast_csr` instead of the validating constructor `mat @ jac` would
+    otherwise go through. `mat` (a fixed discretization operator) and
+    `jac` (a Jacobian block) are both plain float64/int64 CSR here, so this
+    skips the general-dtype-upgrade bookkeeping `_matmul_sparse` also does
+    for inputs that might not match - not applicable to this module's own
+    invariants. Falls back to the ordinary `@` if scipy's internal API this
+    relies on is ever unavailable, rather than failing hard.
+
+    `csr_matmat_maxnnz` is an *upper bound* on the result's nonzero count,
+    not the exact one - when a row of `mat` has two entries that route
+    through `jac` into the same output column, `csr_matmat` sums them into
+    one stored entry, so `indptr[-1]` (the true count) can come out smaller
+    than `nnz` (the allocated size). Scipy's own validated constructor path
+    trims `data`/`indices` down via `prune()`, a step `_fast_csr` exists
+    specifically to skip; skipping it *without* trimming first left stale,
+    over-allocated tail entries in `data`/`indices` that a later op read as
+    real nonzeros. `data`/`indices` are sliced to `indptr[-1]` below before
+    handoff to `_fast_csr`, which is the one attribute of "already-valid
+    CSR" `csr_matmat`'s raw output does not satisfy on its own.
+    """
+    try:
+        M, N = mat.shape[0], jac.shape[1]
+        mat_indptr = mat.indptr.astype(np.int64, copy=False)
+        mat_indices = mat.indices.astype(np.int64, copy=False)
+        jac_indptr = jac.indptr.astype(np.int64, copy=False)
+        jac_indices = jac.indices.astype(np.int64, copy=False)
+        max_nnz = _sparsetools.csr_matmat_maxnnz(
+            M, N, mat_indptr, mat_indices, jac_indptr, jac_indices)
+        indptr = np.empty(M + 1, dtype=np.int64)
+        indices = np.empty(max_nnz, dtype=np.int64)
+        data = np.empty(max_nnz, dtype=np.float64)
+        _sparsetools.csr_matmat(
+            M, N, mat_indptr, mat_indices, mat.data,
+            jac_indptr, jac_indices, jac.data, indptr, indices, data)
+        true_nnz = int(indptr[-1])
+        return _fast_csr(data[:true_nnz], indices[:true_nnz], indptr, (M, N))
+    except (AttributeError, TypeError):
+        return (mat @ jac).tocsr()
 
 
 def ad_matmul(mat, x):
@@ -18,7 +67,8 @@ def ad_matmul(mat, x):
 
         return diagonal_ad_matmul(mat, x)
     if isinstance(x, ADI):
-        return ADI(mat @ x.val, [(mat @ j).tocsr() for j in x.jac])
+        mat_csr = mat.tocsr() if sp.issparse(mat) else sp.csr_array(mat)
+        return ADI(mat @ x.val, [_fast_matmul(mat_csr, j) for j in x.jac])
     return mat @ x
 
 
@@ -129,11 +179,15 @@ def vertcat_adi(*parts):
                 val = np.atleast_1d(np.asarray(part, dtype=np.float64)).ravel()
                 full.append(GenericAD(val, [block_cls.zeros(val.size, size) for size in sizes]))
         val = np.concatenate([part.val for part in full])
-        jac = []
-        for k, size in enumerate(sizes):
-            jac.append(block_cls.from_sparse(
-                sp.vstack([part.jac[k].to_sparse() for part in full], format="csr")
-            ))
+        # `block_cls.vertcat` stacks in its own native representation - a
+        # triplet/row-major append with a row-index shift, not a promote to
+        # scipy sparse and back. That round-trip was the whole reason
+        # DiagonalJacobian's `vertcat`/`cat` read as unported: the capability
+        # was never missing, just not used on the path that needed it, which
+        # is every equation-block assembly in the black-oil and compositional
+        # models (combine_equations goes through here).
+        jac = [block_cls.vertcat([part.jac[k] for part in full])
+              for k in range(len(sizes))]
         return GenericAD(val, jac)
     ads = [part for part in parts if isinstance(part, ADI)]
     if not ads:
@@ -196,7 +250,88 @@ if __name__ == "__main__":
         assert np.allclose(mined.jac[0].toarray(), [[1, 0], [0, 0]])
         print("ok test_max_min")
 
+    def test_fast_matmul_matches_scipy_reference() -> None:
+        """`_fast_matmul` reimplements `mat @ jac`'s C-level computation
+        directly (mirroring scipy's own `_matmul_sparse`) rather than
+        calling scipy's `@` - so this checks its output against plain
+        `mat @ jac` across several random, differently-shaped matrix
+        pairs, not just the one small case `test_matmul_div_sum` already
+        exercises through `ad_matmul`."""
+        rng = np.random.default_rng(4)
+        worst = 0.0
+        for _ in range(15):
+            m, k, n = (int(rng.integers(1, 25)) for _ in range(3))
+            mat = sp.random_array((m, k), density=0.4, random_state=rng, format="csr")
+            jac = sp.random_array((k, n), density=0.4, random_state=rng, format="csr")
+            got = _fast_matmul(mat, jac)
+            ref = (mat @ jac).tocsr()
+            assert got.shape == ref.shape, (got.shape, ref.shape)
+            assert got.indptr[-1] == len(got.data) == len(got.indices), (
+                "got.data/indices must be trimmed to the true nnz, not left at "
+                "csr_matmat_maxnnz's upper-bound allocation size")
+            worst = max(worst, float(np.max(np.abs(got.toarray() - ref.toarray()))))
+        assert worst < 1e-12, f"fast matmul should match scipy exactly, worst diff {worst:.2e}"
+        print(f"ok test_fast_matmul_matches_scipy_reference (15 random cases, worst diff {worst:.2e})")
+
+    def test_fast_matmul_trims_when_maxnnz_overestimates() -> None:
+        """Regression test for a real bug found wiring this into
+        `three_phase_black_oil_model.py`: `csr_matmat_maxnnz`'s symbolic
+        pass counts a `(row, col)` output position once it sees *any* path
+        into it, before any arithmetic happens - it cannot know that two
+        opposite-signed contributions to that same position will cancel to
+        *exactly* zero. `csr_matmat`'s numeric pass then correctly drops
+        that exact-zero entry, so the true nnz (`indptr[-1]`) comes out
+        smaller than `csr_matmat_maxnnz`'s allocated size. Scipy's own
+        validated constructor path trims `data`/`indices` down via
+        `prune()` - the exact step `_fast_csr` skips - so `_fast_matmul`
+        must trim them itself first. Before that fix, the stale,
+        uninitialized tail of the over-allocated `data`/`indices` arrays
+        was read downstream as real nonzero entries:
+        `three_phase_black_oil_model.py`'s SPE1 self-test crashed in
+        `_diag_mul` with a shape mismatch between `jac.data` and
+        `np.diff(jac.indptr)`, confirmed (by reverting this trim and
+        rerunning) to reproduce that exact failure.
+
+        This constructs the minimal case directly: `mat`'s one row has two
+        entries of opposite sign, both landing (through `jac`) on output
+        column 0, cancelling exactly - the precise pattern that makes
+        `csr_matmat_maxnnz` overcount.
+        """
+        mat = sp.csr_array(np.array([[1.0, -1.0], [0.0, 0.0]]))
+        jac = sp.csr_array(np.array([[1.0, 0.0], [1.0, 0.0]]))
+        got = _fast_matmul(mat, jac)
+        ref = (mat @ jac).tocsr()
+        assert got.indptr[-1] == len(got.data), (
+            f"true nnz {got.indptr[-1]} must match allocated data length {len(got.data)}")
+        assert np.allclose(got.toarray(), ref.toarray())
+        assert np.allclose(got.toarray(), [[0.0, 0.0], [0.0, 0.0]])
+        print("ok test_fast_matmul_trims_when_maxnnz_overestimates")
+
+    def test_ad_matmul_end_to_end_through_the_fast_path() -> None:
+        """`ad_matmul` itself, through `_fast_matmul`, against a
+        finite-difference reference - not just `_fast_matmul` in
+        isolation."""
+        x0 = np.array([1.0, 2.0, 4.0])
+        mat = sp.csr_array(np.array([[1.0, -1.0, 0.0], [0.0, 1.0, -1.0], [2.0, 0.0, 3.0]]))
+
+        def f(x):
+            return mat @ (x ** 2)
+
+        (x,) = init_variables_adi(x0)
+        y = ad_matmul(mat, x ** 2)
+        h = 1e-6
+        numeric = np.zeros((3, 3))
+        for j in range(3):
+            step = np.zeros(3)
+            step[j] = h
+            numeric[:, j] = (f(x0 + step) - f(x0 - step)) / (2 * h)
+        assert np.allclose(y.jac[0].toarray(), numeric, atol=1e-5)
+        print("ok test_ad_matmul_end_to_end_through_the_fast_path")
+
     test_matmul_div_sum()
     test_combine_equations()
     test_max_min()
+    test_fast_matmul_matches_scipy_reference()
+    test_fast_matmul_trims_when_maxnnz_overestimates()
+    test_ad_matmul_end_to_end_through_the_fast_path()
     print("\nAll tests passed!")

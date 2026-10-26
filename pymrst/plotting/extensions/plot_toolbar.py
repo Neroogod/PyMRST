@@ -471,7 +471,7 @@ if __name__ == "__main__":
 
     from pymrst.gridprocessing import cart_grid, compute_geometry
     from pymrst.modules.incomp.fluid import init_single_fluid
-    from pymrst.modules.incomp.incomp_tpfa import incomp_tpfa
+    from pymrst.modules.incomp.incomp_tpfa import incomp_tpfa_ad as incomp_tpfa
     from pymrst.params.rock import make_rock
     from pymrst.params.wells_and_bc import add_well
     from pymrst.solvers.state import init_res_sol

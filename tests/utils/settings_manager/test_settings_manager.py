@@ -48,3 +48,16 @@ def test_struct_to_settings_ports_known_values_and_rejects_unknowns(tmp_path):
     import pytest
     with pytest.raises(KeyError, match="unsupported"):
         struct_to_settings({"mystery": 1})
+
+
+def test_override_setting_changes_this_process_only(monkeypatch, tmp_path):
+    module = fresh_settings(monkeypatch, tmp_path)
+    before = module.mrst_settings("get", "outputDirectory")
+    saved_before = (tmp_path / "config/settings.json").read_text() \
+        if (tmp_path / "config/settings.json").exists() else None
+    with module.override_setting("outputDirectory", str(tmp_path / "elsewhere")):
+        assert module.mrst_settings("get", "outputDirectory") == str(tmp_path / "elsewhere")
+    assert module.mrst_settings("get", "outputDirectory") == before
+    saved_after = (tmp_path / "config/settings.json").read_text() \
+        if (tmp_path / "config/settings.json").exists() else None
+    assert saved_after == saved_before

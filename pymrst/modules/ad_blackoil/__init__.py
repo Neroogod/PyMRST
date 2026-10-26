@@ -1,19 +1,22 @@
 """AD black-oil reservoir models (MRST modules/ad-blackoil).
 
-`GenericBlackOilModel` is the state-function-graph model (MRST's
-`GenericBlackOilModel`) and is the one to build on; the two hand-rolled
-models it reproduces are kept because Phases 5a and 5b validate them
-directly against MATLAB, and because they are the reference the graph is
-checked against.
+`GenericBlackOilModel`, `ThreePhaseBlackOilModel`, `TwoPhaseOilWaterModel`
+and `WaterModel` are the line-for-line ports of MRST's classes, built on the
+AD-OO base in `ad_core.ad_oo`. The `*AD` classes are the earlier PyMRST
+models (`GenericBlackOilModelAD` assembles from the state-function graph);
+they stay because Phases 5a and 5b validate them against MATLAB and the
+existing examples run on them.
 """
 
 from pymrst.modules.ad_blackoil.models.three_phase_black_oil_model import (
     BOState,
+    ThreePhaseBlackOilModel,
     ThreePhaseBlackOilModelAD,
     initial_state_spe1,
 )
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
     GenericBlackOilModel,
+    GenericBlackOilModelAD,
     blackoil_status,
     initial_state_from_deck,
 )
@@ -22,9 +25,10 @@ from pymrst.modules.ad_blackoil.models.tracer_black_oil_model import (
 )
 from pymrst.modules.ad_blackoil.models.two_phase_oil_water_model import (
     OWState,
+    TwoPhaseOilWaterModel,
     TwoPhaseOilWaterModelAD,
 )
-from pymrst.modules.ad_blackoil.models.water_model import WaterModel
+from pymrst.modules.ad_blackoil.models.water_model import WaterModel, WaterModelAD
 from pymrst.modules.ad_blackoil.backend_oil_water import (
     BackendOWFluid,
     BackendOWState,
@@ -41,14 +45,16 @@ from pymrst.modules.ad_blackoil.backend_blackoil_model import (
 )
 
 __all__ = [
-    "GenericBlackOilModel", "initial_state_from_deck", "blackoil_status",
+    "GenericBlackOilModel", "GenericBlackOilModelAD",
+    "initial_state_from_deck", "blackoil_status",
     "TracerBlackOilModel",
-    "OWState", "TwoPhaseOilWaterModelAD",
+    "OWState", "TwoPhaseOilWaterModel", "TwoPhaseOilWaterModelAD",
     "BackendOWFluid", "BackendOWState", "BackendOilWaterModel",
     "BackendBlackOilFluid", "init_backend_blackoil_fluid",
     "BackendBOState", "BackendBlackOilModel", "BackendBlackOilResidual",
-    "BOState", "ThreePhaseBlackOilModelAD", "initial_state_spe1",
-    "WaterModel", "WaterThermalModel",
+    "BOState", "ThreePhaseBlackOilModel", "ThreePhaseBlackOilModelAD",
+    "initial_state_spe1",
+    "WaterModel", "WaterModelAD", "WaterThermalModel",
 ]
 
 

@@ -24,7 +24,7 @@ from pymrst.modules.ad_props.utils.preprocess_table_pvt import (
     PackedPVT,
     preprocess_table_pvt,
 )
-from pymrst.utils.adi import ADI, _diag_mul, value
+from pymrst.utils.adi import ADI, _diag_mul, ad_from_blocks, is_ad, value
 
 
 def _saturated_table(table: PackedPVT, column: int) -> np.ndarray:
@@ -87,16 +87,16 @@ def interp_reg_pvt(
                                   vi[off_sat], column)
             dx[off_sat], dv[off_sat] = dxs, dvs
 
-    if not isinstance(x, ADI) and not isinstance(v, ADI):
+    if not is_ad(x) and not is_ad(v):
         return values
     jacobians = None
-    if isinstance(x, ADI):
+    if is_ad(x):
         jacobians = [_diag_mul(dx, j) for j in x.jac]
-    if isinstance(v, ADI):
+    if is_ad(v):
         other = [_diag_mul(dv, j) for j in v.jac]
         jacobians = other if jacobians is None else [
             a + b for a, b in zip(jacobians, other)]
-    return ADI(values, jacobians)
+    return ad_from_blocks(values, jacobians)
 
 
 interpRegPVT = interp_reg_pvt

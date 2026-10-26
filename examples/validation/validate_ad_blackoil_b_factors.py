@@ -1,4 +1,4 @@
-"""Validate get_b_o_bo/get_b_g_bo dispatch against MRST."""
+"""Validate getbO_BO/getbG_BO (`get_b_o_bo`/`get_b_g_bo`) dispatch against MRST."""
 
 from pathlib import Path
 from types import SimpleNamespace
@@ -39,7 +39,7 @@ def main() -> int:
     p, rs, rv = ref["p"], ref["rs"], ref["rv"]
     gas = ref["gas_present"].astype(bool)
     oil = ref["oil_present"].astype(bool)
-    fluid = SimpleNamespace(b_o=Fluid.b_o_dead, b_g=Fluid.b_g_dry)
+    fluid = SimpleNamespace(bO=Fluid.b_o_dead, bG=Fluid.b_g_dry)
     model = SimpleNamespace(fluid=fluid, disgas=False, vapoil=False)
     actual = {
         "bo_dead": get_b_o_bo(model, p, rs, gas),
@@ -47,8 +47,8 @@ def main() -> int:
     }
     model.disgas = True
     model.vapoil = True
-    fluid.b_o = Fluid.b_o_live
-    fluid.b_g = Fluid.b_g_wet
+    fluid.bO = Fluid.b_o_live
+    fluid.bG = Fluid.b_g_wet
     actual["bo_live"] = get_b_o_bo(model, p, rs, gas)
     actual["bg_wet"] = get_b_g_bo(model, p, rv, oil)
 

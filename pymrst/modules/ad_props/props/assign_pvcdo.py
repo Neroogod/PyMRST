@@ -13,6 +13,8 @@ from typing import Any, Callable, Dict, List
 
 import numpy as np
 
+from pymrst.utils.adi import ad_exp
+
 
 def assign_pvcdo(f: Dict[str, Any], pvcdo, reg) -> Dict[str, Any]:
     """Store ``bO`` and ``muO`` as exponentials, one pair per PVT region."""
@@ -22,12 +24,16 @@ def assign_pvcdo(f: Dict[str, Any], pvcdo, reg) -> Dict[str, Any]:
 
     for index in range(reg.pvt):
         p_ref, b_ref, compressibility, mu_ref, viscosibility = pvcdo[index, :5]
+        # `ad_exp` rather than `np.exp`: these functions are evaluated on the
+        # pressure the Newton solver is differentiating, and `np.exp` on an
+        # `ADI` raises rather than dropping the derivative silently. On a plain
+        # array it is `np.exp`.
         b_functions.append(
             lambda p, *, c=compressibility, b=b_ref, pr=p_ref:
-                np.exp(c * (p - pr)) / b)
+                ad_exp(c * (p - pr)) / b)
         mu_functions.append(
             lambda p, *, m=mu_ref, v=viscosibility, pr=p_ref:
-                m * np.exp(v * (p - pr)))
+                m * ad_exp(v * (p - pr)))
 
     f["bO"], f["muO"] = b_functions, mu_functions
     return f
@@ -76,9 +82,27 @@ if __name__ == "__main__":
         assert np.isclose(f["muO"][1](1.0e7), 2e-3)
         print("ok test_one_pair_of_functions_per_pvt_region")
 
+    def test_the_functions_survive_an_ad_pressure() -> None:
+        """These are evaluated on the pressure the Newton solver is
+        differentiating. `np.exp` on an `ADI` raises outright - which is how
+        the Egg model's PVCDO stopped a deck-driven run at the first assembly.
+        """
+        from pymrst.utils.adi import init_variables_adi
+
+        f = assign_pvcdo({}, [RECORD], Regions())
+        p, = init_variables_adi(np.array([2.0e7, 2.5e7]))
+        b = f["bO"][0](p)
+        assert hasattr(b, "jac"), "the derivative was dropped"
+        assert np.allclose(b.val, f["bO"][0](np.array([2.0e7, 2.5e7])))
+        # d(exp(c(p-pr))/b)/dp = c/b * exp(...)
+        expected = RECORD[2]*np.asarray(b.val)
+        assert np.allclose(b.jac[0].diagonal(), expected), b.jac[0].diagonal()
+        print("ok test_the_functions_survive_an_ad_pressure")
+
     test_b_is_the_reciprocal_reference_fvf_at_p_ref()
     test_viscosity_is_the_reference_at_p_ref()
     test_both_rise_with_pressure()
     test_pvcdo_is_exponential_where_pvtw_is_a_series()
     test_one_pair_of_functions_per_pvt_region()
+    test_the_functions_survive_an_ad_pressure()
     print("\nAll tests passed!")

@@ -7,7 +7,7 @@ it, which is not how a reservoir sits in the world, and is not how most of
 MRST's own examples are set up.
 
 `dump_phase41_reference.m` runs three cases through MRST's
-`GenericBlackOilModel`, **none of which has a single well**:
+`GenericBlackOilModelAD`, **none of which has a single well**:
 
 1. pressure in / pressure out - a model driven entirely by its boundary;
 2. a flux boundary in, a pressure boundary out;
@@ -22,7 +22,7 @@ import numpy as np
 import scipy.io
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
-from pymrst.modules.ad_blackoil import GenericBlackOilModel
+from pymrst.modules.ad_blackoil import GenericBlackOilModelAD
 from pymrst.modules.ad_core.simulators.nonlinear_solver import NonLinearSolver
 from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.modules.ad_props import init_simple_adi_fluid
@@ -64,7 +64,7 @@ def build(ref, case: int):
     # The same tolerances the MATLAB dump was run at. The default material-
     # balance tolerance (1e-12) is what limits the flux-BC case: loosen it and
     # the comparison sits at 2e-9, tighten it and it sits at machine precision.
-    model = GenericBlackOilModel(g, rock, fluid, [], bc=bc, src=src,
+    model = GenericBlackOilModelAD(g, rock, fluid, [], bc=bc, src=src,
                                  tol_cnv=1e-11, tol_mb=1e-14, tol_well=1e-11)
     st = State(pressure=np.full(g.cells.num, p_ref),
                sW=np.full(g.cells.num, 0.2),

@@ -4,7 +4,7 @@ import numpy as np
 
 from pymrst.gridprocessing import cart_grid, compute_geometry
 from pymrst.modules.ad_blackoil.models.generic_black_oil_model import (
-    GenericBlackOilModel,
+    GenericBlackOilModelAD,
 )
 from pymrst.modules.ad_core.statefunctions.state_function import State
 from pymrst.modules.ad_core.utils.boundary_conditions import add_bc_and_sources
@@ -24,7 +24,7 @@ def _case():
         c=[0.0, 0.0],
         p_ref=200 * BARSA,
     )
-    model = GenericBlackOilModel(grid, rock, fluid, [])
+    model = GenericBlackOilModelAD(grid, rock, fluid, [])
     state = State(
         pressure=np.full(2, 200 * BARSA),
         sW=np.array([0.25, 0.75]),

@@ -80,6 +80,7 @@ from pymrst.modules.ad_props.props.assign_swof import assign_swof
 from pymrst.modules.ad_props.props.assign_tlmixpar import assign_tlmixpar
 from pymrst.modules.ad_props.props.assign_watervist import assign_watervist
 from pymrst.modules.ad_props.utils.handle_regions import Regions, handle_regions
+from pymrst.utils.units import BARSA
 from pymrst.utils.units.units import KILOGRAM, METER
 
 ASSIGNERS: Dict[str, Callable] = {
@@ -128,6 +129,31 @@ def _prioritise(names: List[str]) -> List[str]:
     return head + [name for name in names if name not in head]
 
 
+def _get_pressures(props, resample_poly: int) -> Optional[np.ndarray]:
+    """MRST's `get_pressures`: sample pressures spanning the dead-oil/gas tables.
+
+    The range is taken from PVDO and PVDG, the two keywords whose first column
+    is a pressure axis, and falls back to MRST's 0..1000 bar when the deck has
+    neither. `resample_poly = 0` returns nothing at all, matching MATLAB's
+    `linspace(a, b, 0)` - which is why the default path evaluates properties
+    directly instead of tabulating them.
+    """
+    if resample_poly <= 0:
+        return None
+    p_min, p_max = np.inf, -np.inf
+    for keyword in ("PVDG", "PVDO"):
+        for table in props.get(keyword, ()) or ():
+            column = np.asarray(table, dtype=float)[:, 0]
+            if column.size:
+                p_min = min(p_min, float(column.min()))
+                p_max = max(p_max, float(column.max()))
+    if not np.isfinite(p_max):
+        p_max = 1000.0 * BARSA
+    if not np.isfinite(p_min):
+        p_min = 0.0
+    return np.linspace(p_min, p_max, int(resample_poly))
+
+
 def init_deck_adi_fluid(deck, grid=None, regions: Optional[Regions] = None,
                         ignore_errors: bool = True,
                         **options) -> Dict[str, Any]:
@@ -141,6 +167,14 @@ def init_deck_adi_fluid(deck, grid=None, regions: Optional[Regions] = None,
         if not hasattr(reg, name):
             raise TypeError(f"unknown option '{name}'")
         setattr(reg, name, value)
+
+    # MRST's `optimize` is a shorthand: it turns on tabulation by choosing a
+    # sample count, and everything downstream reacts to `prange` alone. Both
+    # default to off, so this leaves the direct-evaluation path untouched.
+    if reg.optimize and not reg.resample_poly:
+        reg.resample_poly = 20
+    if reg.prange is None:
+        reg.prange = _get_pressures(props, reg.resample_poly)
 
     fluid: Dict[str, Any] = {}
     for keyword in _prioritise(list(props)):
@@ -285,10 +319,14 @@ if __name__ == "__main__":
             return
         raise AssertionError("strict mode must report an unknown keyword")
 
+    # No row with zero krG: MRST's getPoints indexes an empty find there.
+    SGOF_BAD = np.array([[0.00, 0.10, 1.00, 0.0],
+                         [0.88, 1.00, 0.00, 0.0]])
+
     def test_a_failing_assign_is_warned_about_not_raised() -> None:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            fluid = init_deck_adi_fluid(_deck(SGOF=[SGOF]))   # no SWOF
+            fluid = init_deck_adi_fluid(_deck(SWOF=[SWOF], SGOF=[SGOF_BAD]))
         assert any("SGOF" in str(w.message) for w in caught), \
             [str(w.message) for w in caught]
         assert "krG" not in fluid
@@ -296,12 +334,50 @@ if __name__ == "__main__":
 
     def test_strict_mode_reraises_a_failing_assign() -> None:
         try:
-            init_deck_adi_fluid(_deck(SGOF=[SGOF]), ignore_errors=False)
-        except ValueError as error:
-            assert "SWOF" in str(error)
+            init_deck_adi_fluid(_deck(SWOF=[SWOF], SGOF=[SGOF_BAD]), ignore_errors=False)
+        except IndexError:
             print("ok test_strict_mode_reraises_a_failing_assign")
             return
         raise AssertionError("strict mode must reraise")
+
+    def test_prange_is_empty_unless_asked_for() -> None:
+        """The default path evaluates directly - MRST's `linspace(a, b, 0)`."""
+        assert _get_pressures({"PVDG": [PVDG]}, 0) is None
+        print("ok test_prange_is_empty_unless_asked_for")
+
+    def test_prange_spans_the_dead_gas_table() -> None:
+        column = np.asarray(PVDG, dtype=float)[:, 0]
+        out = _get_pressures({"PVDG": [PVDG]}, 5)
+        assert out.size == 5
+        assert np.isclose(out[0], column.min())
+        assert np.isclose(out[-1], column.max())
+        print("ok test_prange_spans_the_dead_gas_table")
+
+    def test_prange_falls_back_when_the_deck_has_no_pressure_axis() -> None:
+        out = _get_pressures({}, 4)
+        assert np.isclose(out[0], 0.0) and np.isclose(out[-1], 1000.0 * BARSA)
+        print("ok test_prange_falls_back_when_the_deck_has_no_pressure_axis")
+
+    def test_optimize_turns_tabulation_on() -> None:
+        """`optimize` is a shorthand for a sample count; nothing downstream
+        reads it, so if it did not set `prange` it would do nothing at all."""
+        plain = handle_regions(_deck(PVDG=[PVDG]))
+        init_deck_adi_fluid(_deck(PVDG=[PVDG]), regions=plain)
+        assert plain.prange is None
+
+        tuned = handle_regions(_deck(PVDG=[PVDG]))
+        init_deck_adi_fluid(_deck(PVDG=[PVDG]), regions=tuned, optimize=True)
+        assert tuned.resample_poly == 20
+        assert tuned.prange is not None and tuned.prange.size == 20
+        print("ok test_optimize_turns_tabulation_on")
+
+    def test_an_explicit_prange_is_not_overwritten() -> None:
+        given = np.linspace(1.0e6, 2.0e6, 7)
+        reg = handle_regions(_deck(PVDG=[PVDG]))
+        reg.prange = given
+        init_deck_adi_fluid(_deck(PVDG=[PVDG]), regions=reg, optimize=True)
+        assert np.allclose(reg.prange, given), reg.prange
+        print("ok test_an_explicit_prange_is_not_overwritten")
 
     def test_options_reach_the_region_object() -> None:
         fluid = init_deck_adi_fluid(_deck(PVDG=[PVDG]),
@@ -372,4 +448,9 @@ if __name__ == "__main__":
     test_every_assigner_names_a_keyword_the_reader_can_read()
     test_every_readable_table_keyword_has_an_assigner()
     test_assigners_and_excluded_do_not_overlap()
+    test_prange_is_empty_unless_asked_for()
+    test_prange_spans_the_dead_gas_table()
+    test_prange_falls_back_when_the_deck_has_no_pressure_axis()
+    test_optimize_turns_tabulation_on()
+    test_an_explicit_prange_is_not_overwritten()
     print("\nAll tests passed!")

@@ -1,4 +1,8 @@
-"""Book II conceptual state-function tutorial components."""
+"""PyMRST's earlier Book II state-function tutorial, kept for its callers.
+
+The ports of MRST's `exampleStateFunctionsBook`, `showConceptualAD` and the
+tutorial state functions are in `ad_core/examples/book_ii/`.
+"""
 
 from __future__ import annotations
 
@@ -18,7 +22,7 @@ from pymrst.modules.ad_core.statefunctions.state_function import (
 from pymrst.utils.adi import init_variables_adi, value
 
 
-class TutorialNumber(StateFunction):
+class TutorialNumberAD(StateFunction):
     """Leaf node that retrieves one primary variable from the state."""
 
     def __init__(self, state_field: str):
@@ -44,7 +48,7 @@ class _TutorialBinary(StateFunction):
         )
 
 
-class TutorialAdd(_TutorialBinary):
+class TutorialAddAD(_TutorialBinary):
     """Add two evaluated state-function dependencies."""
 
     def evaluate_on_domain(self, model, state):
@@ -52,7 +56,7 @@ class TutorialAdd(_TutorialBinary):
         return left + right
 
 
-class TutorialProduct(_TutorialBinary):
+class TutorialProductAD(_TutorialBinary):
     """Element-wise product of two evaluated dependencies."""
 
     def evaluate_on_domain(self, model, state):
@@ -79,13 +83,13 @@ def build_tutorial_state_function_group(
     """Build the ``G = A*B + X*Y`` dependency graph used by MRST Book II."""
 
     group = StateFunctionGrouping(storage_name)
-    group.set_state_function("A", TutorialNumber("a"))
-    group.set_state_function("B", TutorialNumber("b"))
-    group.set_state_function("X", TutorialNumber("x"))
-    group.set_state_function("Y", TutorialNumber("y"))
-    group.set_state_function("AB", TutorialProduct("A", "B"))
-    group.set_state_function("XY", TutorialProduct("X", "Y"))
-    group.set_state_function("G", TutorialAdd("AB", "XY"))
+    group.set_state_function("A", TutorialNumberAD("a"))
+    group.set_state_function("B", TutorialNumberAD("b"))
+    group.set_state_function("X", TutorialNumberAD("x"))
+    group.set_state_function("Y", TutorialNumberAD("y"))
+    group.set_state_function("AB", TutorialProductAD("A", "B"))
+    group.set_state_function("XY", TutorialProductAD("X", "Y"))
+    group.set_state_function("G", TutorialAddAD("AB", "XY"))
     return group
 
 
@@ -129,16 +133,12 @@ def run_conceptual_ad(
     )
 
 
-showConceptualAD = run_conceptual_ad
-exampleStateFunctionsBook = run_conceptual_ad
 
 __all__ = [
-    "TutorialNumber",
-    "TutorialAdd",
-    "TutorialProduct",
+    "TutorialNumberAD",
+    "TutorialAddAD",
+    "TutorialProductAD",
     "ConceptualADResult",
     "build_tutorial_state_function_group",
     "run_conceptual_ad",
-    "showConceptualAD",
-    "exampleStateFunctionsBook",
 ]

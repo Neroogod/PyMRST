@@ -1,4 +1,13 @@
-"""Executable PyMRST port of MRST ``spe9/simulateSPE9.m``."""
+"""MRST ``ad-blackoil/examples/spe9/simulateSPE9.m``: a minimal example that runs SPE9.
+
+`simulate_spe9` is the port. The deck becomes a packed problem with MRST's
+compiled kernels and row-major AD (`useMex`, `rowMajorAD`), giving the
+diagonal AD backend and, with `useMEX` off, a GMRES-ILU(0) linear solver.
+The problem is simulated from its first step and plotted.
+
+`simulate_spe9_ad` (with `setup_spe9_ad`) is PyMRST's earlier SPE9 runner for
+the legacy models, kept for its callers.
+"""
 
 from __future__ import annotations
 
@@ -8,9 +17,9 @@ import copy
 import numpy as np
 
 from pymrst.gridprocessing import compute_geometry, process_grdecl
-from pymrst.modules.ad_blackoil.models.generic_black_oil_model import GenericBlackOilModel, initial_state_from_deck
+from pymrst.modules.ad_blackoil.models.generic_black_oil_model import GenericBlackOilModelAD, initial_state_from_deck
 from pymrst.modules.ad_core import NonLinearSolver, SimulationReport, State
-from pymrst.modules.ad_core.utils.convert_deck_schedule_to_mrst import convert_deck_schedule_to_mrst
+from pymrst.modules.ad_core.utils.convert_deck_schedule_to_mrst import convert_deck_schedule_to_mrst_ad
 from pymrst.modules.ad_props import init_deck_blackoil_fluid
 from pymrst.modules.deckformat import read_spe9_deck
 from pymrst.params import NORM_GRAVITY, make_rock
@@ -23,7 +32,7 @@ DEFAULT_DECK = ROOT/"mrst-2024a-Geomech/examples/data/SPE9/BENCH_SPE9.DATA"
 @dataclass
 class SPE9Result:
     deck: dict
-    model: GenericBlackOilModel
+    model: GenericBlackOilModelAD
     schedule: object
     initial_state: State
     states: list[State]
@@ -31,19 +40,19 @@ class SPE9Result:
     summary: dict[str, np.ndarray]
 
 
-def setup_spe9(deck_path=None):
+def setup_spe9_ad(deck_path=None):
     """Import and assemble the 9000-cell, 26-well SPE9 problem."""
     deck = read_spe9_deck(deck_path or DEFAULT_DECK)
     grid = compute_geometry(process_grdecl(deck["grdecl"]))
     ix = np.asarray(getattr(grid.cells, "indexMap", np.arange(grid.cells.num)), int)
     rock = make_rock(grid, deck["perm"][ix], deck["poro"][ix, None])
     fluid = init_deck_blackoil_fluid(deck)
-    model = GenericBlackOilModel(
+    model = GenericBlackOilModelAD(
         grid, rock, fluid, [], disgas=True, gravity=NORM_GRAVITY,
         dp_max_rel=0.1, ds_max=0.1, tol_cnv=5e-3, tol_mb=5e-4,
         tol_well=1e-5,
     )
-    schedule = convert_deck_schedule_to_mrst(model, deck["schedule"])
+    schedule = convert_deck_schedule_to_mrst_ad(model, deck["schedule"])
     model.facility.wells = copy.deepcopy(schedule.controls[0].W)
     state_deck = dict(deck)
     for key in ("pressure", "swat", "sgas", "rs", "rv"):
@@ -69,9 +78,9 @@ def _summary(states, times, names):
     return out
 
 
-def simulate_spe9(nsteps=None, *, deck_path=None, verbose=True):
+def simulate_spe9_ad(nsteps=None, *, deck_path=None, verbose=True):
     """Run the full 35-step/900-day schedule or an initial subset."""
-    deck, model, schedule, state0 = setup_spe9(deck_path)
+    deck, model, schedule, state0 = setup_spe9_ad(deck_path)
     count = schedule.n_steps if nsteps is None else min(int(nsteps), schedule.n_steps)
     solver = NonLinearSolver(max_iterations=35, max_timestep_cuts=8,
                              use_line_search=False, use_relaxation=True,
@@ -95,6 +104,59 @@ def simulate_spe9(nsteps=None, *, deck_path=None, verbose=True):
                       _summary(states, times, [w.name for w in model.wells]))
 
 
+#: MRST's own spelling. This port names functions in snake_case; the
+#: alias keeps the MATLAB name callable, which is the convention the
+#: rest of the package already follows.
+
+
+def simulate_spe9(plot: bool = True):
+    """MRST `simulateSPE9`. Returns the packed problem."""
+    from pymrst.modules.ad_blackoil.examples.utils.local_dataset_path import (
+        local_dataset_path,
+    )
+    from pymrst.modules.ad_core.simulators.sim_runner.init_eclipse_packed_problem_ad import (
+        init_eclipse_packed_problem_ad,
+    )
+    from pymrst.modules.ad_core.simulators.sim_runner.plot_packed_problem import (
+        plot_packed_problem,
+    )
+    from pymrst.modules.ad_core.simulators.sim_runner.simulate_packed_problem import (
+        simulate_packed_problem,
+    )
+    pth = local_dataset_path("spe9", "BENCH_SPE9.DATA")
+    fn = pth/"BENCH_SPE9.DATA"
+    problem = init_eclipse_packed_problem_ad(fn, useMex=True, rowMajorAD=True)
+    # Simulate
+    simulate_packed_problem(problem, restartStep=1)
+    # Plot
+    if plot:
+        plot_packed_problem(problem)
+    return problem
+
+
+simulateSPE9 = simulate_spe9
+
+
 if __name__ == "__main__":
-    result = simulate_spe9()
-    print(f"Completed {len(result.states)} SPE9 steps")
+    def test_the_problem_uses_mrsts_backend_and_solver():
+        """useMex/rowMajorAD with 9000 cells: diagonal row-major AD; with
+        PyMRST's useMEX setting off (MRST's default), GMRES-ILU(0)."""
+        from pymrst.modules.ad_blackoil.examples.utils.local_dataset_path import (
+            local_dataset_path,
+        )
+        from pymrst.modules.ad_core.simulators.sim_runner.init_eclipse_packed_problem_ad import (
+            init_eclipse_packed_problem_ad,
+        )
+        fn = local_dataset_path("spe9", "BENCH_SPE9.DATA")/"BENCH_SPE9.DATA"
+        problem = init_eclipse_packed_problem_ad(fn, useMex=True, rowMajorAD=True)
+        setup = problem.SimulatorSetup
+        assert problem.BaseName == "SPE 9TH COMPARATIVE STUDY"
+        assert type(setup.model.AutoDiffBackend).__name__ == "DiagonalAutoDiffBackend"
+        assert setup.model.AutoDiffBackend.row_major
+        assert type(setup.NonLinearSolver.LinearSolver).__name__ == "GMRES_ILUSolverAD"
+        names = [w.name for w in setup.schedule.controls[0].W]
+        assert names[0] == "INJE1" and len(names) == 26, names
+        print("ok test_the_problem_uses_mrsts_backend_and_solver")
+
+    test_the_problem_uses_mrsts_backend_and_solver()
+    print("\nAll tests passed!")

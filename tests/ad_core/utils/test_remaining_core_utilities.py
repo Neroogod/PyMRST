@@ -4,10 +4,10 @@ import numpy as np
 
 from pymrst.modules.ad_core.models.aquifers.select_aquifer_from_deck import (
     aquifer_model_from_processed,
-    select_aquifer_from_deck,
+    select_aquifer_from_deck_ad,
 )
 from pymrst.modules.ad_core.models.physical_model import PhysicalModel
-from pymrst.modules.ad_core.utils.cfl import estimate_composition_cfl
+from pymrst.modules.ad_core.utils.cfl import estimate_composition_cfl_ad
 from pymrst.modules.ad_core.utils.schedule import Control, Schedule, subset_schedule
 from pymrst.modules.ad_core.utils.standalone_solve import standalone_solve
 from pymrst.modules.deckformat.params.rock.process_aquifer import (
@@ -35,8 +35,8 @@ def test_physical_model_protocol_resolves_state_and_rejects_abstract_steps():
 
 
 def test_select_aquifer_from_deck_guards_and_processed_mapping():
-    assert select_aquifer_from_deck({}, SimpleNamespace(G=None)) is None
-    assert select_aquifer_from_deck(
+    assert select_aquifer_from_deck_ad({}, SimpleNamespace(G=None)) is None
+    assert select_aquifer_from_deck_ad(
         {"SOLUTION": {"AQUANCON": []}}, SimpleNamespace(G=None)
     ) is None
 
@@ -92,7 +92,7 @@ def test_estimate_composition_cfl_direction_crossflow_and_mass_guard():
     q = np.array([[8.0, 4.0], [4.0, 2.0]])
     phase_flux = np.array([[3.0, 1.0], [2.0, -3.0]])
 
-    outflow = estimate_composition_cfl(
+    outflow = estimate_composition_cfl_ad(
         model, {"flux": phase_flux}, 2.0,
         component_flux=q, component_mass=mass,
     )
@@ -102,7 +102,7 @@ def test_estimate_composition_cfl_direction_crossflow_and_mass_guard():
     assert np.allclose(outflow[2], [1.0, 2.0])
     assert np.all(np.isfinite(outflow))
 
-    inflow = estimate_composition_cfl(
+    inflow = estimate_composition_cfl_ad(
         model, {"flux": phase_flux}, 2.0, use_inflow=True,
         component_flux=q, component_mass=mass,
     )

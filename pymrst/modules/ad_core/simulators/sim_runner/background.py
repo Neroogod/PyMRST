@@ -1,4 +1,10 @@
-"""Standalone and background execution for packed problems."""
+"""Standalone and background execution for packed problems.
+
+The `*_ad` functions are PyMRST's earlier versions of MRST
+`simulatePackedProblemStandalone`, `simulatePackedProblemBackground` and
+`monitorBackgroundSimulations`, kept for their callers; the ports are in the
+MRST-named files.
+"""
 
 from __future__ import annotations
 
@@ -14,7 +20,7 @@ import time
 import traceback
 
 from pymrst.modules.ad_core.simulators.sim_runner.simulate_packed_problem import (
-    simulate_packed_problem,
+    simulate_packed_problem_ad,
 )
 
 
@@ -62,7 +68,7 @@ def _json_safe(value):
     return repr(value)
 
 
-def simulate_packed_problem_standalone(path: str | Path, *,
+def simulate_packed_problem_standalone_ad(path: str | Path, *,
                                        record_evidence: bool = True):
     """Load ``problem.pkl`` from a work directory and simulate under a lock.
 
@@ -128,7 +134,7 @@ def simulate_packed_problem_standalone(path: str | Path, *,
     try:
         with payload.open("rb") as stream:
             problem = pickle.load(stream)
-        ok, status = simulate_packed_problem(
+        ok, status = simulate_packed_problem_ad(
             problem, continue_on_error=True, observer=observer,
         )
         with log.open("a", encoding="utf-8") as stream:
@@ -150,7 +156,7 @@ def simulate_packed_problem_standalone(path: str | Path, *,
             lock.unlink()
 
 
-def simulate_packed_problem_background(
+def simulate_packed_problem_background_ad(
     problem, *, workdir: str | Path | None = None
 ) -> BackgroundSimulationInfo:
     """Serialize a problem and launch it in a separate Python process."""
@@ -161,14 +167,14 @@ def simulate_packed_problem_background(
     with (path / "problem.pkl").open("wb") as stream:
         pickle.dump(problem, stream, protocol=pickle.HIGHEST_PROTOCOL)
     process = mp.Process(
-        target=simulate_packed_problem_standalone, args=(path,),
+        target=simulate_packed_problem_standalone_ad, args=(path,),
         name=f"pymrst-{problem.Name}",
     )
     process.start()
     return BackgroundSimulationInfo(path=path, process=process)
 
 
-def monitor_background_simulations(
+def monitor_background_simulations_ad(
     simulations, *, wait: bool = False, timeout: float | None = None
 ):
     """Return status dictionaries for background simulations."""
@@ -191,16 +197,9 @@ def monitor_background_simulations(
     return result
 
 
-simulatePackedProblemStandalone = simulate_packed_problem_standalone
-simulatePackedProblemBackground = simulate_packed_problem_background
-monitorBackgroundSimulations = monitor_background_simulations
-
 __all__ = [
     "BackgroundSimulationInfo",
-    "simulate_packed_problem_standalone",
-    "simulatePackedProblemStandalone",
-    "simulate_packed_problem_background",
-    "simulatePackedProblemBackground",
-    "monitor_background_simulations",
-    "monitorBackgroundSimulations",
+    "simulate_packed_problem_standalone_ad",
+    "simulate_packed_problem_background_ad",
+    "monitor_background_simulations_ad",
 ]

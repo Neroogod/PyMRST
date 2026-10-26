@@ -14,8 +14,8 @@ if str(ROOT) not in sys.path:
 from pymrst.modules.compositional.examples._shared import (  # noqa: E402
     ScheduleControl,
     SimulationResult,
-    get_multiple_packed_simulator_outputs,
-    pack_simulation_problem,
+    get_multiple_packed_simulator_outputs_ad,
+    pack_simulation_problem_ad,
     simple_schedule,
 )
 
@@ -31,7 +31,7 @@ def validate_schedule_metadata_recovery() -> int:
         control=[ScheduleControl(), ScheduleControl()],
         step_control=[1, 2, 2],
     )
-    problem = pack_simulation_problem(
+    problem = pack_simulation_problem_ad(
         0.0,
         object(),
         schedule,
@@ -43,7 +43,7 @@ def validate_schedule_metadata_recovery() -> int:
         iterations=np.asarray([7, 8, 9], dtype=int),
         reports=None,
     )
-    _, _, reports, _ = get_multiple_packed_simulator_outputs([problem])
+    _, _, reports, _ = get_multiple_packed_simulator_outputs_ad([problem])
     fallback = reports[0]
 
     failures = 0
@@ -65,7 +65,7 @@ def validate_schedule_metadata_recovery() -> int:
 
 def validate_mismatched_legacy_lengths_stay_conservative() -> int:
     schedule = simple_schedule([1.0], step_control=[1])
-    problem = pack_simulation_problem(
+    problem = pack_simulation_problem_ad(
         0.0,
         object(),
         schedule,
@@ -77,7 +77,7 @@ def validate_mismatched_legacy_lengths_stay_conservative() -> int:
         iterations=np.asarray([3, 4], dtype=int),
         reports=None,
     )
-    _, _, reports, _ = get_multiple_packed_simulator_outputs([problem])
+    _, _, reports, _ = get_multiple_packed_simulator_outputs_ad([problem])
     fallback = reports[0]
 
     failures = 0
